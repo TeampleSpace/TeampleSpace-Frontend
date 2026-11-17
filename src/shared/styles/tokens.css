@@ -1,0 +1,53 @@
+/* 설계서의 Product UI 기준을 옮긴 공통 변수 */
+:root {
+  /* 색상 */
+  --color-surface: #ffffff;
+  --color-canvas: #faf9f6;
+  --color-subtle: #f5f4f1;
+  --color-muted: #edece8;
+  --color-ink: #20242d;
+  --color-secondary: #565d68;
+  --color-tertiary: #5e6672;
+  --color-primary: #285bdd;
+  --color-primary-soft: #edf2ff;
+  --color-accent: #b94e0c;
+  --color-accent-soft: #fff0e3;
+  --color-accent-bright: #f27c36;
+  --color-border: #e4e3df;
+  --color-danger: #b42332;
+  --color-danger-soft: #fff0f0;
+
+  /* 글꼴. 웹폰트 파일은 사용 권한 확인 후 추가하며 그 전에는 시스템 글꼴로 표시된다 */
+  --font-body:
+    'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif;
+  --font-title: 'Gmarket Sans TTF', 'Gmarket Sans', var(--font-body);
+
+  /* 글자. 굵기 크기 줄높이 글꼴 순서 */
+  --text-title: 700 28px/40px var(--font-title);
+  --text-lead: 400 16px/26px var(--font-body);
+  --text-body: 400 14px/22px var(--font-body);
+  --text-button: 600 15px/22px var(--font-body);
+  --text-meta: 400 12px/18px var(--font-body);
+  --text-nav: 500 14px/22px var(--font-body);
+
+  /* 간격 */
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* 역할별 간격 */
+  --space-page: var(--space-32);
+  --space-panel: var(--space-20);
+  --space-column-gap: var(--space-24);
+  --space-control-gap: var(--space-8);
+
+  /* 치수 */
+  --control-height: 48px;
+  --content-width: 1176px;
+  /* 모서리 값은 설계서에 없어 임시로 둔다 */
+  --radius: 8px;
+}
