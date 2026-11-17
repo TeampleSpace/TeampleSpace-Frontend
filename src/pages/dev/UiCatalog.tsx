@@ -33,7 +33,9 @@ const texts = [
   ['dialog-title', '확인 모달 제목'],
   ['lead', '입력 값과 설명 본문'],
   ['body', '일반 UI 본문'],
-  ['button', '버튼'],
+  ['button', '주요 버튼'],
+  ['button-secondary', '보조 버튼과 텍스트 버튼'],
+  ['status-title', '오류 안내 제목'],
   ['meta', '보조 정보'],
   ['nav', '탐색과 입력 이름'],
 ]
@@ -162,7 +164,7 @@ export default function UiCatalog() {
           title="저장하지 못했어요"
           description="입력한 내용은 그대로 있어요. 다시 시도해 주세요."
           requestId="req_example"
-          action={<Button>다시 시도</Button>}
+          action={<Button variant="secondary">다시 시도</Button>}
         />
       </section>
 
@@ -212,16 +214,9 @@ export default function UiCatalog() {
         title="잠시 후 다시 시도해주세요"
         description="요청이 많아 처리에 시간이 걸리고 있어요."
         onClose={close}
-        footer={
-          <>
-            <Button onClick={close}>다시 시도</Button>
-            <Button variant="secondary" onClick={close}>
-              닫기
-            </Button>
-          </>
-        }
+        footer={<Button onClick={close}>다시 시도</Button>}
       >
-        <p className={styles.info}>입력한 내용은 유지됩니다.</p>
+        <p>입력한 내용은 유지됩니다.</p>
       </Modal>
 
       <Modal

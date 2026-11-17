@@ -3,18 +3,18 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-16);
-  padding: var(--space-24);
-  border-radius: var(--radius-lg);
-  background: var(--color-subtle);
+  padding: var(--space-24) 0;
+  border-top: 1px solid var(--color-border);
 }
 
-.section > * {
+:where(.section > *) {
   max-width: 100%;
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-control-gap);
 }
 

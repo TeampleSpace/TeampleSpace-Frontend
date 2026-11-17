@@ -17,7 +17,7 @@
   --color-accent-soft: #fff0e3;
   --color-accent-bright: #f27c36;
   --color-border: #e4e3df;
-  /* 입력창과 보조 버튼의 테두리 */
+  /* 입력창처럼 경계를 분명히 보여야 하는 조작부 */
   --color-border-control: #7f8997;
   --color-danger: #b42332;
   --color-danger-soft: #fff0f0;
@@ -35,6 +35,8 @@
   --text-lead: 400 16px/26px var(--font-body);
   --text-body: 400 14px/22px var(--font-body);
   --text-button: 600 15px/22px var(--font-body);
+  --text-button-secondary: 500 14px/20px var(--font-body);
+  --text-status-title: 600 16px/24px var(--font-body);
   --text-meta: 400 12px/18px var(--font-body);
   --text-nav: 500 14px/22px var(--font-body);
 
@@ -57,8 +59,9 @@
   --button-height-regular: 40px;
   --control-height: 48px;
   --content-width: 1176px;
-  --dialog-width: 640px;
+  --dialog-width: 560px;
   --dialog-width-form: 760px;
+  --status-width: 640px;
 
   /* 모서리 */
   --radius-md: 8px;

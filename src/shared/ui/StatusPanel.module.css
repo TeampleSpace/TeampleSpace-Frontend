@@ -4,7 +4,7 @@
   align-items: center;
   gap: var(--space-16);
   width: 100%;
-  max-width: var(--dialog-width);
+  max-width: var(--status-width);
   /* 남는 공간의 가운데에 둔다 */
   margin: auto;
   padding: var(--space-32);
@@ -20,13 +20,29 @@
   font: var(--text-lead);
 }
 
+.error {
+  align-items: flex-start;
+  gap: var(--space-12);
+  max-width: var(--dialog-width);
+  margin: 0;
+  padding: var(--space-16);
+  border-radius: var(--radius-md);
+  background: var(--color-subtle);
+  text-align: left;
+}
+
+.error .title {
+  font: var(--text-status-title);
+  color: var(--color-danger);
+}
+
 .description {
   color: var(--color-secondary);
 }
 
 .meta {
   font: var(--text-meta);
-  color: var(--color-tertiary);
+  color: var(--color-secondary);
 }
 
 .actions {
@@ -36,6 +52,12 @@
   justify-content: center;
   gap: var(--space-12);
   margin-top: var(--space-8);
+}
+
+.error .actions {
+  justify-content: flex-start;
+  gap: var(--space-8);
+  margin-top: 0;
 }
 
 .spinner {
