@@ -1,0 +1,22 @@
+{
+  "description": "오류 코드 목록. decided가 false인 항목은 합의 전 제안이다",
+  "codes": [
+    { "code": "VERSION_CONFLICT", "httpStatus": 409, "retryable": false, "decided": true, "meaning": "요청의 기준 버전이 서버의 현재 버전과 다르다. currentVersions를 함께 돌려준다" },
+    { "code": "IDEMPOTENCY_KEY_REUSED", "httpStatus": 409, "retryable": false, "decided": true, "meaning": "같은 멱등키로 본문이 다른 요청을 보냈다" },
+    { "code": "REQUEST_IN_PROGRESS", "httpStatus": 409, "retryable": true, "decided": true, "meaning": "같은 멱등키의 요청을 처리하는 중이다. Retry-After 뒤에 같은 요청으로 다시 보낸다" },
+    { "code": "REGENERATION_NOT_ENABLED", "httpStatus": 409, "retryable": false, "decided": true, "meaning": "이미 발표 자료가 있어 다시 생성할 수 없다" },
+    { "code": "PRESENTATION_NOT_READY", "httpStatus": 404, "retryable": false, "decided": true, "meaning": "아직 발표 자료를 생성하지 않았다" },
+    { "code": "EDIT_GROUP_CLOSED", "httpStatus": 409, "retryable": false, "decided": false, "meaning": "닫힌 편집 묶음을 다시 사용했다. 상태 코드는 제안이다" },
+    { "code": "CHANGE_NOT_FINALIZED", "httpStatus": 409, "retryable": false, "decided": false, "meaning": "아직 열려 있는 변경 묶음을 승인하려 했다. 상태 코드는 제안이다" },
+    { "code": "FEATURE_NOT_ENABLED", "httpStatus": 404, "retryable": false, "decided": false, "meaning": "1차 출시에서 닫아 둔 기능이다. 상태 코드는 제안이다" },
+    { "code": "IDEMPOTENCY_KEY_REQUIRED", "httpStatus": 400, "retryable": false, "decided": false, "meaning": "문서 변경 요청에 Idempotency-Key 헤더가 없다" },
+    { "code": "UNAUTHENTICATED", "httpStatus": 401, "retryable": false, "decided": false, "meaning": "세션이 없거나 만료됐다" },
+    { "code": "FORBIDDEN", "httpStatus": 403, "retryable": false, "decided": false, "meaning": "권한이 없다" },
+    { "code": "NOT_FOUND", "httpStatus": 404, "retryable": false, "decided": false, "meaning": "대상이 없거나 접근할 수 없다" },
+    { "code": "PAYLOAD_TOO_LARGE", "httpStatus": 413, "retryable": false, "decided": false, "meaning": "요청이나 파일이 허용 크기를 넘었다" },
+    { "code": "VALIDATION_FAILED", "httpStatus": 422, "retryable": false, "decided": false, "meaning": "입력이 올바르지 않다. fieldErrors를 함께 돌려준다" },
+    { "code": "RATE_LIMITED", "httpStatus": 429, "retryable": true, "decided": false, "meaning": "요청이 너무 잦다. Retry-After를 함께 돌려준다" },
+    { "code": "SERVICE_UNAVAILABLE", "httpStatus": 503, "retryable": true, "decided": false, "meaning": "일시적으로 처리할 수 없다. 다시 시도할 수 있으면 Retry-After를 함께 돌려준다" },
+    { "code": "JOB_INPUT_STALE", "httpStatus": null, "retryable": false, "decided": true, "meaning": "작업 결과를 게시할 때 입력이 바뀌어 있었다. HTTP 오류가 아니라 작업의 error.code로 전달한다" }
+  ]
+}

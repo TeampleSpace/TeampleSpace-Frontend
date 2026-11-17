@@ -1,0 +1,15 @@
+{
+  "clientMutationId": "mut_01JD3Z8R9E",
+  "tombstone": {
+    "resourceType": "element",
+    "id": "0193a000-0000-7000-8000-00000000e011",
+    "version": 2,
+    "deletedAt": "2026-11-18T01:00:00.000000Z"
+  },
+  "elementVersion": 2,
+  "slideVersion": 11,
+  "presentationVersion": 16,
+  "generation": 1,
+  "changeId": "0193a000-0000-7000-8000-0000000000f5",
+  "eventId": "45"
+}

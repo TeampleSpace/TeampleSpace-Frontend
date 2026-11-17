@@ -1,0 +1,172 @@
+[
+  {
+    "example": "presentation.json",
+    "schema": "document.schema.json",
+    "valid": true
+  },
+  {
+    "example": "error-version-conflict.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-idempotency-key-reused.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-request-in-progress.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-edit-group-closed.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-validation-failed.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "element-patch-request.json",
+    "schema": "api.schema.json#/$defs/ElementPatchRequest",
+    "valid": true
+  },
+  {
+    "example": "element-patch-finalize-request.json",
+    "schema": "api.schema.json#/$defs/ElementPatchRequest",
+    "valid": true
+  },
+  {
+    "example": "element-patch-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "element-delete-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "event-element-updated.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": true
+  },
+  {
+    "example": "event-change-created.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": true
+  },
+  {
+    "example": "event-change-finalized.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": true
+  },
+  {
+    "example": "event-snapshot-required.json",
+    "schema": "api.schema.json#/$defs/SnapshotRequired",
+    "valid": true
+  },
+  {
+    "example": "job-running.json",
+    "schema": "api.schema.json#/$defs/Job",
+    "valid": true
+  },
+  {
+    "example": "job-failed-input-stale.json",
+    "schema": "api.schema.json#/$defs/Job",
+    "valid": true
+  },
+  {
+    "example": "job-list.json",
+    "schema": "api.schema.json#/$defs/JobList",
+    "valid": true
+  },
+  {
+    "example": "capabilities.json",
+    "schema": "api.schema.json#/$defs/Capabilities",
+    "valid": true
+  },
+  {
+    "example": "auth-bootstrap-anonymous.json",
+    "schema": "api.schema.json#/$defs/AuthBootstrap",
+    "valid": true
+  },
+  {
+    "example": "auth-bootstrap-authenticated.json",
+    "schema": "api.schema.json#/$defs/AuthBootstrap",
+    "valid": true
+  },
+  {
+    "example": "design-settings.json",
+    "schema": "api.schema.json#/$defs/DesignSettings",
+    "valid": true
+  },
+  {
+    "example": "material-note.json",
+    "schema": "api.schema.json#/$defs/MaterialNote",
+    "valid": true
+  },
+  {
+    "example": "material-note-empty.json",
+    "schema": "api.schema.json#/$defs/MaterialNote",
+    "valid": true
+  },
+  {
+    "example": "material-note-put-request.json",
+    "schema": "api.schema.json#/$defs/MaterialNotePutRequest",
+    "valid": true
+  },
+  {
+    "example": "material-note-save-response.json",
+    "schema": "api.schema.json#/$defs/MaterialNoteSaveResponse",
+    "valid": true
+  },
+  {
+    "example": "sync-snapshot-editor.json",
+    "schema": "api.schema.json#/$defs/SyncSnapshot",
+    "valid": true
+  },
+  {
+    "example": "invalid/error-without-request-id.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": false
+  },
+  {
+    "example": "invalid/element-image-external-url.json",
+    "schema": "document.schema.json#/$defs/Element",
+    "valid": false
+  },
+  {
+    "example": "invalid/element-unknown-type.json",
+    "schema": "document.schema.json#/$defs/Element",
+    "valid": false
+  },
+  {
+    "example": "invalid/element-patch-without-patch.json",
+    "schema": "api.schema.json#/$defs/ElementPatchRequest",
+    "valid": false
+  },
+  {
+    "example": "invalid/mutation-response-without-event-id.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": false
+  },
+  {
+    "example": "invalid/mutation-response-broken-resource.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": false
+  },
+  {
+    "example": "invalid/auth-bootstrap-anonymous-with-user.json",
+    "schema": "api.schema.json#/$defs/AuthBootstrap",
+    "valid": false
+  },
+  {
+    "example": "invalid/event-unknown-type.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": false
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "입력을 확인해 주세요.",
+    "retryable": false,
+    "fieldErrors": [
+      {
+        "field": "patch.style.fontSize",
+        "code": "OUT_OF_RANGE",
+        "message": "글자 크기는 0보다 커야 해요."
+      }
+    ]
+  },
+  "requestId": "req_01JD3Z8K4Q"
+}

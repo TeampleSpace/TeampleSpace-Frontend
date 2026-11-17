@@ -1,0 +1,11 @@
+{
+  "status": "anonymous",
+  "csrfToken": "csrf_example_token",
+  "expiresAt": "2026-11-25T01:00:00.000000Z",
+  "user": {
+    "id": "0193a000-0000-7000-8000-0000000000d1",
+    "displayName": "김하늘",
+    "onboardingStatus": "completed",
+    "version": 1
+  }
+}

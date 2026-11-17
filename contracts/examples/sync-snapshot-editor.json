@@ -1,0 +1,412 @@
+{
+  "scope": "editor",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "eventCursor": "40",
+  "presentation": {
+    "id": "0193a000-0000-7000-8000-000000000010",
+    "projectId": "0193a000-0000-7000-8000-000000000001",
+    "schemaVersion": 1,
+    "generation": 1,
+    "version": 14,
+    "orderVersion": 1,
+    "canvas": {
+      "width": 1280,
+      "height": 720,
+      "unit": "px"
+    },
+    "slideIds": [
+      "0193a000-0000-7000-8000-0000000000a1",
+      "0193a000-0000-7000-8000-0000000000a2"
+    ],
+    "slides": [
+      {
+        "id": "0193a000-0000-7000-8000-0000000000a1",
+        "presentationId": "0193a000-0000-7000-8000-000000000010",
+        "generation": 1,
+        "version": 5,
+        "layoutId": "title",
+        "elementIds": [
+          "0193a000-0000-7000-8000-00000000e001",
+          "0193a000-0000-7000-8000-00000000e002",
+          "0193a000-0000-7000-8000-00000000e003",
+          "0193a000-0000-7000-8000-00000000e004"
+        ],
+        "elements": [
+          {
+            "id": "0193a000-0000-7000-8000-00000000e001",
+            "slideId": "0193a000-0000-7000-8000-0000000000a1",
+            "type": "shape",
+            "version": 1,
+            "geometry": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 220,
+              "rotation": 0,
+              "z": 0
+            },
+            "content": {
+              "shape": "rect"
+            },
+            "style": {
+              "fill": "#1F4E79",
+              "stroke": null,
+              "strokeWidth": 0
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e002",
+            "slideId": "0193a000-0000-7000-8000-0000000000a1",
+            "type": "text",
+            "version": 4,
+            "geometry": {
+              "x": 80,
+              "y": 64,
+              "width": 1120,
+              "height": 90,
+              "rotation": 0,
+              "z": 1
+            },
+            "content": {
+              "text": "팀플 발표 자료를 함께 만드는 방법"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 56,
+              "fontWeight": 700,
+              "color": "#FFFFFF",
+              "align": "left",
+              "lineHeight": 1.2
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e003",
+            "slideId": "0193a000-0000-7000-8000-0000000000a1",
+            "type": "text",
+            "version": 2,
+            "geometry": {
+              "x": 80,
+              "y": 270,
+              "width": 1120,
+              "height": 120,
+              "rotation": 0,
+              "z": 2
+            },
+            "content": {
+              "text": "자료 정리부터 발표 준비까지 한 문서에서 진행합니다\n모든 팀원이 같은 슬라이드를 직접 고칩니다"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 28,
+              "fontWeight": 400,
+              "color": "#1F2933",
+              "align": "left",
+              "lineHeight": 1.5
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e004",
+            "slideId": "0193a000-0000-7000-8000-0000000000a1",
+            "type": "text",
+            "version": 1,
+            "geometry": {
+              "x": 80,
+              "y": 620,
+              "width": 600,
+              "height": 40,
+              "rotation": 0,
+              "z": 3
+            },
+            "content": {
+              "text": "2026년 2학기 협업 프로젝트 3조"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 20,
+              "fontWeight": 500,
+              "color": "#52606D",
+              "align": "left",
+              "lineHeight": 1.4
+            },
+            "sourceRefs": []
+          }
+        ]
+      },
+      {
+        "id": "0193a000-0000-7000-8000-0000000000a2",
+        "presentationId": "0193a000-0000-7000-8000-000000000010",
+        "generation": 1,
+        "version": 9,
+        "layoutId": null,
+        "elementIds": [
+          "0193a000-0000-7000-8000-00000000e005",
+          "0193a000-0000-7000-8000-00000000e006",
+          "0193a000-0000-7000-8000-00000000e007",
+          "0193a000-0000-7000-8000-00000000e008",
+          "0193a000-0000-7000-8000-00000000e009",
+          "0193a000-0000-7000-8000-00000000e010",
+          "0193a000-0000-7000-8000-00000000e011",
+          "0193a000-0000-7000-8000-00000000e012"
+        ],
+        "elements": [
+          {
+            "id": "0193a000-0000-7000-8000-00000000e005",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "text",
+            "version": 1,
+            "geometry": {
+              "x": 80,
+              "y": 48,
+              "width": 1000,
+              "height": 64,
+              "rotation": 0,
+              "z": 0
+            },
+            "content": {
+              "text": "조사 결과 요약"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 40,
+              "fontWeight": 700,
+              "color": "#1F2933",
+              "align": "left",
+              "lineHeight": 1.2
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e006",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "text",
+            "version": 5,
+            "geometry": {
+              "x": 80,
+              "y": 136,
+              "width": 620,
+              "height": 230,
+              "rotation": 0,
+              "z": 1
+            },
+            "content": {
+              "text": "설문에 참여한 대학생 가운데 다수는 발표 자료를 만들 때 각자 작업한 내용을 마지막에 한꺼번에 합치는 과정에서 가장 많은 시간을 쓴다고 답했으며, 누가 어떤 부분을 고쳤는지 확인하기 어렵다는 점을 두 번째 어려움으로 꼽았습니다."
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 22,
+              "fontWeight": 400,
+              "color": "#1F2933",
+              "align": "left",
+              "lineHeight": 1.6
+            },
+            "sourceRefs": [
+              {
+                "materialId": "0193a000-0000-7000-8000-0000000000b1",
+                "revisionId": "0193a000-0000-7000-8000-0000000000b2",
+                "sourceVersion": 2,
+                "chunkId": "0193a000-0000-7000-8000-0000000000b3",
+                "page": 12,
+                "excerpt": "발표 자료를 합치는 과정에서 가장 많은 시간을 쓴다"
+              }
+            ]
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e007",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "text",
+            "version": 3,
+            "geometry": {
+              "x": 80,
+              "y": 392,
+              "width": 620,
+              "height": 160,
+              "rotation": 0,
+              "z": 2
+            },
+            "content": {
+              "text": "핵심 정리\n1. 합치는 시간을 줄인다\n2. 수정한 사람과 내용을 남긴다\n3. 근거 자료를 슬라이드에 연결한다"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 22,
+              "fontWeight": 500,
+              "color": "#1F2933",
+              "align": "left",
+              "lineHeight": 1.5
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e008",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "shape",
+            "version": 1,
+            "geometry": {
+              "x": 740,
+              "y": 136,
+              "width": 460,
+              "height": 300,
+              "rotation": 0,
+              "z": 3
+            },
+            "content": {
+              "shape": "rect"
+            },
+            "style": {
+              "fill": "#F0F4F8",
+              "stroke": "#BCCCDC",
+              "strokeWidth": 2,
+              "cornerRadius": 16
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e009",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "image",
+            "version": 2,
+            "geometry": {
+              "x": 760,
+              "y": 156,
+              "width": 420,
+              "height": 236.25,
+              "rotation": 0,
+              "z": 4
+            },
+            "content": {
+              "fileObjectId": "0193a000-0000-7000-8000-0000000000c1",
+              "alt": "협업 단계별 소요 시간 막대 그래프",
+              "crop": {
+                "x": 0.05,
+                "y": 0.05,
+                "width": 0.9,
+                "height": 0.9
+              }
+            },
+            "style": {},
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e010",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "shape",
+            "version": 1,
+            "geometry": {
+              "x": 1120,
+              "y": 40,
+              "width": 80,
+              "height": 80,
+              "rotation": 0,
+              "z": 5
+            },
+            "content": {
+              "shape": "ellipse"
+            },
+            "style": {
+              "fill": "#F2994A",
+              "stroke": null,
+              "strokeWidth": 0
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e011",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "text",
+            "version": 1,
+            "geometry": {
+              "x": 1040,
+              "y": 470,
+              "width": 140,
+              "height": 48,
+              "rotation": -8,
+              "z": 6
+            },
+            "content": {
+              "text": "초안"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 24,
+              "fontWeight": 700,
+              "color": "#D64545",
+              "align": "center",
+              "lineHeight": 1.2
+            },
+            "sourceRefs": []
+          },
+          {
+            "id": "0193a000-0000-7000-8000-00000000e012",
+            "slideId": "0193a000-0000-7000-8000-0000000000a2",
+            "type": "text",
+            "version": 2,
+            "geometry": {
+              "x": 80,
+              "y": 650,
+              "width": 1120,
+              "height": 32,
+              "rotation": 0,
+              "z": 7
+            },
+            "content": {
+              "text": "출처: 대학생 협업 실태 조사 보고서 12쪽"
+            },
+            "style": {
+              "fontFamily": "Pretendard",
+              "fontSize": 16,
+              "fontWeight": 400,
+              "color": "#52606D",
+              "align": "left",
+              "lineHeight": 1.4
+            },
+            "sourceRefs": [
+              {
+                "materialId": "0193a000-0000-7000-8000-0000000000b1",
+                "revisionId": "0193a000-0000-7000-8000-0000000000b2",
+                "sourceVersion": 2,
+                "chunkId": "0193a000-0000-7000-8000-0000000000b3",
+                "page": 12,
+                "excerpt": "발표 자료를 합치는 과정에서 가장 많은 시간을 쓴다"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "members": [
+    {
+      "userId": "0193a000-0000-7000-8000-0000000000d1",
+      "displayName": "김하늘",
+      "isOwner": true,
+      "membershipVersion": 1
+    },
+    {
+      "userId": "0193a000-0000-7000-8000-0000000000d2",
+      "displayName": "이도윤",
+      "isOwner": false,
+      "membershipVersion": 2
+    }
+  ],
+  "designSettings": {
+    "version": 2,
+    "mode": "template",
+    "templateId": "0193a000-0000-7000-8000-0000000000f4",
+    "templateVersion": 1,
+    "custom": null,
+    "updatedAt": "2026-11-18T01:00:00.000000Z"
+  },
+  "activeJobs": [],
+  "materials": [
+    {
+      "id": "0193a000-0000-7000-8000-0000000000b1",
+      "title": "대학생 협업 실태 조사 보고서",
+      "kind": "file",
+      "version": 3,
+      "deleted": false
+    }
+  ]
+}

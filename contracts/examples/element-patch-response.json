@@ -1,0 +1,44 @@
+{
+  "clientMutationId": "mut_01JD3Z8M2A",
+  "resource": {
+    "id": "0193a000-0000-7000-8000-00000000e006",
+    "slideId": "0193a000-0000-7000-8000-0000000000a2",
+    "type": "text",
+    "version": 6,
+    "geometry": {
+      "x": 80,
+      "y": 136,
+      "width": 620,
+      "height": 230,
+      "rotation": 0,
+      "z": 1
+    },
+    "content": {
+      "text": "설문에 참여한 대학생 가운데 다수는 발표 자료를 만들 때 각자 작업한 내용을 마지막에 한꺼번에 합치는 과정에서 가장 많은 시간을 쓴다고 답했으며, 누가 어떤 부분을 고쳤는지 확인하기 어렵다는 점을 두 번째 어려움으로 꼽았습니다. 세 번째로는 근거 자료를 다시 찾기 어렵다는 점이 나왔습니다."
+    },
+    "style": {
+      "fontFamily": "Pretendard",
+      "fontSize": 22,
+      "fontWeight": 400,
+      "color": "#1F2933",
+      "align": "left",
+      "lineHeight": 1.6
+    },
+    "sourceRefs": [
+      {
+        "materialId": "0193a000-0000-7000-8000-0000000000b1",
+        "revisionId": "0193a000-0000-7000-8000-0000000000b2",
+        "sourceVersion": 2,
+        "chunkId": "0193a000-0000-7000-8000-0000000000b3",
+        "page": 12,
+        "excerpt": "발표 자료를 합치는 과정에서 가장 많은 시간을 쓴다"
+      }
+    ]
+  },
+  "elementVersion": 6,
+  "slideVersion": 10,
+  "presentationVersion": 15,
+  "generation": 1,
+  "changeId": "0193a000-0000-7000-8000-0000000000f1",
+  "eventId": "42"
+}

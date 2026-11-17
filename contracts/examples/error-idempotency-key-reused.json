@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "IDEMPOTENCY_KEY_REUSED",
+    "message": "같은 멱등키로 다른 요청을 보냈어요.",
+    "retryable": false
+  },
+  "requestId": "req_01JD3Z8K4Q"
+}

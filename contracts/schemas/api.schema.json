@@ -1,0 +1,473 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api.schema.json",
+  "title": "TeampleSpace /v1 공통 요청과 응답 형식",
+  "$defs": {
+    "Uuid": { "$ref": "document.schema.json#/$defs/Uuid" },
+    "Timestamp": { "$ref": "document.schema.json#/$defs/Timestamp" },
+    "Version": { "$ref": "document.schema.json#/$defs/Version" },
+    "EventCursor": {
+      "description": "프로젝트 이벤트 순번의 십진 문자열. 클라이언트는 해석하지 않고 그대로 돌려준다",
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "ClientMutationId": {
+      "description": "화면과 이벤트를 잇는 상관관계 값. 멱등키를 대신하지 않는다",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+
+    "ErrorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error", "requestId"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+            "message": { "type": "string" },
+            "retryable": { "type": "boolean" },
+            "fieldErrors": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/FieldError" }
+            },
+            "currentVersions": { "$ref": "#/$defs/CurrentVersions" }
+          }
+        },
+        "requestId": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "FieldError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "code", "message"],
+      "properties": {
+        "field": { "type": "string" },
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "CurrentVersions": {
+      "description": "충돌 시 서버의 현재 버전. 서로 다른 범위의 값을 비교하지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "userVersion": { "$ref": "#/$defs/Version" },
+        "projectVersion": { "$ref": "#/$defs/Version" },
+        "membershipVersion": { "$ref": "#/$defs/Version" },
+        "materialVersion": { "$ref": "#/$defs/Version" },
+        "outlineVersion": { "$ref": "#/$defs/Version" },
+        "designVersion": { "$ref": "#/$defs/Version" },
+        "generation": { "$ref": "#/$defs/Version" },
+        "presentationVersion": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "$ref": "#/$defs/Version" },
+        "slideVersion": { "$ref": "#/$defs/Version" },
+        "elementVersion": { "$ref": "#/$defs/Version" },
+        "elementVersions": {
+          "description": "여러 요소를 다루는 요청에서 요소 식별자별 현재 버전",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/Version" }
+        }
+      }
+    },
+
+    "ElementPatchRequest": {
+      "description": "요소 수정 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "baseVersion", "editGroupId", "clientMutationId"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "baseVersion": { "description": "마지막으로 서버가 확인해 준 요소 버전", "$ref": "#/$defs/Version" },
+        "editGroupId": { "$ref": "#/$defs/Uuid" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "finalizeGroup": { "type": "boolean" },
+        "patch": { "$ref": "#/$defs/ElementPatch" }
+      },
+      "anyOf": [
+        { "required": ["patch"] },
+        { "required": ["finalizeGroup"], "properties": { "finalizeGroup": { "const": true } } }
+      ]
+    },
+    "ElementPatch": {
+      "description": "보낸 항목만 바꾼다. 각 항목은 통째로 교체된다",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "geometry": { "$ref": "document.schema.json#/$defs/Geometry" },
+        "content": { "type": "object" },
+        "style": { "type": "object" },
+        "sourceRefs": {
+          "type": "array",
+          "items": { "$ref": "document.schema.json#/$defs/SourceRef" }
+        }
+      }
+    },
+
+    "DocumentChange": {
+      "description": "문서 변경 응답과 이벤트 payload가 함께 쓰는 항목",
+      "type": "object",
+      "properties": {
+        "resource": {
+          "anyOf": [
+            { "$ref": "document.schema.json#/$defs/Element" },
+            { "$ref": "document.schema.json#/$defs/Slide" }
+          ]
+        },
+        "tombstone": { "$ref": "#/$defs/Tombstone" },
+        "elementVersion": { "$ref": "#/$defs/Version" },
+        "slideVersion": { "$ref": "#/$defs/Version" },
+        "presentationVersion": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "$ref": "#/$defs/Version" },
+        "generation": { "$ref": "#/$defs/Version" },
+        "changeId": { "$ref": "#/$defs/Uuid" }
+      },
+      "oneOf": [
+        { "required": ["resource"] },
+        { "required": ["tombstone"] }
+      ]
+    },
+    "Tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceType", "id", "deletedAt"],
+      "properties": {
+        "resourceType": { "enum": ["element", "slide"] },
+        "id": { "$ref": "#/$defs/Uuid" },
+        "version": { "$ref": "#/$defs/Version" },
+        "deletedAt": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "MutationResponse": {
+      "description": "문서 변경 성공 응답. 같은 멱등키 재시도에는 처음과 같은 응답을 돌려준다",
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/DocumentChange" }],
+      "required": ["clientMutationId", "eventId"],
+      "properties": {
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "eventId": { "$ref": "#/$defs/EventCursor" }
+      },
+      "unevaluatedProperties": false
+    },
+
+    "Event": {
+      "description": "이벤트 구독으로 전달하는 봉투. SSE의 id는 eventId, event는 type이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventId", "projectId", "type", "occurredAt", "payload"],
+      "properties": {
+        "eventId": { "$ref": "#/$defs/EventCursor" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "type": { "$ref": "#/$defs/EventType" },
+        "actorId": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "occurredAt": { "$ref": "#/$defs/Timestamp" },
+        "resourceId": { "$ref": "#/$defs/Uuid" },
+        "resourceVersion": { "$ref": "#/$defs/Version" },
+        "presentationVersion": { "$ref": "#/$defs/Version" },
+        "generation": { "$ref": "#/$defs/Version" },
+        "payload": { "type": "object" }
+      },
+      "if": {
+        "properties": { "type": { "enum": ["element.updated", "element.deleted"] } }
+      },
+      "then": {
+        "properties": { "payload": { "$ref": "#/$defs/DocumentChange" } }
+      }
+    },
+    "EventType": {
+      "enum": [
+        "project.updated",
+        "project.deleted",
+        "membership.changed",
+        "material.updated",
+        "material.deleted",
+        "material.note.updated",
+        "outline.updated",
+        "design.updated",
+        "presentation.replaced",
+        "slide.created",
+        "slide.deleted",
+        "slide.order.updated",
+        "element.updated",
+        "element.deleted",
+        "change.created",
+        "change.finalized",
+        "review.updated",
+        "comment.created",
+        "job.updated",
+        "export.ready",
+        "presence.updated"
+      ]
+    },
+    "SnapshotRequired": {
+      "description": "커서가 보관 범위 밖이거나 유효하지 않을 때 보내는 신호. 받으면 동기화 스냅샷을 다시 읽는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" }
+      }
+    },
+
+    "Job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "status", "progress", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "type": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "status": { "$ref": "#/$defs/JobStatus" },
+        "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "targetType": { "type": "string", "maxLength": 32 },
+        "targetId": { "$ref": "#/$defs/Uuid" },
+        "attempt": { "description": "내부 재시도마다 증가한다", "type": "integer", "minimum": 0 },
+        "inputVersions": { "$ref": "#/$defs/CurrentVersions" },
+        "resultRef": { "type": ["object", "null"] },
+        "error": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["code", "message"],
+              "properties": {
+                "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+                "message": { "type": "string" },
+                "retryable": { "type": "boolean" }
+              }
+            }
+          ]
+        },
+        "cancelRequestedAt": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" },
+        "finishedAt": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] }
+      }
+    },
+    "JobStatus": {
+      "description": "succeeded, failed, canceled는 바뀌지 않는다. 내부 재시도는 running에서 queued로 돌아간다",
+      "enum": ["queued", "running", "succeeded", "failed", "canceled"]
+    },
+    "JobList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/Job" } },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
+
+    "Capabilities": {
+      "description": "비밀값 없는 전역 지원 정보",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configVersion",
+        "policyRevision",
+        "uploadTypes",
+        "formats",
+        "fonts",
+        "featureFlags",
+        "legalDocuments",
+        "idempotencyRetentionSeconds",
+        "listLimit"
+      ],
+      "properties": {
+        "configVersion": { "type": "string", "minLength": 1 },
+        "policyRevision": { "type": "string", "minLength": 1 },
+        "uploadTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "mimeType", "maxBytes"],
+            "properties": {
+              "kind": { "type": "string" },
+              "mimeType": { "type": "string" },
+              "maxBytes": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "formats": {
+          "description": "실제 파일 검사를 통과한 내보내기 형식만 담는다",
+          "type": "array",
+          "items": { "enum": ["pptx", "pdf"] },
+          "uniqueItems": true
+        },
+        "fonts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "featureFlags": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "legalDocuments": {
+          "description": "비어 있으면 가입 완료를 열지 않는다",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "version", "url"],
+            "properties": {
+              "type": { "type": "string" },
+              "version": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "idempotencyRetentionSeconds": { "type": "integer", "minimum": 1 },
+        "listLimit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "max"],
+          "properties": {
+            "default": { "type": "integer", "minimum": 1 },
+            "max": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+
+    "AuthBootstrap": {
+      "description": "세션 초기 정보. 응답은 캐시하지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "csrfToken", "expiresAt"],
+      "properties": {
+        "status": { "enum": ["anonymous", "authenticated"] },
+        "csrfToken": { "type": "string", "minLength": 1 },
+        "expiresAt": { "$ref": "#/$defs/Timestamp" },
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "displayName", "onboardingStatus", "version"],
+          "properties": {
+            "id": { "$ref": "#/$defs/Uuid" },
+            "displayName": { "type": "string" },
+            "onboardingStatus": { "type": "string" },
+            "version": { "$ref": "#/$defs/Version" }
+          }
+        }
+      },
+      "if": { "properties": { "status": { "const": "authenticated" } } },
+      "then": { "required": ["user"] },
+      "else": { "not": { "required": ["user"] } }
+    },
+
+    "DesignSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "mode", "templateId", "templateVersion", "custom", "updatedAt"],
+      "properties": {
+        "version": { "$ref": "#/$defs/Version" },
+        "mode": { "enum": ["unset", "template", "custom"] },
+        "templateId": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "templateVersion": { "type": ["integer", "null"], "minimum": 1 },
+        "custom": { "type": ["object", "null"] },
+        "updatedAt": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+
+    "MaterialNote": {
+      "description": "자료별 팀 공유 메모. 아직 쓰지 않은 메모는 version 0이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "markdown", "version", "updatedBy", "updatedAt"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "markdown": { "type": "string" },
+        "version": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "updatedBy": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "updatedAt": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] }
+      }
+    },
+    "MaterialNotePutRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion", "markdown"],
+      "properties": {
+        "expectedVersion": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "markdown": { "type": "string" }
+      }
+    },
+    "MaterialNoteSaveResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "version", "eventId"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "version": { "$ref": "#/$defs/Version" },
+        "eventId": { "$ref": "#/$defs/EventCursor" }
+      }
+    },
+
+    "SyncSnapshot": {
+      "description": "화면에 필요한 데이터와 각 버전, 이벤트 커서를 같은 DB 시점에서 읽은 묶음",
+      "type": "object",
+      "required": ["scope", "projectId", "eventCursor"],
+      "properties": {
+        "scope": { "enum": ["editor", "composition", "workspace"] },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "eventCursor": { "$ref": "#/$defs/EventCursor" }
+      },
+      "if": { "properties": { "scope": { "const": "editor" } } },
+      "then": { "$ref": "#/$defs/EditorSnapshot" }
+    },
+    "EditorSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "projectId", "eventCursor", "presentation", "members", "designSettings", "activeJobs", "materials"],
+      "properties": {
+        "scope": { "const": "editor" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "eventCursor": { "$ref": "#/$defs/EventCursor" },
+        "presentation": {
+          "description": "아직 생성 전이면 null",
+          "anyOf": [{ "$ref": "document.schema.json#/$defs/Presentation" }, { "type": "null" }]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["userId", "displayName", "isOwner", "membershipVersion"],
+            "properties": {
+              "userId": { "$ref": "#/$defs/Uuid" },
+              "displayName": { "type": "string" },
+              "isOwner": { "type": "boolean" },
+              "membershipVersion": { "$ref": "#/$defs/Version" }
+            }
+          }
+        },
+        "designSettings": { "$ref": "#/$defs/DesignSettings" },
+        "activeJobs": { "type": "array", "items": { "$ref": "#/$defs/Job" } },
+        "materials": {
+          "description": "문서가 참조하는 자료의 요약. 본문은 담지 않는다",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "kind", "version", "deleted"],
+            "properties": {
+              "id": { "$ref": "#/$defs/Uuid" },
+              "title": { "type": "string" },
+              "kind": { "enum": ["file", "link", "memo"] },
+              "version": { "$ref": "#/$defs/Version" },
+              "deleted": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
