@@ -1,0 +1,43 @@
+.frame {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #ffffff;
+  transform-origin: top left;
+}
+
+.text,
+.image,
+.shape,
+.missing {
+  position: absolute;
+  margin: 0;
+}
+
+.text {
+  white-space: pre-wrap;
+  /* 슬라이드 글상자는 앱 화면과 달리 글자 단위로 줄을 바꾼다. 출력 파일과 비교할 항목이다 */
+  word-break: normal;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.image {
+  display: block;
+  object-fit: fill;
+  user-select: none;
+}
+
+.missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-muted);
+  color: var(--color-secondary);
+}
