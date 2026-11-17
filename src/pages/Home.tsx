@@ -13,6 +13,9 @@ export default function Home() {
             <li>
               <Link to="/dev/editor">편집 실험</Link>
             </li>
+            <li>
+              <Link to="/dev/reference">파일 출력 비교 기준</Link>
+            </li>
           </ul>
         </nav>
       )}

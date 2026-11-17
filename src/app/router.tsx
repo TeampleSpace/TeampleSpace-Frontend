@@ -20,6 +20,12 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
           Component: (await import('../pages/dev/EditorLab.tsx')).default,
         }),
       },
+      {
+        path: 'dev/reference',
+        lazy: async () => ({
+          Component: (await import('../pages/dev/RenderReference.tsx')).default,
+        }),
+      },
     ]
   : []
 

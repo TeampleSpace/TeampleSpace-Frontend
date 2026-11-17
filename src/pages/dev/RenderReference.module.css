@@ -1,0 +1,62 @@
+.notice {
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-16);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.section ul,
+.section ol {
+  margin: 0;
+  padding-left: var(--space-24);
+}
+
+/* 100% 크기라 좁은 화면에서는 이 영역 안에서 스크롤한다 */
+.scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+}
+
+.table {
+  border-collapse: collapse;
+  font: var(--text-meta);
+}
+
+.table caption {
+  padding: var(--space-8);
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.table .content {
+  min-width: 240px;
+  white-space: pre-wrap;
+}
+
+/* 캡처용. 화면 왼쪽 위에 슬라이드만 그린다 */
+.bare {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: auto;
+  background: #ffffff;
+}
