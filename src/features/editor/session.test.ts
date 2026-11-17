@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import example from '../../entities/presentation/example.json'
-import {
-  elementSaveResultSchema,
-  presentationSchema,
-} from '../../entities/presentation/schema.ts'
+import { elementSaveResultSchema } from '../../entities/presentation/schema.ts'
+import { exampleSnapshot } from '../../mocks/example.ts'
 import { createApiClient } from '../../shared/api/client.ts'
 import { createMockServer } from '../../mocks/server.ts'
 import { createEditorSession } from './session.ts'
@@ -11,10 +8,16 @@ import type { EditorSession } from './session.ts'
 
 // 저장, 재시도, 충돌, 이벤트 처리를 모킹 서버로 확인한다
 
-const doc = presentationSchema.parse(example)
-const slideId = doc.slideIds[0]
-const titleId = 'a1000000-0000-4000-8000-000000000002'
-const bodyId = 'a1000000-0000-4000-8000-000000000003'
+// 계약 예제 둘째 슬라이드의 텍스트 요소. 둘 다 처음 버전이 1이다
+const projectId = exampleSnapshot.projectId
+const slideId = '0193a000-0000-7000-8000-0000000000a2'
+const titleId = '0193a000-0000-7000-8000-00000000e011'
+const bodyId = '0193a000-0000-7000-8000-00000000e005'
+const actorIds: Record<string, string> = {
+  'user-a': '0193a000-0000-7000-8000-0000000000d1',
+  'user-b': '0193a000-0000-7000-8000-0000000000d2',
+  'user-c': '0193a000-0000-7000-8000-0000000000d3',
+}
 
 type Call = {
   actor: string
@@ -34,12 +37,12 @@ async function settle() {
 }
 
 function setup() {
-  const server = createMockServer(doc)
+  const server = createMockServer(exampleSnapshot)
   const calls: Call[] = []
   const control = { failNextPatch: false }
 
   function tracked(actor: string, silentEvents: boolean): typeof fetch {
-    const inner = server.fetchAs(actor)
+    const inner = server.fetchAs(actorIds[actor])
     return (input, init = {}) => {
       const headers = new Headers(init.headers)
       const method = init.method ?? 'GET'
@@ -75,7 +78,7 @@ function setup() {
     const session = createEditorSession({
       client: createApiClient(fetchImpl),
       fetchImpl,
-      projectId: doc.projectId,
+      projectId,
       ...rest,
     })
     session.start()
@@ -84,8 +87,8 @@ function setup() {
 
   // 세션을 거치지 않고 서버에 직접 저장하는 다른 사용자
   async function saveDirectly(actor: string, value: string) {
-    const element = server.getDocument().slides[slideId].elements[bodyId]
-    await createApiClient(server.fetchAs(actor)).request(
+    const element = serverElement()
+    await createApiClient(server.fetchAs(actorIds[actor])).request(
       `/slides/${slideId}/elements/${bodyId}`,
       elementSaveResultSchema,
       {
@@ -102,7 +105,11 @@ function setup() {
     )
   }
 
-  const serverElement = (id = bodyId) => server.getDocument().slides[slideId].elements[id]
+  const serverElement = (id = bodyId) =>
+    server
+      .getDocument()
+      .slides.flatMap((slide) => slide.elements)
+      .find((element) => element.id === id)!
   const serverText = (id = bodyId) => {
     const element = serverElement(id)
     return element.type === 'text' ? element.content.text : undefined
@@ -116,7 +123,10 @@ function setup() {
 }
 
 function textOf(session: EditorSession, id = bodyId) {
-  const element = session.getState().view?.slides[slideId].elements[id]
+  const element = session
+    .getState()
+    .view?.slides.flatMap((slide) => slide.elements)
+    .find((candidate) => candidate.id === id)
   return element?.type === 'text' ? element.content.text : undefined
 }
 const statusOf = (session: EditorSession, id = bodyId) =>
@@ -137,10 +147,10 @@ test('시작하면 스냅샷으로 문서를 읽고 이벤트 연결을 연다',
   await tick()
 
   expect(a.getState().connection).toBe('online')
-  expect(textOf(a, titleId)).toBe('팀플 발표 자료를 함께 만드는 방법')
+  expect(textOf(a)).toBe('조사 결과 요약')
   expect(calls.map((call) => call.path)).toEqual([
-    `/projects/${doc.projectId}/sync-snapshot`,
-    `/projects/${doc.projectId}/events`,
+    `/projects/${projectId}/sync-snapshot`,
+    `/projects/${projectId}/events`,
   ])
   // 구독은 스냅샷이 준 커서 뒤에서 시작한다
   expect(calls[1].lastEventId).toBe('0')
@@ -387,7 +397,7 @@ test('연결이 끊기면 새 편집을 막고 다시 연결되면 놓친 이벤
   // 보낼 입력이 없으면 스냅샷을 다시 읽지 않고 마지막 이벤트 뒤부터 재생받는다
   expect(a.getState().stats.snapshots).toBe(1)
   const reconnect = calls.filter((call) => call.actor === 'user-a').at(-1)
-  expect(reconnect).toMatchObject({ path: `/projects/${doc.projectId}/events`, lastEventId: '0' })
+  expect(reconnect).toMatchObject({ path: `/projects/${projectId}/events`, lastEventId: '0' })
 })
 
 test('끊기기 전 입력은 현재 탭에 남기고 다시 연결되면 스냅샷과 비교한 뒤 저장한다', async () => {
@@ -478,13 +488,13 @@ test('편집을 끝내면 남은 입력을 바로 저장하면서 묶음을 닫�
   await tick()
 
   // 끌어서 옮긴 뒤 놓는 동작
-  a.edit(bodyId, { geometry: { x: 120, y: 200 } })
+  a.edit(bodyId, { geometry: { ...serverElement().geometry, x: 120, y: 200 } })
   a.endEdit(bodyId)
   await tick()
 
   expect(patches()).toHaveLength(1)
   expect(patchOf(patches()[0]).finalizeGroup).toBe(true)
-  expect(serverElement().geometry).toMatchObject({ x: 120, y: 200, width: 560 })
+  expect(serverElement().geometry).toMatchObject({ x: 120, y: 200, width: 1000 })
   expect(server.events.map((event) => event.type)).toEqual([
     'element.updated',
     'change.created',

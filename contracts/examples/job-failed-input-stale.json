@@ -1,0 +1,24 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000f6",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "presentation_generation",
+  "status": "failed",
+  "progress": 90,
+  "targetType": "project",
+  "targetId": "0193a000-0000-7000-8000-000000000001",
+  "attempt": 1,
+  "inputVersions": {
+    "outlineVersion": 3,
+    "designVersion": 2
+  },
+  "resultRef": null,
+  "error": {
+    "code": "JOB_INPUT_STALE",
+    "message": "생성 도중 입력이 바뀌었어요.",
+    "retryable": false
+  },
+  "cancelRequestedAt": null,
+  "createdAt": "2026-11-18T01:00:00.000000Z",
+  "updatedAt": "2026-11-18T01:01:00.000000Z",
+  "finishedAt": "2026-11-18T01:01:00.000000Z"
+}

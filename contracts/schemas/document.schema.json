@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document.schema.json",
+  "title": "TeampleSpace 공유 문서 형식 schemaVersion 1",
+  "description": "편집기, 최초 생성 결과, 파일 출력이 함께 쓰는 문서 형식",
+  "$ref": "#/$defs/Presentation",
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "Timestamp": {
+      "description": "UTC ISO 8601",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$"
+    },
+    "Version": {
+      "description": "1부터 시작하고 JavaScript 안전 정수 범위 안에 있다",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "Color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
+    "Presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "projectId", "schemaVersion", "generation", "version", "orderVersion", "canvas", "slideIds", "slides"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "schemaVersion": { "const": 1 },
+        "generation": { "$ref": "#/$defs/Version" },
+        "version": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "$ref": "#/$defs/Version" },
+        "canvas": { "$ref": "#/$defs/Canvas" },
+        "slideIds": {
+          "description": "슬라이드 순서",
+          "type": "array",
+          "items": { "$ref": "#/$defs/Uuid" },
+          "uniqueItems": true
+        },
+        "slides": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Slide" }
+        }
+      }
+    },
+    "Canvas": {
+      "description": "모든 좌표의 기준. 화면 확대 값은 저장하지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "unit"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "enum": ["px"] }
+      }
+    },
+    "Slide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "presentationId", "generation", "version", "elementIds", "elements"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "presentationId": { "$ref": "#/$defs/Uuid" },
+        "generation": { "$ref": "#/$defs/Version" },
+        "version": { "$ref": "#/$defs/Version" },
+        "layoutId": { "type": ["string", "null"], "maxLength": 64 },
+        "elementIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Uuid" },
+          "uniqueItems": true
+        },
+        "elements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Element" }
+        }
+      }
+    },
+    "Element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "slideId", "type", "version", "geometry", "content", "style", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "slideId": { "$ref": "#/$defs/Uuid" },
+        "type": { "enum": ["text", "shape", "image"] },
+        "version": { "$ref": "#/$defs/Version" },
+        "geometry": { "$ref": "#/$defs/Geometry" },
+        "content": { "type": "object" },
+        "style": { "type": "object" },
+        "sourceRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SourceRef" }
+        },
+        "deletedAt": { "$ref": "#/$defs/Timestamp" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "text" } } },
+          "then": {
+            "properties": {
+              "content": { "$ref": "#/$defs/TextContent" },
+              "style": { "$ref": "#/$defs/TextStyle" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "shape" } } },
+          "then": {
+            "properties": {
+              "content": { "$ref": "#/$defs/ShapeContent" },
+              "style": { "$ref": "#/$defs/ShapeStyle" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "image" } } },
+          "then": {
+            "properties": {
+              "content": { "$ref": "#/$defs/ImageContent" },
+              "style": { "$ref": "#/$defs/ImageStyle" }
+            }
+          }
+        }
+      ]
+    },
+    "Geometry": {
+      "description": "캔버스 단위 좌표. rotation은 도 단위, z는 쌓임 순서",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height", "rotation", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "rotation": { "type": "number" },
+        "z": { "type": "integer" }
+      }
+    },
+    "TextContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "description": "줄바꿈은 개행 문자로 표현한다. HTML은 받지 않는다", "type": "string" }
+      }
+    },
+    "TextStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fontFamily", "fontSize", "fontWeight", "color", "align", "lineHeight"],
+      "properties": {
+        "fontFamily": { "type": "string", "minLength": 1 },
+        "fontSize": { "description": "캔버스 단위", "type": "number", "exclusiveMinimum": 0 },
+        "fontWeight": { "enum": [100, 200, 300, 400, 500, 600, 700, 800, 900] },
+        "color": { "$ref": "#/$defs/Color" },
+        "align": { "enum": ["left", "center", "right"] },
+        "lineHeight": { "description": "글자 크기에 대한 배수", "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "ShapeContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape"],
+      "properties": {
+        "shape": { "enum": ["rect", "ellipse"] }
+      }
+    },
+    "ShapeStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fill", "stroke", "strokeWidth"],
+      "properties": {
+        "fill": { "anyOf": [{ "$ref": "#/$defs/Color" }, { "type": "null" }] },
+        "stroke": { "anyOf": [{ "$ref": "#/$defs/Color" }, { "type": "null" }] },
+        "strokeWidth": { "type": "number", "minimum": 0 },
+        "cornerRadius": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ImageContent": {
+      "description": "이미지는 확정된 파일 식별자로만 참조한다. 임의 외부 URL은 넣지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileObjectId", "alt"],
+      "properties": {
+        "fileObjectId": { "$ref": "#/$defs/Uuid" },
+        "alt": { "type": "string" },
+        "crop": { "$ref": "#/$defs/Crop" },
+        "assetUrl": {
+          "description": "읽기 응답에만 붙는 임시 주소. 저장 요청에 넣지 않고 서버도 저장하지 않는다",
+          "type": "string"
+        }
+      }
+    },
+    "Crop": {
+      "description": "원본 이미지에 대한 0과 1 사이 비율",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 },
+        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "ImageStyle": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "SourceRef": {
+      "description": "요소가 근거로 삼은 자료 개정",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "revisionId", "sourceVersion"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "revisionId": { "$ref": "#/$defs/Uuid" },
+        "sourceVersion": { "$ref": "#/$defs/Version" },
+        "chunkId": { "$ref": "#/$defs/Uuid" },
+        "page": { "type": "integer", "minimum": 1 },
+        "excerpt": { "type": "string" },
+        "sourceDeleted": { "type": "boolean" }
+      }
+    }
+  }
+}

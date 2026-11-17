@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "id": "0193a000-0000-7000-8000-0000000000f3",
+      "projectId": "0193a000-0000-7000-8000-000000000001",
+      "type": "presentation_generation",
+      "status": "running",
+      "progress": 40,
+      "targetType": "project",
+      "targetId": "0193a000-0000-7000-8000-000000000001",
+      "attempt": 1,
+      "inputVersions": {
+        "outlineVersion": 3,
+        "designVersion": 2
+      },
+      "resultRef": null,
+      "error": null,
+      "cancelRequestedAt": null,
+      "createdAt": "2026-11-18T01:00:00.000000Z",
+      "updatedAt": "2026-11-18T01:00:05.000000Z",
+      "finishedAt": null
+    }
+  ],
+  "nextCursor": null
+}

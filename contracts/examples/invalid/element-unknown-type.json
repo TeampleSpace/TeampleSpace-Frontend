@@ -1,0 +1,26 @@
+{
+  "id": "0193a000-0000-7000-8000-00000000e005",
+  "slideId": "0193a000-0000-7000-8000-0000000000a2",
+  "type": "video",
+  "version": 1,
+  "geometry": {
+    "x": 80,
+    "y": 48,
+    "width": 1000,
+    "height": 64,
+    "rotation": 0,
+    "z": 0
+  },
+  "content": {
+    "text": "조사 결과 요약"
+  },
+  "style": {
+    "fontFamily": "Pretendard",
+    "fontSize": 40,
+    "fontWeight": 700,
+    "color": "#1F2933",
+    "align": "left",
+    "lineHeight": 1.2
+  },
+  "sourceRefs": []
+}

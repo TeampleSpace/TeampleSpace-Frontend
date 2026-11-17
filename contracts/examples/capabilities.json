@@ -1,0 +1,21 @@
+{
+  "configVersion": "2026-11-18.1",
+  "policyRevision": "draft",
+  "uploadTypes": [],
+  "formats": [],
+  "fonts": [],
+  "featureFlags": {
+    "billing": false,
+    "aiRevision": false,
+    "restore": false,
+    "accountLinking": false,
+    "regeneration": false,
+    "offlineDrafts": false
+  },
+  "legalDocuments": [],
+  "idempotencyRetentionSeconds": 86400,
+  "listLimit": {
+    "default": 30,
+    "max": 100
+  }
+}

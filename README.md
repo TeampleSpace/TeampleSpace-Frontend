@@ -68,7 +68,9 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 
 ## 서버 계약
 
-API 클라이언트는 `src/shared/api`, 공유 문서 형식과 예제는 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 아직 합의되지 않은 계약 항목과 확인 기록은 `docs/contract-notes.md`에 정리한다.
+요청, 응답, 문서 형식은 백엔드 저장소의 공통 계약을 그대로 쓴다. `contracts` 폴더는 백엔드 저장소 `contracts` 폴더의 복사본이므로 직접 고치지 않고, 계약이 바뀌면 통째로 다시 복사한 뒤 `npm test`로 어긋난 곳을 확인한다.
+
+API 클라이언트는 `src/shared/api`, 문서 형식은 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 복사한 커밋, 아직 합의되지 않은 항목, 확인 기록은 `docs/contract-notes.md`에 정리한다.
 
 ## 협업 규칙
 

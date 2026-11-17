@@ -1,0 +1,27 @@
+{
+  "id": "0193a000-0000-7000-8000-00000000e009",
+  "slideId": "0193a000-0000-7000-8000-0000000000a2",
+  "type": "image",
+  "version": 2,
+  "geometry": {
+    "x": 760,
+    "y": 156,
+    "width": 420,
+    "height": 236.25,
+    "rotation": 0,
+    "z": 4
+  },
+  "content": {
+    "fileObjectId": "0193a000-0000-7000-8000-0000000000c1",
+    "alt": "협업 단계별 소요 시간 막대 그래프",
+    "crop": {
+      "x": 0.05,
+      "y": 0.05,
+      "width": 0.9,
+      "height": 0.9
+    },
+    "url": "https://example.com/image.png"
+  },
+  "style": {},
+  "sourceRefs": []
+}

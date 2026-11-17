@@ -13,11 +13,15 @@
 }
 
 .text,
-.image,
+.imageBox,
 .shape,
 .missing {
   position: absolute;
   margin: 0;
+}
+
+.imageBox {
+  overflow: hidden;
 }
 
 .text {
@@ -29,7 +33,9 @@
 }
 
 .image {
+  position: absolute;
   display: block;
+  max-width: none;
   object-fit: fill;
   user-select: none;
 }

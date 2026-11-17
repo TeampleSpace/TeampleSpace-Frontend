@@ -82,11 +82,13 @@ export function EditorPanel({
   label,
   session,
   zoom,
+  slideIndex,
 }: {
   label: string
   session: EditorSession
   // 0이면 영역 너비에 맞춘다
   zoom: number
+  slideIndex: number
 }) {
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const [selectedId, setSelectedId] = useState<string>()
@@ -113,8 +115,9 @@ export function EditorPanel({
     )
   }
 
-  const slide = view.slides[view.slideIds[0]]
-  const elements = slide.elementIds.map((id) => slide.elements[id])
+  const slide = view.slides[slideIndex] ?? view.slides[0]
+  const elements = slide.elements
+  const byId = (id: string) => elements.find((element) => element.id === id)
   const online = state.connection === 'online'
   const scale =
     zoom > 0 ? zoom : fitScale(view.canvas, { width: areaWidth || 1, height: Infinity })
@@ -126,17 +129,18 @@ export function EditorPanel({
   const shownSlide = drag
     ? {
         ...slide,
-        elements: {
-          ...slide.elements,
-          [drag.id]: {
-            ...slide.elements[drag.id],
-            geometry: {
-              ...slide.elements[drag.id].geometry,
-              x: slide.elements[drag.id].geometry.x + drag.dx,
-              y: slide.elements[drag.id].geometry.y + drag.dy,
-            },
-          },
-        },
+        elements: elements.map((element) =>
+          element.id === drag.id
+            ? {
+                ...element,
+                geometry: {
+                  ...element.geometry,
+                  x: element.geometry.x + drag.dx,
+                  y: element.geometry.y + drag.dy,
+                },
+              }
+            : element,
+        ),
       }
     : slide
 
@@ -168,16 +172,20 @@ export function EditorPanel({
   function onPointerUp() {
     if (!drag) return
     setDrag(undefined)
-    if (Math.abs(drag.dx) + Math.abs(drag.dy) < 2) return
-    const { x, y } = slide.elements[drag.id].geometry
-    // 놓는 순간 한 번의 명령으로 저장하고 묶음을 닫는다
+    const geometry = byId(drag.id)?.geometry
+    if (!geometry || Math.abs(drag.dx) + Math.abs(drag.dy) < 2) return
+    // 놓는 순간 한 번의 명령으로 저장하고 묶음을 닫는다. 좌표 항목은 통째로 보낸다
     session.edit(drag.id, {
-      geometry: { x: Math.round(x + drag.dx), y: Math.round(y + drag.dy) },
+      geometry: {
+        ...geometry,
+        x: Math.round(geometry.x + drag.dx),
+        y: Math.round(geometry.y + drag.dy),
+      },
     })
     session.endEdit(drag.id)
   }
 
-  const editing = editingId ? slide.elements[editingId] : undefined
+  const editing = editingId ? byId(editingId) : undefined
   const conflicts = elements.filter(
     (element) => state.elements[element.id]?.status === 'conflict',
   )
@@ -199,15 +207,21 @@ export function EditorPanel({
           scale={scale}
           hiddenElementId={editingId}
         >
-          {elements.map((element) => {
-            const { x, y, width, height } = shownSlide.elements[element.id].geometry
+          {shownSlide.elements.map((element) => {
+            const { x, y, width, height, rotation } = element.geometry
             return (
               <div
                 key={element.id}
                 className={[styles.hit, element.id === selectedId ? styles.selected : '']
                   .filter(Boolean)
                   .join(' ')}
-                style={{ left: x, top: y, width, height }}
+                style={{
+                  left: x,
+                  top: y,
+                  width,
+                  height,
+                  transform: rotation ? `rotate(${rotation}deg)` : undefined,
+                }}
                 onPointerDown={(event) => onPointerDown(event, element.id)}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}

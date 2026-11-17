@@ -1,0 +1,14 @@
+{
+  "eventId": "44",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "change.finalized",
+  "actorId": "0193a000-0000-7000-8000-0000000000d1",
+  "clientMutationId": "mut_01JD3Z8P7C",
+  "occurredAt": "2026-11-18T01:00:02.400000Z",
+  "resourceId": "0193a000-0000-7000-8000-0000000000f1",
+  "generation": 1,
+  "payload": {
+    "changeId": "0193a000-0000-7000-8000-0000000000f1",
+    "groupState": "closed"
+  }
+}

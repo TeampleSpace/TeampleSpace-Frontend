@@ -1,9 +1,13 @@
-import { elementSaveRequestSchema } from '../entities/presentation/schema.ts'
-import type { Element, Presentation } from '../entities/presentation/schema.ts'
+import {
+  elementSaveRequestSchema,
+  elementSchema,
+} from '../entities/presentation/schema.ts'
+import type { EditorSnapshot, Element } from '../entities/presentation/schema.ts'
 import type { EventEnvelope } from '../shared/api/contract.ts'
 
-// 계약 문서의 저장, 멱등, 이력 묶음, 이벤트 규칙을 메모리에서 흉내 내는 가짜 서버다
+// 공통 계약의 저장, 멱등, 이력 묶음, 이벤트 규칙을 메모리에서 흉내 내는 가짜 서버다
 // 개발 화면과 테스트에서만 쓰며 실제 서버 연동을 대신하지 않는다
+// 응답과 이벤트가 계약 스키마를 통과하는지는 contracts.test.ts에서 확인한다
 // ponytail: 메모리 모킹. 네트워크 수준 검증이 필요해지면 MSW나 실제 서버로 바꾼다
 
 // 이력 묶음을 닫는 서버 기준 시간
@@ -30,12 +34,15 @@ type Stream = { send: (event: EventEnvelope) => void; close: () => void }
 
 export type MockServer = ReturnType<typeof createMockServer>
 
+// 처음 상태는 편집 화면 스냅샷 예제로 준다
 export function createMockServer(
-  initial: Presentation,
+  initial: EditorSnapshot,
   options: { now?: () => number; assetUrls?: Record<string, string> } = {},
 ) {
   const now = options.now ?? Date.now
-  const doc = structuredClone(initial)
+  const base = structuredClone(initial)
+  if (!base.presentation) throw new Error('mock: 문서가 있는 스냅샷이 필요합니다')
+  const doc = base.presentation
   const results = new Map<string, StoredResult>()
   const groups = new Map<string, Group>()
   const events: EventEnvelope[] = []
@@ -43,7 +50,6 @@ export function createMockServer(
   // 이 순번보다 앞선 이벤트는 보관 범위 밖으로 본다
   let retainedFrom = 1
   let requestSeq = 0
-  let changeSeq = 0
   let offline = false
 
   // 실패 상황을 일부러 만드는 스위치
@@ -66,7 +72,7 @@ export function createMockServer(
   function errorBody(code: string, message: string, extra: object = {}) {
     requestSeq += 1
     return {
-      error: { code, message, retryable: false, fieldErrors: [], ...extra },
+      error: { code, message, retryable: false, ...extra },
       requestId: `req_mock_${requestSeq}`,
     }
   }
@@ -84,7 +90,7 @@ export function createMockServer(
     type: string,
     actorId: string,
     fields: Partial<EventEnvelope>,
-    payload: unknown,
+    payload: Record<string, unknown>,
   ): EventEnvelope {
     const event: EventEnvelope = {
       eventId: String(events.length + 1),
@@ -106,23 +112,23 @@ export function createMockServer(
     return event
   }
 
-  function closeGroup(editGroupId: string, group: Group): EventEnvelope {
+  function closeGroup(group: Group): EventEnvelope {
     group.closed = true
     return emit(
       'change.finalized',
       group.actorId,
       { resourceId: group.changeId },
-      { changeId: group.changeId, editGroupId },
+      { changeId: group.changeId, groupState: 'closed' },
     )
   }
 
   // 서버 수신 시각 기준으로 2초 무입력 또는 30초가 지난 묶음을 닫는다
   function closeExpiredGroups() {
-    for (const [editGroupId, group] of groups) {
+    for (const group of groups.values()) {
       if (group.closed) continue
       const idle = now() - group.lastWriteAt >= GROUP_IDLE_MS
       const tooLong = now() - group.openedAt >= GROUP_MAX_MS
-      if (idle || tooLong) closeGroup(editGroupId, group)
+      if (idle || tooLong) closeGroup(group)
     }
   }
 
@@ -134,7 +140,9 @@ export function createMockServer(
     init: RequestInit,
   ): Promise<Response> {
     const key = new Headers(init.headers).get('Idempotency-Key')
-    if (!key) throw new Error('mock: Idempotency-Key가 없습니다')
+    if (!key) {
+      return json(400, errorBody('IDEMPOTENCY_KEY_REQUIRED', '멱등 키가 필요해요.'))
+    }
     const body = String(init.body)
     const resultKey = `${actorId} PATCH ${path} ${key}`
 
@@ -147,7 +155,7 @@ export function createMockServer(
       if (stored.pending) {
         return json(
           409,
-          errorBody('REQUEST_IN_PROGRESS', '처리 중인 요청이에요.', { retryable: true }),
+          errorBody('REQUEST_IN_PROGRESS', '같은 요청을 처리하고 있어요.', { retryable: true }),
           { 'Retry-After': '1' },
         )
       }
@@ -160,97 +168,113 @@ export function createMockServer(
       await new Promise((resolve) => setTimeout(resolve, faults.delayMs))
     }
 
-    const request = elementSaveRequestSchema.parse(JSON.parse(body))
-    const slide = doc.slides[slideId]
-    const element = slide?.elements[elementId]
-    if (!slide || !element) throw new Error('mock: 요소가 없습니다')
+    const request = elementSaveRequestSchema.safeParse(JSON.parse(body))
+    const slide = doc.slides.find((candidate) => candidate.id === slideId)
+    const index = slide?.elements.findIndex((candidate) => candidate.id === elementId) ?? -1
     closeExpiredGroups()
-
-    let group = groups.get(request.editGroupId)
-    if (!group && !request.patch) throw new Error('mock: 저장한 적 없는 묶음의 종료 요청')
 
     let status = 200
     let response: unknown
-    if (
-      request.generation !== doc.generation ||
-      // 내용 없이 묶음만 닫는 요청은 요소 버전을 검사하지 않는다
-      (request.patch && request.baseVersion !== element.version)
-    ) {
-      status = 409
-      response = errorBody('VERSION_CONFLICT', '이후 수정이 있어요.', {
-        currentVersions: { generation: doc.generation, elementVersion: element.version },
-      })
-    } else if (group?.closed) {
-      status = 409
-      response = errorBody('EDIT_GROUP_CLOSED', '이미 닫힌 편집 묶음이에요.')
+    if (!slide || index < 0) {
+      status = 404
+      response = errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')
+    } else if (!request.success) {
+      status = 422
+      response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
     } else {
-      // 다른 작성자가 같은 요소를 고치면 열려 있던 묶음을 닫는다
-      for (const [otherId, other] of groups) {
-        if (!other.closed && other.elementId === elementId && other.actorId !== actorId) {
-          closeGroup(otherId, other)
-        }
-      }
+      const element = slide.elements[index]
+      const { patch, editGroupId, clientMutationId } = request.data
+      // 보낸 항목은 통째로 교체한다
+      const next = patch
+        ? elementSchema.safeParse({ ...element, ...patch, version: element.version + 1 })
+        : undefined
+      let group = groups.get(editGroupId)
 
-      let eventId = ''
-      if (request.patch) {
-        if (request.patch.content && element.type === 'text') {
-          element.content = { ...element.content, ...request.patch.content }
-        }
-        if (request.patch.geometry) {
-          element.geometry = { ...element.geometry, ...request.patch.geometry }
-        }
-        element.version += 1
-        slide.version += 1
-        doc.version += 1
-      }
-
-      const isFirstSave = !group
-      group ??= {
-        changeId: `change_${(changeSeq += 1)}`,
-        actorId,
-        elementId,
-        openedAt: now(),
-        lastWriteAt: now(),
-        closed: false,
-      }
-      groups.set(request.editGroupId, group)
-      group.lastWriteAt = now()
-
-      const result = {
-        clientMutationId: request.clientMutationId,
-        resource: withAsset(element),
-        elementVersion: element.version,
-        slideVersion: slide.version,
-        presentationVersion: doc.version,
-        generation: doc.generation,
-        changeId: group.changeId,
-      }
-      if (request.patch) {
-        eventId = emit(
-          'element.updated',
-          actorId,
-          {
-            clientMutationId: request.clientMutationId,
-            resourceId: elementId,
-            resourceVersion: element.version,
+      if (
+        request.data.generation !== doc.generation ||
+        // 내용 없이 묶음만 닫는 요청은 요소 버전을 검사하지 않는다
+        (patch && request.data.baseVersion !== element.version)
+      ) {
+        status = 409
+        response = errorBody('VERSION_CONFLICT', '이후 수정이 있어요.', {
+          fieldErrors: [],
+          currentVersions: {
+            generation: doc.generation,
+            elementVersion: element.version,
+            slideVersion: slide.version,
+            presentationVersion: doc.version,
           },
-          result,
-        ).eventId
-      }
-      // 검토 이력은 묶음의 첫 저장에서 한 번만 만든다
-      if (isFirstSave) {
-        emit(
-          'change.created',
+        })
+      } else if (group?.closed || (!group && !patch)) {
+        status = 409
+        response = errorBody('EDIT_GROUP_CLOSED', '이미 닫힌 편집 묶음이에요.', {
+          currentVersions: { generation: doc.generation, elementVersion: element.version },
+        })
+      } else if (next && !next.success) {
+        status = 422
+        response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
+      } else {
+        // 다른 작성자가 같은 요소를 고치면 열려 있던 묶음을 닫는다
+        for (const other of groups.values()) {
+          if (!other.closed && other.elementId === elementId && other.actorId !== actorId) {
+            closeGroup(other)
+          }
+        }
+
+        let saved = element
+        if (next?.success) {
+          saved = next.data
+          // 임시 주소는 저장하지 않는다
+          if (saved.type === 'image') delete saved.content.assetUrl
+          slide.elements[index] = saved
+          slide.version += 1
+          doc.version += 1
+        }
+
+        const isFirstSave = !group
+        group ??= {
+          changeId: crypto.randomUUID(),
           actorId,
-          { resourceId: group.changeId },
-          { changeId: group.changeId, editGroupId: request.editGroupId },
-        )
+          elementId,
+          openedAt: now(),
+          lastWriteAt: now(),
+          closed: false,
+        }
+        groups.set(editGroupId, group)
+        group.lastWriteAt = now()
+
+        const change = {
+          resource: withAsset(saved),
+          elementVersion: saved.version,
+          slideVersion: slide.version,
+          presentationVersion: doc.version,
+          generation: doc.generation,
+          changeId: group.changeId,
+        }
+        let eventId = ''
+        if (patch) {
+          eventId = emit(
+            'element.updated',
+            actorId,
+            { clientMutationId, resourceId: elementId, resourceVersion: saved.version },
+            change,
+          ).eventId
+        }
+        // 검토 이력은 묶음의 첫 저장에서 한 번만 만든다
+        if (isFirstSave) {
+          emit(
+            'change.created',
+            actorId,
+            { resourceId: group.changeId },
+            { changeId: group.changeId, groupState: 'open' },
+          )
+        }
+        if (request.data.finalizeGroup) {
+          const finalized = closeGroup(group)
+          eventId ||= finalized.eventId
+        }
+        response = { clientMutationId, ...change, eventId }
       }
-      if (request.finalizeGroup) {
-        const finalized = closeGroup(request.editGroupId, group)
-        eventId ||= finalized.eventId
-      }
-      response = { ...result, eventId }
     }
 
     // 결과는 오류 응답을 포함해 같은 키의 재시도에 그대로 돌려준다
@@ -265,18 +289,16 @@ export function createMockServer(
     return json(status, response)
   }
 
-  function snapshot() {
+  // 문서와 이벤트 커서를 같은 시점에서 읽는다
+  function snapshot(): EditorSnapshot {
     const presentation = structuredClone(doc)
-    for (const slide of Object.values(presentation.slides)) {
-      for (const [id, element] of Object.entries(slide.elements)) {
-        slide.elements[id] = withAsset(element)
-      }
+    for (const slide of presentation.slides) {
+      slide.elements = slide.elements.map(withAsset)
     }
-    // 문서와 이벤트 커서를 같은 시점에서 읽는다
-    return { scope: 'editor', presentation, eventCursor: String(events.length) }
+    return { ...base, presentation, eventCursor: String(events.length) }
   }
 
-  // 미확정. 이벤트 스트림의 줄 형식은 id, event, data를 쓴다고 가정했다
+  // 이벤트 스트림의 id는 eventId, event는 type, data는 이벤트 봉투다
   function openStream(cursor: string | null, signal?: AbortSignal | null): Response {
     const encoder = new TextEncoder()
     let stream: Stream | undefined
@@ -293,7 +315,7 @@ export function createMockServer(
           Number.isInteger(after) && after >= retainedFrom - 1 && after <= events.length
         if (!valid) {
           // 보관 범위 밖이거나 잘못된 커서는 다시 동기화하게 한다
-          write('snapshot_required', undefined, {})
+          write('snapshot_required', undefined, { projectId: doc.projectId })
           controller.close()
           return
         }
@@ -325,10 +347,17 @@ export function createMockServer(
   ): Promise<Response> {
     const project = `/v1/projects/${doc.projectId}`
     if (method === 'GET' && path === '/v1/auth/bootstrap') {
+      const member = base.members.find((candidate) => candidate.userId === actorId)
       return json(200, {
-        state: 'authenticated',
+        status: 'authenticated',
         csrfToken: `csrf_${actorId}`,
         expiresAt: new Date(now() + 3600_000).toISOString(),
+        user: {
+          id: actorId,
+          displayName: member?.displayName ?? '시험 사용자',
+          onboardingStatus: 'completed',
+          version: 1,
+        },
       })
     }
     if (method === 'GET' && path === `${project}/sync-snapshot`) {
@@ -340,7 +369,7 @@ export function createMockServer(
     const save =
       method === 'PATCH' && path.match(/^\/v1\/slides\/([^/]+)\/elements\/([^/]+)$/)
     if (save) return saveElement(actorId, path, save[1], save[2], init)
-    throw new Error(`mock: 지원하지 않는 요청 ${method} ${path}`)
+    return json(404, errorBody('NOT_FOUND', '대상을 찾을 수 없어요.'))
   }
 
   // 사용자 한 명의 브라우저 세션이 쓰는 fetch를 만든다

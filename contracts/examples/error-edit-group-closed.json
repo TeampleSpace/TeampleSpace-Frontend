@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "EDIT_GROUP_CLOSED",
+    "message": "이미 닫힌 편집 묶음이에요.",
+    "retryable": false,
+    "currentVersions": {
+      "generation": 1,
+      "elementVersion": 6
+    }
+  },
+  "requestId": "req_01JD3Z8K4Q"
+}

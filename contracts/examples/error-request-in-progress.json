@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "REQUEST_IN_PROGRESS",
+    "message": "같은 요청을 처리하고 있어요.",
+    "retryable": true
+  },
+  "requestId": "req_01JD3Z8K4Q"
+}
