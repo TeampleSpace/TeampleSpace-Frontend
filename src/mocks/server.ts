@@ -44,6 +44,7 @@ export function createMockServer(
   let retainedFrom = 1
   let requestSeq = 0
   let changeSeq = 0
+  let offline = false
 
   // 실패 상황을 일부러 만드는 스위치
   const faults = {
@@ -345,6 +346,7 @@ export function createMockServer(
   // 사용자 한 명의 브라우저 세션이 쓰는 fetch를 만든다
   function fetchAs(actorId: string): typeof fetch {
     return (input, init = {}) => {
+      if (offline) return Promise.reject(new TypeError('mock: 연결 끊김'))
       const url = new URL(String(input), 'http://mock.local')
       const work = route(actorId, init.method ?? 'GET', url.pathname, init)
       const signal = init.signal
@@ -364,6 +366,9 @@ export function createMockServer(
   return {
     fetchAs,
     faults,
+    setFaults(next: Partial<typeof faults>) {
+      Object.assign(faults, next)
+    },
     events,
     getDocument: () => doc,
     // 이 순번보다 앞선 이벤트를 보관 범위 밖으로 만든다
@@ -373,6 +378,11 @@ export function createMockServer(
     // 열려 있는 이벤트 연결을 모두 끊는다
     closeStreams() {
       for (const stream of [...streams]) stream.close()
+    },
+    // 서버에 닿지 않는 상태를 만든다. 요청은 실패하고 이벤트 연결도 끊긴다
+    setOffline(value: boolean) {
+      offline = value
+      if (value) for (const stream of [...streams]) stream.close()
     },
   }
 }
