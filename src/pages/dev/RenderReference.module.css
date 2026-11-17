@@ -1,6 +1,6 @@
 .notice {
   padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--color-primary-soft);
 }
 
@@ -11,8 +11,8 @@
   gap: var(--space-12);
   min-width: 0;
   padding: var(--space-16);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
 }
 
 .section ul,

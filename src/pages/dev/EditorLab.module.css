@@ -1,6 +1,6 @@
 .notice {
   padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--color-accent-soft);
   color: var(--color-accent);
 }
@@ -11,8 +11,8 @@
   align-items: flex-end;
   gap: var(--space-16);
   padding: var(--space-16);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
 }
 
 .inline {
@@ -43,8 +43,8 @@
   gap: var(--space-12);
   min-width: 0;
   padding: var(--space-16);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
 }
 
 .panel h3 {
@@ -95,7 +95,7 @@
   flex-direction: column;
   gap: var(--space-8);
   padding: var(--space-16);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--color-danger-soft);
 }
 
@@ -124,7 +124,7 @@
 .elementButton {
   padding: var(--space-8) var(--space-12);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   cursor: pointer;
 }
@@ -149,8 +149,8 @@
   flex-direction: column;
   gap: var(--space-8);
   padding: var(--space-16);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
 }
 
 .log ol {
