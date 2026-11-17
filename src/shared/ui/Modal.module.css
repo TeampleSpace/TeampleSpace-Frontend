@@ -1,58 +1,84 @@
 .dialog {
-  width: min(480px, calc(100vw - 32px));
+  width: min(var(--dialog-width), calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   padding: 0;
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
   background: var(--color-surface);
   color: var(--color-ink);
   overflow: hidden;
 }
 
+.form {
+  width: min(var(--dialog-width-form), calc(100vw - 32px));
+}
+
 .dialog::backdrop {
-  background: rgb(32 36 45 / 0.5);
+  background: rgb(32 36 45 / 0.32);
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-24);
   max-height: calc(100dvh - 32px);
-  padding: var(--space-24);
+  padding: var(--space-32);
   overflow-y: auto;
 }
 
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-16);
 }
 
-.close {
+.header > button {
   flex: none;
-  padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  font: var(--text-meta);
-  cursor: pointer;
+}
+
+.titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.title {
+  font: var(--text-dialog-title);
+  letter-spacing: -0.2px;
+}
+
+.form .title {
+  font: var(--text-modal-title);
+  letter-spacing: -0.24px;
 }
 
 .description {
-  font: var(--text-lead);
   color: var(--color-secondary);
 }
 
 .content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-20);
 }
 
+/* 확인과 안내 모달은 주요 동작부터 왼쪽에, 입력 모달은 오른쪽에 모은다 */
 .footer {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-12);
+}
+
+.form .footer {
   justify-content: flex-end;
-  gap: var(--space-control-gap);
+  min-height: var(--control-height);
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: var(--space-20);
+  }
 }

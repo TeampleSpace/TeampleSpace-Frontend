@@ -1,11 +1,14 @@
 import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { Button } from './Button.tsx'
 import styles from './Modal.module.css'
 
 type Props = {
   open: boolean
   title: string
   description?: string
+  // dialog는 확인과 안내에 쓰는 640px, form은 입력이 여러 개인 760px 모달이다
+  size?: 'dialog' | 'form'
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -17,6 +20,7 @@ export function Modal({
   open,
   title,
   description,
+  size = 'dialog',
   onClose,
   children,
   footer,
@@ -36,10 +40,16 @@ export function Modal({
     if (!open && dialog.open) dialog.close()
   }, [open])
 
+  const descriptionText = description && (
+    <p id={descriptionId} className={styles.description}>
+      {description}
+    </p>
+  )
+
   return (
     <dialog
       ref={ref}
-      className={styles.dialog}
+      className={[styles.dialog, styles[size]].join(' ')}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       onCancel={(event) => {
@@ -53,16 +63,18 @@ export function Modal({
     >
       <div className={styles.panel}>
         <header className={styles.header}>
-          <h2 id={titleId}>{title}</h2>
-          <button type="button" className={styles.close} onClick={onClose}>
+          <div className={styles.titles}>
+            <h2 id={titleId} className={styles.title}>
+              {title}
+            </h2>
+            {/* 입력 모달은 설명을 제목 바로 아래에 둔다 */}
+            {size === 'form' && descriptionText}
+          </div>
+          <Button variant="text" onClick={onClose}>
             닫기
-          </button>
+          </Button>
         </header>
-        {description && (
-          <p id={descriptionId} className={styles.description}>
-            {description}
-          </p>
-        )}
+        {size === 'dialog' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
         {footer && <footer className={styles.footer}>{footer}</footer>}
       </div>

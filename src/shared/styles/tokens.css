@@ -1,4 +1,4 @@
-/* 설계서의 Product UI 기준을 옮긴 공통 변수 */
+/* 피그마 Product Design의 제품 화면에서 읽은 값을 옮긴 공통 변수 */
 :root {
   /* 색상 */
   --color-surface: #ffffff;
@@ -9,22 +9,29 @@
   --color-secondary: #565d68;
   --color-tertiary: #5e6672;
   --color-primary: #285bdd;
+  --color-primary-hover: #1741b3;
+  --color-primary-pressed: #112f85;
   --color-primary-soft: #edf2ff;
+  --color-on-primary: #ffffff;
   --color-accent: #b94e0c;
   --color-accent-soft: #fff0e3;
   --color-accent-bright: #f27c36;
   --color-border: #e4e3df;
+  /* 입력창과 보조 버튼의 테두리 */
+  --color-border-control: #7f8997;
   --color-danger: #b42332;
   --color-danger-soft: #fff0f0;
 
-  /* 글꼴. 웹폰트 파일은 사용 권한 확인 후 추가하며 그 전에는 시스템 글꼴로 표시된다 */
+  /* 글꼴. 웹폰트 파일은 사용 권한 확인 후 추가하며 그 전에는 설치된 글꼴이나 시스템 글꼴로 표시된다 */
   --font-body:
     'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif;
   --font-title: 'Gmarket Sans TTF', 'Gmarket Sans', var(--font-body);
 
   /* 글자. 굵기 크기 줄높이 글꼴 순서 */
-  --text-title: 700 28px/40px var(--font-title);
+  --text-title: 700 28px/38px var(--font-title);
+  --text-modal-title: 600 24px/32px var(--font-body);
+  --text-dialog-title: 600 20px/28px var(--font-body);
   --text-lead: 400 16px/26px var(--font-body);
   --text-body: 400 14px/22px var(--font-body);
   --text-button: 600 15px/22px var(--font-body);
@@ -46,8 +53,15 @@
   --space-control-gap: var(--space-8);
 
   /* 치수 */
+  --button-height-primary: 44px;
+  --button-height-regular: 40px;
   --control-height: 48px;
   --content-width: 1176px;
-  /* 모서리 값은 설계서에 없어 임시로 둔다 */
-  --radius: 8px;
+  --dialog-width: 640px;
+  --dialog-width-form: 760px;
+
+  /* 모서리 */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }

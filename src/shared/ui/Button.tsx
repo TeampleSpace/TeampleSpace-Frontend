@@ -2,7 +2,8 @@ import type { ButtonHTMLAttributes } from 'react'
 import styles from './Button.module.css'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'danger'
+  // 주요와 삭제는 44px, 보조와 텍스트는 40px 높이다
+  variant?: 'primary' | 'secondary' | 'text' | 'danger'
   loading?: boolean
 }
 
