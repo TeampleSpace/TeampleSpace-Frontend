@@ -34,6 +34,7 @@ npm run dev
 | `npm run dev` | 개발 서버 실행 |
 | `npm run build` | 타입 검사 후 `dist`에 빌드 |
 | `npm run lint` | oxlint 검사 |
+| `npm test` | Vitest 단위 테스트 |
 | `npm run preview` | 빌드 결과 미리보기 |
 
 ## 환경변수
@@ -52,7 +53,11 @@ API 경로는 `/v1`로 시작한다. 프론트엔드와 API를 같은 사이트 
 
 ## CI
 
-PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 빌드를 실행한다. 설정은 `.github/workflows/ci.yml`에 있다.
+PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를 실행한다. 설정은 `.github/workflows/ci.yml`에 있다.
+
+## 서버 계약
+
+API 클라이언트는 `src/shared/api`, 공유 문서 형식과 예제는 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 아직 합의되지 않은 계약 항목과 확인 기록은 `docs/contract-notes.md`에 정리한다.
 
 ## 협업 규칙
 
