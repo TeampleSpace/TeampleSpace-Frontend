@@ -27,6 +27,34 @@ function createLab(log: (message: string) => void) {
   return { server, a: open(0, '세션 A'), b: open(1, '세션 B') }
 }
 
+// 사람이 실제 한글 입력기로 확인할 항목
+const imeChecks = [
+  {
+    action: '한글 문장을 입력한다',
+    expect:
+      '글자가 깨지거나 두 번 들어가지 않는다. 입력을 멈추고 1초쯤 지나면 세션 A가 저장됨으로 바뀌고 세션 B에 같은 문장이 보인다',
+  },
+  {
+    action: '문장 가운데로 커서를 옮겨 한 글자를 지우고 다른 글자를 넣는다',
+    expect: '커서가 다른 곳으로 튀지 않고 고친 결과가 세션 B에 같게 보인다',
+  },
+  {
+    action: '글자 하나를 조합하다가 받침을 넣기 전에 3초 동안 멈춘다',
+    expect:
+      '멈춘 동안 기록에 저장 요청이 늘지 않고 세션 B에 조합 중인 글자가 보이지 않는다. 글자를 완성하고 다음 글자나 띄어쓰기를 넣으면 한 번만 저장된다',
+  },
+  {
+    action:
+      '저장 응답 지연을 3000으로 두고 입력한 뒤 저장 중으로 바뀌면 곧바로 이어서 더 입력한다',
+    expect:
+      '이어서 넣은 글자가 사라지거나 이전 내용으로 돌아가지 않는다. 잠시 뒤 세션 B에 마지막 내용까지 보인다. 확인 뒤 지연을 0으로 되돌린다',
+  },
+  {
+    action: 'Esc를 누르거나 바깥을 눌러 편집을 끝낸다',
+    expect: '입력창이 닫히고 마지막에 조합하던 글자까지 남아 저장된다',
+  },
+]
+
 // 화면을 나갔다 돌아와도 같은 실험 상태를 쓰도록 한 번만 만든다
 let lab: ReturnType<typeof createLab> | undefined
 let logSink: (message: string) => void = () => {}
@@ -143,6 +171,25 @@ export default function EditorLab() {
           이벤트 연결만 끊기
         </Button>
       </section>
+
+      <details className={styles.checklist}>
+        <summary>실제 한글 입력기로 직접 확인할 항목</summary>
+        <p>
+          자동 검사는 입력기를 거치지 않는다. 아래는 사람이 한글 입력기로 직접 입력해 확인하는
+          절차다. 슬라이드 2번에서 세션 A의 요소 목록에 있는 조사 결과 요약 편집을 눌러 시작한다.
+          저장 요청은 아래 기록에서, 다른 사람에게 보이는 내용은 세션 B에서 본다
+        </p>
+        <ol>
+          {imeChecks.map((item) => (
+            <li key={item.action}>
+              <strong>{item.action}</strong>
+              <br />
+              {item.expect}
+            </li>
+          ))}
+        </ol>
+        <p>결과는 실행일, 브라우저, 입력기와 함께 docs/editor-experiment.md의 표에 적는다</p>
+      </details>
 
       <div className={styles.panels}>
         <EditorPanel label="세션 A" session={lab.a} zoom={zoom} slideIndex={slideIndex} />

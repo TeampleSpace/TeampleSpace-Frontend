@@ -160,3 +160,31 @@
   overflow-y: auto;
   font: var(--text-meta);
 }
+
+/* 사람이 직접 확인할 항목 안내 */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.checklist summary {
+  font: var(--text-nav);
+  cursor: pointer;
+}
+
+.checklist ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: var(--space-12) 0;
+  padding-left: var(--space-24);
+}
+
+.checklist p {
+  margin-top: var(--space-12);
+  color: var(--color-secondary);
+}
