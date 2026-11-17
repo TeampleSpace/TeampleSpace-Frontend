@@ -168,6 +168,9 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - 세션 초기 정보의 `status`, `user` 항목 이름
 - 동기화 스냅샷 편집 범위의 항목 이름. 구성 범위와 작업 공간 범위의 내용은 아직 정하지 않았다
 - `error-codes.json`에서 `decided`가 false인 코드와 상태, `fieldErrors` 항목 구조
+- 묶음만 닫는 요청은 세대만 확인하고 `baseVersion`은 확인하지 않는 것
+- 같은 편집 세션이 다른 요소를 저장하면 서버가 이전 묶음을 닫는 것. 편집 세션을 식별하는 방법은 인증 기능을 만들 때 정한다
+- 묶음 식별자를 다른 작성자, 다른 편집 세션, 다른 요소가 쓰면 `VALIDATION_FAILED`로 거절하는 것
 - 출처를 PPTX와 PDF에 표시하는 방식
 
 값이 정해지지 않아 예제를 비워 둔 항목도 있다. 업로드 허용 형식과 크기, 지원 글꼴, 약관 문서, 내보내기 형식이 그렇다.
