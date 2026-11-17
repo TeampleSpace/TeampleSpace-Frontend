@@ -1,0 +1,37 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.label {
+  font: var(--text-nav);
+}
+
+.input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.input:disabled {
+  background: var(--color-subtle);
+  color: var(--color-tertiary);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.description {
+  font: var(--text-meta);
+  color: var(--color-tertiary);
+}
+
+.error {
+  font: var(--text-meta);
+  color: var(--color-danger);
+}

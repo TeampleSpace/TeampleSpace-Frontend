@@ -1,0 +1,53 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-control-gap);
+  min-height: var(--control-height);
+  padding: var(--space-8) var(--space-20);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font: var(--text-button);
+  text-align: center;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+.danger {
+  background: var(--color-danger);
+  color: var(--color-surface);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  background: var(--color-muted);
+  border-color: var(--color-muted);
+  color: var(--color-tertiary);
+  cursor: not-allowed;
+}
+
+.spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
