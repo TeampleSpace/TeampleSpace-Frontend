@@ -43,7 +43,7 @@ const texts = [
 const longText =
   '아주 긴 문구가 들어와도 버튼과 모달이 화면 밖으로 넘치지 않고 줄을 바꿔서 끝까지 보여야 합니다'
 
-type ModalKind = 'form' | 'confirm' | 'notice' | 'long'
+type ModalKind = 'progress' | 'form' | 'confirm' | 'notice' | 'long'
 
 // 공통 UI의 상태를 한 화면에서 확인하는 개발용 화면
 // 모달 예시는 피그마의 프로젝트 생성, 프로젝트 삭제 확인, 일시 오류 화면과 같은 구성이다
@@ -148,6 +148,9 @@ export default function UiCatalog() {
       <section className={styles.section}>
         <h2>상태 표시</h2>
         <StatusPanel kind="loading" title="불러오는 중이에요" />
+        <Button variant="secondary" onClick={() => setModal('progress')}>
+          파일 생성 진행 안내 열기
+        </Button>
         <StatusPanel
           kind="empty"
           title="페이지를 찾을 수 없어요"
@@ -206,7 +209,17 @@ export default function UiCatalog() {
           </>
         }
       >
-        <Field label="확인을 위해 프로젝트 이름 입력" />
+        <Field multiline rows={1} label="확인을 위해 프로젝트 이름 입력" />
+      </Modal>
+
+      <Modal
+        open={modal === 'progress'}
+        title="파일을 만들고 있어요"
+        description="완료되면 내려받을 수 있습니다."
+        onClose={close}
+        footer={<Button onClick={close}>닫기</Button>}
+      >
+        <p className={styles.info} role="status">PPTX, 전체 슬라이드</p>
       </Modal>
 
       <Modal
