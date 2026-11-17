@@ -1,5 +1,6 @@
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import { expect, test, vi } from 'vitest'
+import errorCodes from '../../../contracts/error-codes.json'
 import manifest from '../../../contracts/examples/manifest.json'
 import apiSchema from '../../../contracts/schemas/api.schema.json'
 import documentSchema from '../../../contracts/schemas/document.schema.json'
@@ -129,7 +130,8 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
 
   // 오래된 버전으로 보낸 요청과 닫힌 묶음을 다시 쓴 요청
   const stale = requests.find((request) => (request as { patch?: unknown }).patch)
-  const direct = createApiClient(recording(userB))
+  // 같은 작성자가 보내야 묶음 식별자 검사에 걸리지 않는다
+  const direct = createApiClient(recording(userA))
   const send = (key: string, body: unknown) =>
     direct
       .request(`/slides/${exampleSnapshot.presentation!.slideIds[1]}/elements/${textId}`, elementSaveResultSchema, {
@@ -152,12 +154,16 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
     expect(check(api('ElementPatchRequest'), request)).toEqual([])
   }
 
-  const errorCodes: string[] = []
+  const seenCodes: string[] = []
   for (const { status, body } of responses) {
     const record = body as Record<string, unknown>
     if (status >= 400) {
       expect(check(api('ErrorResponse'), body)).toEqual([])
-      errorCodes.push((record.error as { code: string }).code)
+      // 상태와 재시도 여부가 계약의 오류 코드 목록과 같다
+      const error = record.error as { code: string; retryable: boolean }
+      const listed = errorCodes.codes.find((entry) => entry.code === error.code)
+      expect(listed, error.code).toMatchObject({ httpStatus: status, retryable: error.retryable })
+      seenCodes.push(error.code)
     } else if ('scope' in record) {
       expect(check(api('SyncSnapshot'), body)).toEqual([])
     } else if ('csrfToken' in record) {
@@ -166,7 +172,7 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
       expect(check(api('MutationResponse'), body)).toEqual([])
     }
   }
-  expect(errorCodes).toEqual(expect.arrayContaining(['VERSION_CONFLICT', 'EDIT_GROUP_CLOSED']))
+  expect(seenCodes).toEqual(expect.arrayContaining(['VERSION_CONFLICT', 'EDIT_GROUP_CLOSED']))
 
   expect(server.events.length).toBeGreaterThanOrEqual(5)
   for (const event of server.events) {

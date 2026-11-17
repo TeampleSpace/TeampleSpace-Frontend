@@ -380,6 +380,11 @@ export function createEditorSession(options: {
       return
     }
 
+    // 서버 쪽 실패는 반영 여부를 알 수 없다. 요청을 남겨 두고 다시 시도할 때 같은 키로 보낸다
+    if (error.status >= 500) {
+      entry.status = 'failed'
+      return
+    }
     entry.flight = undefined
     if (error.code === 'EDIT_GROUP_CLOSED') {
       // 반영되지 않은 요청이다. 닫힌 묶음을 버리고 새 묶음과 새 요청으로 보낸다

@@ -7,6 +7,9 @@ import { z } from 'zod'
 // 미확정. CSRF 토큰을 싣는 요청 헤더 이름은 계약에 아직 없다
 export const CSRF_HEADER = 'X-CSRF-Token'
 
+// 모든 응답에 오는 요청 식별자 헤더. 오류 본문의 requestId와 같은 값이다
+export const REQUEST_ID_HEADER = 'X-Request-Id'
+
 const version = z.number().int().min(1)
 
 export const fieldErrorSchema = z.object({
