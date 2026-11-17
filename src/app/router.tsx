@@ -14,6 +14,12 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
           Component: (await import('../pages/dev/UiCatalog.tsx')).default,
         }),
       },
+      {
+        path: 'dev/editor',
+        lazy: async () => ({
+          Component: (await import('../pages/dev/EditorLab.tsx')).default,
+        }),
+      },
     ]
   : []
 
