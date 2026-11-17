@@ -55,6 +55,17 @@ API 경로는 `/v1`로 시작한다. 프론트엔드와 API를 같은 사이트 
 
 PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를 실행한다. 설정은 `.github/workflows/ci.yml`에 있다.
 
+## 개발용 화면
+
+개발 서버에서만 열리고 운영 빌드에는 포함되지 않는다.
+
+| 주소 | 내용 |
+| --- | --- |
+| `/dev/ui` | 공통 UI의 상태 확인 |
+| `/dev/editor` | 공유 문서 예제로 한글 입력, 선택, 확대, 저장 흐름을 확인하는 편집 실험. 모킹 서버로 동작한다 |
+
+편집 실험의 확인 기록은 `docs/editor-experiment.md`에 있다.
+
 ## 서버 계약
 
 API 클라이언트는 `src/shared/api`, 공유 문서 형식과 예제는 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 아직 합의되지 않은 계약 항목과 확인 기록은 `docs/contract-notes.md`에 정리한다.

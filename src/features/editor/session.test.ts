@@ -1,0 +1,519 @@
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import example from '../../entities/presentation/example.json'
+import {
+  elementSaveResultSchema,
+  presentationSchema,
+} from '../../entities/presentation/schema.ts'
+import { createApiClient } from '../../shared/api/client.ts'
+import { createMockServer } from '../../mocks/server.ts'
+import { createEditorSession } from './session.ts'
+import type { EditorSession } from './session.ts'
+
+// 저장, 재시도, 충돌, 이벤트 처리를 모킹 서버로 확인한다
+
+const doc = presentationSchema.parse(example)
+const slideId = doc.slideIds[0]
+const titleId = 'a1000000-0000-4000-8000-000000000002'
+const bodyId = 'a1000000-0000-4000-8000-000000000003'
+
+type Call = {
+  actor: string
+  method: string
+  path: string
+  key?: string
+  body?: string
+  lastEventId?: string
+  at: number
+}
+
+const text = (value: string) => ({ content: { text: value } })
+const tick = (ms = 0) => vi.advanceTimersByTimeAsync(ms)
+// 연결과 응답 처리가 여러 단계에 걸쳐 끝날 때까지 기다린다
+async function settle() {
+  for (let index = 0; index < 10; index += 1) await tick(1)
+}
+
+function setup() {
+  const server = createMockServer(doc)
+  const calls: Call[] = []
+  const control = { failNextPatch: false }
+
+  function tracked(actor: string, silentEvents: boolean): typeof fetch {
+    const inner = server.fetchAs(actor)
+    return (input, init = {}) => {
+      const headers = new Headers(init.headers)
+      const method = init.method ?? 'GET'
+      const path = String(input).replace(/^\/v1/, '').replace(/\?.*$/, '')
+      calls.push({
+        actor,
+        method,
+        path,
+        key: headers.get('Idempotency-Key') ?? undefined,
+        body: init.body ? String(init.body) : undefined,
+        lastEventId: headers.get('Last-Event-ID') ?? undefined,
+        at: Date.now(),
+      })
+      if (method === 'PATCH' && control.failNextPatch) {
+        // 요청이 서버에 닿지 못한 상황
+        control.failNextPatch = false
+        return Promise.reject(new TypeError('연결 실패'))
+      }
+      if (silentEvents && path.endsWith('/events')) {
+        // 연결은 됐지만 이벤트가 오지 않는 상황
+        return Promise.resolve(new Response(new ReadableStream()))
+      }
+      return inner(input, init)
+    }
+  }
+
+  function open(
+    actor: string,
+    options: { silentEvents?: boolean } & Partial<Parameters<typeof createEditorSession>[0]> = {},
+  ) {
+    const { silentEvents = false, ...rest } = options
+    const fetchImpl = tracked(actor, silentEvents)
+    const session = createEditorSession({
+      client: createApiClient(fetchImpl),
+      fetchImpl,
+      projectId: doc.projectId,
+      ...rest,
+    })
+    session.start()
+    return session
+  }
+
+  // 세션을 거치지 않고 서버에 직접 저장하는 다른 사용자
+  async function saveDirectly(actor: string, value: string) {
+    const element = server.getDocument().slides[slideId].elements[bodyId]
+    await createApiClient(server.fetchAs(actor)).request(
+      `/slides/${slideId}/elements/${bodyId}`,
+      elementSaveResultSchema,
+      {
+        method: 'PATCH',
+        idempotencyKey: crypto.randomUUID(),
+        body: {
+          generation: 1,
+          baseVersion: element.version,
+          editGroupId: crypto.randomUUID(),
+          clientMutationId: crypto.randomUUID(),
+          patch: text(value),
+        },
+      },
+    )
+  }
+
+  const serverElement = (id = bodyId) => server.getDocument().slides[slideId].elements[id]
+  const serverText = (id = bodyId) => {
+    const element = serverElement(id)
+    return element.type === 'text' ? element.content.text : undefined
+  }
+  const patches = (actor = 'user-a') =>
+    calls.filter((call) => call.actor === actor && call.method === 'PATCH')
+  const eventCount = (type: string) =>
+    server.events.filter((event) => event.type === type).length
+
+  return { server, calls, control, open, saveDirectly, serverElement, serverText, patches, eventCount }
+}
+
+function textOf(session: EditorSession, id = bodyId) {
+  const element = session.getState().view?.slides[slideId].elements[id]
+  return element?.type === 'text' ? element.content.text : undefined
+}
+const statusOf = (session: EditorSession, id = bodyId) =>
+  session.getState().elements[id]?.status
+const patchOf = (call: Call) => JSON.parse(call.body ?? '{}')
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+test('시작하면 스냅샷으로 문서를 읽고 이벤트 연결을 연다', async () => {
+  const { open, calls } = setup()
+  const a = open('user-a')
+  await tick()
+
+  expect(a.getState().connection).toBe('online')
+  expect(textOf(a, titleId)).toBe('팀플 발표 자료를 함께 만드는 방법')
+  expect(calls.map((call) => call.path)).toEqual([
+    `/projects/${doc.projectId}/sync-snapshot`,
+    `/projects/${doc.projectId}/events`,
+  ])
+  // 구독은 스냅샷이 준 커서 뒤에서 시작한다
+  expect(calls[1].lastEventId).toBe('0')
+})
+
+test('입력이 이어지는 동안은 보내지 않고 600ms 쉬면 한 번 저장한다', async () => {
+  const { open, patches, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('가'))
+  await tick(300)
+  a.edit(bodyId, text('가나'))
+  await tick(300)
+  a.edit(bodyId, text('가나다'))
+  expect(patches()).toHaveLength(0)
+  expect(statusOf(a)).toBe('dirty')
+
+  await tick(600)
+  expect(patches()).toHaveLength(1)
+  expect(serverText()).toBe('가나다')
+  expect(statusOf(a)).toBe('saved')
+})
+
+test('한글 조합 중에는 저장하지 않고 조합이 끝난 글자만 저장한다', async () => {
+  const { open, patches, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('ㅎ'), { composing: true })
+  await tick(700)
+  a.edit(bodyId, text('하'), { composing: true })
+  await tick(700)
+  a.edit(bodyId, text('한'), { composing: true })
+  await tick(5000)
+  // 조합 중 멈춰 있어도 중간 글자를 보내지 않는다
+  expect(patches()).toHaveLength(0)
+  expect(textOf(a)).toBe('한')
+
+  a.edit(bodyId, text('한'))
+  await tick(600)
+  expect(patches()).toHaveLength(1)
+  expect(patchOf(patches()[0]).patch.content.text).toBe('한')
+  expect(serverText()).toBe('한')
+})
+
+test('저장 중에 새 입력이 생기면 이전 응답이 화면을 덮지 않고 이어서 저장한다', async () => {
+  const { server, open, patches, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+  server.faults.delayMs = 1000
+
+  a.edit(bodyId, text('첫 입력'))
+  await tick(600)
+  expect(patches()).toHaveLength(1)
+
+  a.edit(bodyId, text('첫 입력에 이어 쓴 내용'))
+  await tick(700)
+  // 같은 요소는 한 번에 한 요청만 보낸다
+  expect(patches()).toHaveLength(1)
+
+  await tick(300)
+  // 첫 응답이 도착했지만 화면에는 최신 입력이 그대로 있다
+  expect(serverText()).toBe('첫 입력')
+  expect(textOf(a)).toBe('첫 입력에 이어 쓴 내용')
+  expect(statusOf(a)).not.toBe('saved')
+  expect(patches()).toHaveLength(2)
+  // 다음 요청은 응답으로 받은 버전을 기준으로 하고 새 키를 쓴다
+  expect(patchOf(patches()[1]).baseVersion).toBe(2)
+  expect(patches()[1].key).not.toBe(patches()[0].key)
+
+  await tick(1000)
+  expect(serverText()).toBe('첫 입력에 이어 쓴 내용')
+  expect(statusOf(a)).toBe('saved')
+})
+
+test('응답을 잃으면 같은 키, 같은 식별자, 같은 본문으로 다시 보내고 한 번만 반영된다', async () => {
+  const { server, open, patches, serverElement } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  server.faults.dropNextResponse = true
+
+  a.edit(bodyId, text('유실 시험'))
+  await tick(600)
+  expect(serverElement().version).toBe(2)
+  expect(statusOf(a)).toBe('saving')
+
+  await tick(1000)
+  const [first, second] = patches()
+  expect(second.key).toBe(first.key)
+  expect(second.body).toBe(first.body)
+  // 자기 저장의 재시도가 충돌로 처리되지 않는다
+  expect(serverElement().version).toBe(2)
+  expect(statusOf(a)).toBe('saved')
+})
+
+test('응답을 잃어도 내 저장의 이벤트가 먼저 오면 그것으로 확인 처리한다', async () => {
+  const { server, open, patches } = setup()
+  const a = open('user-a')
+  await tick()
+  server.faults.dropNextResponse = true
+
+  a.edit(bodyId, text('이벤트로 확인'))
+  await tick(600)
+  expect(statusOf(a)).toBe('saved')
+
+  await tick(5000)
+  // 이미 확인됐으므로 같은 내용을 다시 보내지 않는다
+  expect(patches().filter((call) => patchOf(call).patch)).toHaveLength(1)
+})
+
+test('요청이 서버에 닿지 못했을 때도 같은 요청으로 다시 보낸다', async () => {
+  const { control, open, patches, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+  control.failNextPatch = true
+
+  a.edit(bodyId, text('닿지 못한 요청'))
+  await tick(600)
+  expect(serverElement().version).toBe(1)
+
+  await tick(1000)
+  expect(patches()[1].key).toBe(patches()[0].key)
+  expect(serverElement().version).toBe(2)
+  expect(statusOf(a)).toBe('saved')
+})
+
+test('다른 사람이 먼저 저장했으면 덮어쓰지 않고 두 내용을 함께 남긴다', async () => {
+  const { open, patches, saveDirectly, serverText } = setup()
+  // 다른 사람의 변경 이벤트를 받기 전에 저장을 시도하는 상황
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  await saveDirectly('user-b', 'B가 먼저 저장')
+
+  a.edit(bodyId, text('A의 입력'))
+  await tick(600)
+  await tick()
+  expect(statusOf(a)).toBe('conflict')
+  expect(serverText()).toBe('B가 먼저 저장')
+  expect(textOf(a)).toBe('A의 입력')
+  expect(a.getState().elements[bodyId].serverLatest).toMatchObject({
+    version: 2,
+    content: { text: 'B가 먼저 저장' },
+  })
+
+  // 충돌한 요청을 자동으로 다시 보내지 않는다
+  const sent = patches().length
+  await tick(10000)
+  expect(patches()).toHaveLength(sent)
+
+  // 내 입력으로 다시 편집을 골라도 바로 강제 저장하지 않는다
+  a.resolveConflict(bodyId, 'mine')
+  await tick(5000)
+  expect(patches()).toHaveLength(sent)
+  expect(textOf(a)).toBe('A의 입력')
+
+  a.edit(bodyId, text('A의 입력을 고쳐 다시 저장'))
+  await tick(600)
+  expect(patchOf(patches().at(-1)!).baseVersion).toBe(2)
+  expect(serverText()).toBe('A의 입력을 고쳐 다시 저장')
+})
+
+test('충돌에서 최신 내용으로 계속을 고르면 내 입력을 버리고 서버 내용을 쓴다', async () => {
+  const { open, saveDirectly } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  await saveDirectly('user-b', 'B가 먼저 저장')
+  a.edit(bodyId, text('A의 입력'))
+  await tick(600)
+  await tick()
+
+  a.resolveConflict(bodyId, 'server')
+  expect(textOf(a)).toBe('B가 먼저 저장')
+  expect(statusOf(a)).toBe('clean')
+})
+
+test('입력 중인 요소에 다른 사람의 변경이 오면 보내기 전에 충돌로 표시한다', async () => {
+  const { open, patches } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+
+  a.edit(bodyId, text('A 작성 중'))
+  await tick(100)
+  b.edit(bodyId, text('B 저장'))
+  b.endEdit(bodyId)
+  await tick()
+
+  expect(statusOf(a)).toBe('conflict')
+  expect(textOf(a)).toBe('A 작성 중')
+  await tick(3000)
+  expect(patches('user-a')).toHaveLength(0)
+})
+
+test('두 세션이 서로 다른 요소를 고치면 충돌 없이 각각 저장되고 서로에게 보인다', async () => {
+  const { open, serverText } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+
+  a.edit(titleId, text('A가 고친 제목'))
+  b.edit(bodyId, text('B가 고친 본문'))
+  await tick(600)
+
+  expect(serverText(titleId)).toBe('A가 고친 제목')
+  expect(serverText(bodyId)).toBe('B가 고친 본문')
+  expect(textOf(a, bodyId)).toBe('B가 고친 본문')
+  expect(textOf(b, titleId)).toBe('A가 고친 제목')
+  expect(statusOf(a, titleId)).toBe('saved')
+  expect(statusOf(b, bodyId)).toBe('saved')
+})
+
+test('같은 이벤트가 두 번 와도 한 번만 반영한다', async () => {
+  const { server, open } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+  server.faults.duplicateEvents = true
+
+  b.edit(bodyId, text('중복 시험'))
+  b.endEdit(bodyId)
+  await tick()
+
+  expect(textOf(a)).toBe('중복 시험')
+  expect(statusOf(a)).toBe('clean')
+  expect(a.getState().stats.duplicateEvents).toBeGreaterThan(0)
+})
+
+test('연결이 끊기면 새 편집을 막고 다시 연결되면 놓친 이벤트를 커서 이후부터 받는다', async () => {
+  const { server, calls, open, saveDirectly } = setup()
+  const a = open('user-a')
+  await tick()
+
+  server.closeStreams()
+  await tick()
+  expect(a.getState().connection).toBe('offline')
+  expect(a.edit(bodyId, text('끊긴 동안의 입력'))).toBe(false)
+
+  await saveDirectly('user-c', '끊긴 동안 C가 저장')
+  await tick(1000)
+
+  expect(a.getState().connection).toBe('online')
+  expect(textOf(a)).toBe('끊긴 동안 C가 저장')
+  // 보낼 입력이 없으면 스냅샷을 다시 읽지 않고 마지막 이벤트 뒤부터 재생받는다
+  expect(a.getState().stats.snapshots).toBe(1)
+  const reconnect = calls.filter((call) => call.actor === 'user-a').at(-1)
+  expect(reconnect).toMatchObject({ path: `/projects/${doc.projectId}/events`, lastEventId: '0' })
+})
+
+test('끊기기 전 입력은 현재 탭에 남기고 다시 연결되면 스냅샷과 비교한 뒤 저장한다', async () => {
+  const { server, calls, open, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('끊기기 전 입력'))
+  await tick(100)
+  server.setOffline(true)
+  await tick(1900)
+  expect(a.getState().connection).toBe('offline')
+  expect(textOf(a)).toBe('끊기기 전 입력')
+  expect(serverText()).not.toBe('끊기기 전 입력')
+
+  server.setOffline(false)
+  await tick(2000)
+  expect(a.getState().connection).toBe('online')
+  expect(serverText()).toBe('끊기기 전 입력')
+  expect(statusOf(a)).toBe('saved')
+
+  // 스냅샷, 이벤트 연결, 저장 순서로 진행한다
+  const order = calls
+    .filter((call) => call.actor === 'user-a' && call.path !== '/auth/bootstrap')
+    .slice(-3)
+    .map((call) => `${call.method} ${call.path.split('/').at(-1)}`)
+  expect(order).toEqual(['GET sync-snapshot', 'GET events', `PATCH ${bodyId}`])
+})
+
+test('커서가 보관 범위를 벗어나면 스냅샷을 다시 읽어 맞춘다', async () => {
+  const { server, open, saveDirectly } = setup()
+  const a = open('user-a')
+  await tick()
+
+  server.closeStreams()
+  await tick()
+  await saveDirectly('user-c', '첫 변경')
+  await saveDirectly('user-c', '둘째 변경')
+  server.dropEventsBefore(3)
+
+  await tick(1000)
+  await settle()
+  expect(a.getState().stats.snapshots).toBe(2)
+  expect(a.getState().connection).toBe('online')
+  expect(textOf(a)).toBe('둘째 변경')
+})
+
+test('여러 번 저장해도 검토 이력은 하나로 묶이고 2초 쉬면 닫힌다', async () => {
+  const { open, eventCount } = setup()
+  const a = open('user-a')
+  await tick()
+
+  for (let index = 1; index <= 5; index += 1) {
+    a.edit(bodyId, text(`입력 ${index}`))
+    await tick(700)
+  }
+  expect(eventCount('element.updated')).toBe(5)
+  expect(eventCount('change.created')).toBe(1)
+  expect(eventCount('change.finalized')).toBe(0)
+
+  await tick(2000)
+  expect(eventCount('change.finalized')).toBe(1)
+  // 묶음만 닫는 요청은 내용 버전을 올리지 않는다
+  expect(eventCount('element.updated')).toBe(5)
+
+  a.edit(bodyId, text('닫힌 뒤의 입력'))
+  await tick(700)
+  expect(eventCount('change.created')).toBe(2)
+})
+
+test('30초 넘게 이어 쓰면 묶음을 닫고 새 묶음으로 이어 간다', async () => {
+  const { open, eventCount, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  for (let index = 1; index <= 45; index += 1) {
+    a.edit(bodyId, text(`입력 ${index}`))
+    await tick(700)
+  }
+  expect(serverText()).toBe('입력 45')
+  expect(eventCount('change.created')).toBe(2)
+  expect(eventCount('change.finalized')).toBe(1)
+})
+
+test('편집을 끝내면 남은 입력을 바로 저장하면서 묶음을 닫는다', async () => {
+  const { server, open, patches, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  // 끌어서 옮긴 뒤 놓는 동작
+  a.edit(bodyId, { geometry: { x: 120, y: 200 } })
+  a.endEdit(bodyId)
+  await tick()
+
+  expect(patches()).toHaveLength(1)
+  expect(patchOf(patches()[0]).finalizeGroup).toBe(true)
+  expect(serverElement().geometry).toMatchObject({ x: 120, y: 200, width: 560 })
+  expect(server.events.map((event) => event.type)).toEqual([
+    'element.updated',
+    'change.created',
+    'change.finalized',
+  ])
+})
+
+test('처리 중이라는 응답을 받으면 알려 준 시간 뒤에 같은 요청을 다시 보낸다', async () => {
+  // 요청 제한 시간은 실제 시계를 쓰므로 이 시험만 실제 시간으로 돌린다
+  vi.useRealTimers()
+  const { server, open, patches, serverElement } = setup()
+  const a = open('user-a', {
+    silentEvents: true,
+    saveDelayMs: 10,
+    requestTimeoutMs: 40,
+    retryDelaysMs: [10],
+  })
+  await vi.waitFor(() => expect(a.getState().connection).toBe('online'))
+  server.faults.delayMs = 200
+
+  a.edit(bodyId, text('느린 서버'))
+  await vi.waitFor(() => expect(statusOf(a)).toBe('saved'), { timeout: 4000 })
+
+  const sent = patches()
+  expect(sent).toHaveLength(3)
+  expect(new Set(sent.map((call) => call.key)).size).toBe(1)
+  expect(new Set(sent.map((call) => call.body)).size).toBe(1)
+  // 서버가 알려 준 1초가 지나기 전에는 다시 보내지 않는다
+  expect(sent[2].at - sent[1].at).toBeGreaterThanOrEqual(990)
+  expect(serverElement().version).toBe(2)
+  a.stop()
+})

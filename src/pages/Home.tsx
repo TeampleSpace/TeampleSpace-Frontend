@@ -10,6 +10,9 @@ export default function Home() {
             <li>
               <Link to="/dev/ui">공통 UI 확인</Link>
             </li>
+            <li>
+              <Link to="/dev/editor">편집 실험</Link>
+            </li>
           </ul>
         </nav>
       )}
