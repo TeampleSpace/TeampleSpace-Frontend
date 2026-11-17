@@ -10,7 +10,7 @@ type Props = {
   action?: ReactNode
 }
 
-// 로딩, 빈 상태, 오류를 같은 틀로 표시한다
+// 로딩, 빈 상태, 오류를 화면 가운데의 안내 문구 틀로 표시한다
 export function StatusPanel({
   kind,
   title,
@@ -29,7 +29,7 @@ export function StatusPanel({
       <p className={styles.title}>{title}</p>
       {description && <p className={styles.description}>{description}</p>}
       {requestId && <p className={styles.meta}>요청 번호 {requestId}</p>}
-      {action}
+      {action && <div className={styles.actions}>{action}</div>}
     </div>
   )
 }
