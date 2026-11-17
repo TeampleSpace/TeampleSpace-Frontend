@@ -4,8 +4,8 @@
   align-items: flex-start;
   gap: var(--space-16);
   padding: var(--space-24);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
 }
 
 .section > * {
@@ -45,5 +45,17 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
+}
+
+/* 모달 안의 안내 줄 */
+.info {
+  padding: var(--space-16);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
+}
+
+.helper {
+  font: var(--text-meta);
+  color: var(--color-secondary);
 }
