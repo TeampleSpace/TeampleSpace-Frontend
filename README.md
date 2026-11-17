@@ -63,8 +63,9 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 | --- | --- |
 | `/dev/ui` | 공통 UI의 상태 확인 |
 | `/dev/editor` | 공유 문서 예제로 한글 입력, 선택, 확대, 저장 흐름을 확인하는 편집 실험. 모킹 서버로 동작한다 |
+| `/dev/reference` | 백엔드의 PPTX, PDF 출력과 비교할 기준 화면. 같은 예제 문서를 문서 좌표 그대로 그린다 |
 
-편집 실험의 확인 기록은 `docs/editor-experiment.md`에 있다.
+편집 실험의 확인 기록은 `docs/editor-experiment.md`, 파일 출력 비교 기준과 결과는 `docs/output-comparison.md`에 있다.
 
 ## 서버 계약
 
