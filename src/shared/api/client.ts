@@ -4,7 +4,12 @@ import {
   errorBodySchema,
   sessionBootstrapSchema,
 } from './contract.ts'
-import type { ErrorBody, FieldError, SessionBootstrap } from './contract.ts'
+import type {
+  CurrentVersions,
+  ErrorBody,
+  FieldError,
+  SessionBootstrap,
+} from './contract.ts'
 
 export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -22,7 +27,7 @@ export class ApiError extends Error {
   readonly code: string
   readonly retryable: boolean
   readonly fieldErrors: FieldError[]
-  readonly currentVersions?: Record<string, number>
+  readonly currentVersions?: CurrentVersions
   readonly requestId: string
   // 이 시간이 지나기 전에는 같은 요청을 다시 보내지 않는다
   readonly retryAfterSeconds?: number

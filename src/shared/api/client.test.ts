@@ -1,5 +1,7 @@
 import { expect, test, vi } from 'vitest'
 import { z } from 'zod'
+import bootstrapBody from '../../../contracts/examples/auth-bootstrap-authenticated.json'
+import versionConflict from '../../../contracts/examples/error-version-conflict.json'
 import { ApiError, TransportError, createApiClient } from './client.ts'
 import { CSRF_HEADER } from './contract.ts'
 
@@ -7,12 +9,6 @@ const okSchema = z.object({ ok: z.boolean() })
 
 function json(status: number, body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers })
-}
-
-const bootstrapBody = {
-  state: 'authenticated',
-  csrfToken: 'csrf-1',
-  expiresAt: '2026-11-18T00:00:00Z',
 }
 
 // 요청 기록을 남기고 주소별로 응답하는 가짜 fetch
@@ -50,24 +46,15 @@ test('변경 요청에는 CSRF 토큰과 멱등 키를 싣고 세션 조회는 �
 
   const patch = fetchImpl.mock.calls.find(([url]) => url === '/v1/a')
   const headers = patch?.[1]?.headers as Record<string, string>
-  expect(headers[CSRF_HEADER]).toBe('csrf-1')
+  expect(headers[CSRF_HEADER]).toBe(bootstrapBody.csrfToken)
   expect(headers['Idempotency-Key']).toBe('key-1')
   expect(patch?.[1]?.body).toBe('{"n":1}')
 })
 
 test('공통 오류 구조와 현재 버전, 재시도 대기 시간을 읽는다', async () => {
-  const body = {
-    error: {
-      code: 'VERSION_CONFLICT',
-      message: '이후 수정이 있어요.',
-      retryable: false,
-      fieldErrors: [],
-      currentVersions: { generation: 1, elementVersion: 18 },
-    },
-    requestId: 'req_example',
-  }
+  // 계약의 버전 충돌 예제를 그대로 응답으로 쓴다
   const client = createApiClient(
-    fakeFetch(() => json(409, body, { 'Retry-After': '3' })),
+    fakeFetch(() => json(409, versionConflict, { 'Retry-After': '3' })),
   )
 
   const error = await client.request('/x', okSchema).catch((e: unknown) => e)
@@ -76,8 +63,8 @@ test('공통 오류 구조와 현재 버전, 재시도 대기 시간을 읽는�
     status: 409,
     code: 'VERSION_CONFLICT',
     retryable: false,
-    currentVersions: { generation: 1, elementVersion: 18 },
-    requestId: 'req_example',
+    currentVersions: versionConflict.error.currentVersions,
+    requestId: versionConflict.requestId,
     retryAfterSeconds: 3,
   })
 })

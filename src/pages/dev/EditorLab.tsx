@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import exampleImage from '../../entities/presentation/example-image.png'
-import example from '../../entities/presentation/example.json'
-import { presentationSchema } from '../../entities/presentation/schema.ts'
+import exampleImage from '../../../contracts/examples/assets/0193a000-0000-7000-8000-0000000000c1.png'
 import { createEditorSession } from '../../features/editor/session.ts'
+import { exampleImageFileId, exampleSnapshot } from '../../mocks/example.ts'
 import { createMockServer } from '../../mocks/server.ts'
 import { createApiClient } from '../../shared/api/client.ts'
 import { Button } from '../../shared/ui/Button.tsx'
@@ -11,22 +10,21 @@ import { Field } from '../../shared/ui/Field.tsx'
 import { EditorPanel } from './EditorPanel.tsx'
 import styles from './EditorLab.module.css'
 
-const imageFileId = 'c3000000-0000-4000-8000-000000000001'
-
-// 모킹 서버 하나에 두 사용자의 세션을 붙인다
+// 모킹 서버 하나에 예제의 두 팀원 세션을 붙인다
 function createLab(log: (message: string) => void) {
-  const doc = presentationSchema.parse(example)
-  const server = createMockServer(doc, { assetUrls: { [imageFileId]: exampleImage } })
-  const open = (actor: string, name: string) => {
-    const fetchImpl = server.fetchAs(actor)
+  const server = createMockServer(exampleSnapshot, {
+    assetUrls: { [exampleImageFileId]: exampleImage },
+  })
+  const open = (index: number, name: string) => {
+    const fetchImpl = server.fetchAs(exampleSnapshot.members[index].userId)
     return createEditorSession({
       client: createApiClient(fetchImpl),
       fetchImpl,
-      projectId: doc.projectId,
+      projectId: exampleSnapshot.projectId,
       onLog: (message) => log(`${name}: ${message}`),
     })
   }
-  return { server, a: open('user-a', '세션 A'), b: open('user-b', '세션 B') }
+  return { server, a: open(0, '세션 A'), b: open(1, '세션 B') }
 }
 
 // 화면을 나갔다 돌아와도 같은 실험 상태를 쓰도록 한 번만 만든다
@@ -43,6 +41,8 @@ export default function EditorLab() {
   const lab = getLab()
   const [logs, setLogs] = useState<string[]>([])
   const [zoom, setZoom] = useState(0)
+  // 예제의 둘째 슬라이드에 본문, 이미지, 도형, 출처가 모여 있다
+  const [slideIndex, setSlideIndex] = useState(1)
   const [delayMs, setDelayMs] = useState(0)
   const [dropArmed, setDropArmed] = useState(false)
   const [duplicate, setDuplicate] = useState(false)
@@ -79,6 +79,19 @@ export default function EditorLab() {
             <option value={0.5}>50%</option>
             <option value={1}>100%</option>
             <option value={1.5}>150%</option>
+          </select>
+        </label>
+        <label className={styles.inline}>
+          슬라이드
+          <select
+            value={slideIndex}
+            onChange={(event) => setSlideIndex(Number(event.target.value))}
+          >
+            {exampleSnapshot.presentation?.slideIds.map((id, index) => (
+              <option key={id} value={index}>
+                {index + 1}번
+              </option>
+            ))}
           </select>
         </label>
         <div className={styles.delay}>
@@ -132,8 +145,8 @@ export default function EditorLab() {
       </section>
 
       <div className={styles.panels}>
-        <EditorPanel label="세션 A" session={lab.a} zoom={zoom} />
-        <EditorPanel label="세션 B" session={lab.b} zoom={zoom} />
+        <EditorPanel label="세션 A" session={lab.a} zoom={zoom} slideIndex={slideIndex} />
+        <EditorPanel label="세션 B" session={lab.b} zoom={zoom} slideIndex={slideIndex} />
       </div>
 
       <section className={styles.log} aria-label="기록">

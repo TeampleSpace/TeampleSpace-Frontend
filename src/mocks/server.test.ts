@@ -1,19 +1,21 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import example from '../entities/presentation/example.json'
 import {
   editorSnapshotSchema,
   elementSaveResultSchema,
-  presentationSchema,
 } from '../entities/presentation/schema.ts'
 import type { ElementSaveRequest } from '../entities/presentation/schema.ts'
 import { ApiError, TransportError, createApiClient } from '../shared/api/client.ts'
+import { exampleImageFileId, exampleSnapshot } from './example.ts'
 import { createMockServer } from './server.ts'
 
 // 계약 문서의 저장 규칙을 예제와 시험으로 고정한다
 
-const doc = presentationSchema.parse(example)
-const slideId = doc.slideIds[0]
-const bodyId = 'a1000000-0000-4000-8000-000000000003'
+// 계약 예제 둘째 슬라이드의 제목 요소. 처음 버전이 1이다
+const projectId = exampleSnapshot.projectId
+const slideId = '0193a000-0000-7000-8000-0000000000a2'
+const bodyId = '0193a000-0000-7000-8000-00000000e005'
+const userA = '0193a000-0000-7000-8000-0000000000d1'
+const userB = '0193a000-0000-7000-8000-0000000000d2'
 const savePath = `/slides/${slideId}/elements/${bodyId}`
 
 afterEach(() => {
@@ -22,13 +24,17 @@ afterEach(() => {
 
 function setup() {
   let time = 1_000_000
-  const server = createMockServer(doc, {
+  const server = createMockServer(exampleSnapshot, {
     now: () => time,
-    assetUrls: { 'c3000000-0000-4000-8000-000000000001': '/example-image.png' },
+    assetUrls: { [exampleImageFileId]: '/example-image.png' },
   })
-  const client = createApiClient(server.fetchAs('user-a'))
-  const other = createApiClient(server.fetchAs('user-b'))
-  const element = () => server.getDocument().slides[slideId].elements[bodyId]
+  const client = createApiClient(server.fetchAs(userA))
+  const other = createApiClient(server.fetchAs(userB))
+  const element = () =>
+    server
+      .getDocument()
+      .slides.flatMap((slide) => slide.elements)
+      .find((candidate) => candidate.id === bodyId)!
   return { server, client, other, element, advance: (ms: number) => (time += ms) }
 }
 
@@ -36,7 +42,7 @@ function saveRequest(overrides: Partial<ElementSaveRequest> = {}): ElementSaveRe
   return {
     generation: 1,
     baseVersion: 1,
-    editGroupId: 'group-1',
+    editGroupId: '0193a000-0000-7000-8000-0000000000f2',
     clientMutationId: 'mutation-1',
     patch: { content: { text: '새 본문' } },
     ...overrides,
@@ -61,13 +67,13 @@ const eventTypes = (server: ReturnType<typeof createMockServer>) =>
 test('스냅샷은 문서와 이벤트 커서를 함께 주고 이미지에 임시 주소를 붙인다', async () => {
   const { server, client } = setup()
   const snapshot = await client.request(
-    `/projects/${doc.projectId}/sync-snapshot?scope=editor`,
+    `/projects/${projectId}/sync-snapshot?scope=editor`,
     editorSnapshotSchema,
   )
   expect(snapshot.eventCursor).toBe('0')
-  const image = Object.values(snapshot.presentation.slides[slideId].elements).find(
-    (el) => el.type === 'image',
-  )
+  const image = snapshot.presentation?.slides
+    .flatMap((slide) => slide.elements)
+    .find((el) => el.type === 'image')
   expect(image?.content).toMatchObject({ assetUrl: '/example-image.png' })
   // 저장된 문서에는 임시 주소를 남기지 않는다
   expect(JSON.stringify(server.getDocument())).not.toContain('assetUrl')
@@ -80,8 +86,8 @@ test('저장하면 요소, 슬라이드, 문서 버전이 오르고 결과를 �
   expect(result).toMatchObject({
     clientMutationId: 'mutation-1',
     elementVersion: 2,
-    slideVersion: 2,
-    presentationVersion: 2,
+    slideVersion: 10,
+    presentationVersion: 15,
     generation: 1,
   })
   expect(result.resource.version).toBe(2)
@@ -145,7 +151,7 @@ test('처리 중인 키로 다시 보내면 대기 시간과 함께 거절한다
 
 test('오래된 버전으로 보낸 새 요청은 현재 버전과 함께 거절하고 저장하지 않는다', async () => {
   const { client, other, element } = setup()
-  await save(other, 'key-b', saveRequest({ editGroupId: 'group-b', clientMutationId: 'm-b' }))
+  await save(other, 'key-b', saveRequest({ editGroupId: '0193a000-0000-7000-8000-0000000000f3', clientMutationId: 'm-b' }))
 
   const error = await save(client, 'key-a', saveRequest()).catch((e: unknown) => e)
   expect(error).toMatchObject({
@@ -204,7 +210,7 @@ test('다른 작성자가 같은 요소를 고치면 열려 있던 묶음이 닫
   await save(
     other,
     'key-b',
-    saveRequest({ baseVersion: 2, editGroupId: 'group-b', clientMutationId: 'm-b' }),
+    saveRequest({ baseVersion: 2, editGroupId: '0193a000-0000-7000-8000-0000000000f3', clientMutationId: 'm-b' }),
   )
   expect(eventTypes(server)).toEqual([
     'element.updated',
@@ -232,7 +238,7 @@ test('이벤트 연결은 커서 이후부터 재생하고 새 이벤트를 이�
   const { server, client } = setup()
   await save(client, 'key-1', saveRequest())
 
-  const response = await server.fetchAs('user-b')(`/v1/projects/${doc.projectId}/events`, {
+  const response = await server.fetchAs(userB)(`/v1/projects/${projectId}/events`, {
     headers: { 'Last-Event-ID': '1' },
   })
   const reading = readStream(response, 'id: 3\n')
@@ -250,7 +256,7 @@ test('보관 범위를 벗어난 커서에는 다시 동기화하라고 알린�
   await save(client, 'key-1', saveRequest())
   server.dropEventsBefore(2)
 
-  const response = await server.fetchAs('user-b')(`/v1/projects/${doc.projectId}/events`, {
+  const response = await server.fetchAs(userB)(`/v1/projects/${projectId}/events`, {
     headers: { 'Last-Event-ID': '0' },
   })
   expect(await readStream(response, '\n\n')).toContain('event: snapshot_required')

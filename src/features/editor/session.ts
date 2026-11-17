@@ -1,5 +1,6 @@
 import {
   editorSnapshotSchema,
+  elementChangeSchema,
   elementSaveResultSchema,
 } from '../../entities/presentation/schema.ts'
 import type {
@@ -58,23 +59,9 @@ type Entry = {
   deferred?: Element
 }
 
+// 계약에 따라 보낸 항목은 통째로 교체된다
 export function applyPatch(element: Element, patch: ElementPatch): Element {
-  const next: Element = { ...element, geometry: { ...element.geometry, ...patch.geometry } }
-  if (patch.content && next.type === 'text') {
-    next.content = { ...next.content, ...patch.content }
-  }
-  return next
-}
-
-function mergePatch(base: ElementPatch | undefined, patch: ElementPatch): ElementPatch {
-  return {
-    ...base,
-    ...patch,
-    geometry:
-      base?.geometry || patch.geometry
-        ? { ...base?.geometry, ...patch.geometry }
-        : undefined,
-  }
+  return { ...element, ...patch } as Element
 }
 
 export type EditorSession = ReturnType<typeof createEditorSession>
@@ -123,15 +110,15 @@ export function createEditorSession(options: {
     if (doc) {
       // ponytail: 바뀔 때마다 문서 전체를 복사한다. 요소가 많아지면 요소별 구독으로 바꾼다
       view = structuredClone(doc)
-      for (const slide of Object.values(view.slides)) {
-        for (const [id, element] of Object.entries(slide.elements)) {
-          const entry = entries.get(id)
-          if (entry?.draft) slide.elements[id] = applyPatch(element, entry.draft)
-          elements[id] = {
+      for (const slide of view.slides) {
+        slide.elements = slide.elements.map((element) => {
+          const entry = entries.get(element.id)
+          elements[element.id] = {
             status: entry?.status ?? 'clean',
             serverLatest: entry?.serverLatest,
           }
-        }
+          return entry?.draft ? applyPatch(element, entry.draft) : element
+        })
       }
     }
     state = { connection, view, elements, stats: { ...stats } }
@@ -148,9 +135,9 @@ export function createEditorSession(options: {
   }
 
   function locate(elementId: string) {
-    for (const slide of Object.values(doc?.slides ?? {})) {
-      const element = slide.elements[elementId]
-      if (element) return { slide, element }
+    for (const slide of doc?.slides ?? []) {
+      const index = slide.elements.findIndex((element) => element.id === elementId)
+      if (index >= 0) return { slide, index, element: slide.elements[index] }
     }
     throw new Error(`요소를 찾을 수 없습니다 ${elementId}`)
   }
@@ -176,7 +163,7 @@ export function createEditorSession(options: {
     const entry = entryOf(elementId)
     if (entry.status === 'conflict') return false
 
-    entry.draft = mergePatch(entry.draft, patch)
+    entry.draft = { ...entry.draft, ...patch }
     entry.seq += 1
     entry.composing = input.composing ?? false
     entry.status = entry.flight ? 'saving' : 'dirty'
@@ -310,8 +297,8 @@ export function createEditorSession(options: {
 
   // 서버 확인본은 더 높은 버전으로만 바꾼다
   function setConfirmed(element: Element) {
-    const { slide, element: current } = locate(element.id)
-    if (element.version > current.version) slide.elements[element.id] = element
+    const { slide, index, element: current } = locate(element.id)
+    if (element.version > current.version) slide.elements[index] = element
   }
 
   // 버전은 리소스별로 따로 올린다
@@ -521,7 +508,7 @@ export function createEditorSession(options: {
     }
 
     if (event.type === 'element.updated') {
-      const result = elementSaveResultSchema.omit({ eventId: true }).safeParse(event.payload)
+      const result = elementChangeSchema.safeParse(event.payload)
       if (result.success) {
         const { resource } = result.data
         // 같은 요소의 오래된 버전이나 이미 반영한 내용은 무시한다
@@ -544,16 +531,22 @@ export function createEditorSession(options: {
       .request(`/projects/${projectId}/sync-snapshot?scope=editor`, editorSnapshotSchema)
       .then((result) => {
         stats.snapshots += 1
+        lastEventId = result.eventCursor
         const incoming = result.presentation
+        // 아직 발표 자료를 만들기 전이면 문서가 없다
+        if (!incoming) {
+          publish()
+          return
+        }
         if (!doc) {
           doc = incoming
         } else {
           doc.version = incoming.version
           doc.orderVersion = incoming.orderVersion
-          for (const slide of Object.values(incoming.slides)) {
-            const local = doc.slides[slide.id]
+          for (const slide of incoming.slides) {
+            const local = doc.slides.find((candidate) => candidate.id === slide.id)
             if (local) local.version = Math.max(local.version, slide.version)
-            for (const element of Object.values(slide.elements)) reconcile(element)
+            for (const element of slide.elements) reconcile(element)
           }
         }
         streamVersion = incoming.version

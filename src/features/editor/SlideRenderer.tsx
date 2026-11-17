@@ -34,23 +34,36 @@ function ElementView({ element }: { element: Element }) {
     )
   }
   if (element.type === 'image') {
-    return element.content.assetUrl ? (
-      <img
-        className={styles.image}
-        style={boxStyle(element)}
-        src={element.content.assetUrl}
-        alt={element.content.alt}
-        draggable={false}
-      />
-    ) : (
-      <div className={styles.missing} style={boxStyle(element)}>
-        {element.content.alt}
+    const { assetUrl, alt, crop } = element.content
+    if (!assetUrl) {
+      return (
+        <div className={styles.missing} style={boxStyle(element)}>
+          {alt}
+        </div>
+      )
+    }
+    // 자르기는 원본에 대한 비율이다. 잘라 낸 영역이 상자를 채우도록 원본을 키워 옮긴다
+    const area = crop ?? { x: 0, y: 0, width: 1, height: 1 }
+    return (
+      <div className={styles.imageBox} style={boxStyle(element)}>
+        <img
+          className={styles.image}
+          style={{
+            width: `${100 / area.width}%`,
+            height: `${100 / area.height}%`,
+            left: `${(-area.x / area.width) * 100}%`,
+            top: `${(-area.y / area.height) * 100}%`,
+          }}
+          src={assetUrl}
+          alt={alt}
+          draggable={false}
+        />
       </div>
     )
   }
   const { width, height } = element.geometry
-  const { fill, stroke, strokeWidth } = element.style
-  const paint = { fill, stroke, strokeWidth }
+  const { fill, stroke, strokeWidth, cornerRadius } = element.style
+  const paint = { fill: fill ?? 'none', stroke: stroke ?? 'none', strokeWidth }
   return (
     <svg
       className={styles.shape}
@@ -61,7 +74,7 @@ function ElementView({ element }: { element: Element }) {
       {element.content.shape === 'ellipse' ? (
         <ellipse cx={width / 2} cy={height / 2} rx={width / 2} ry={height / 2} {...paint} />
       ) : (
-        <rect width={width} height={height} {...paint} />
+        <rect width={width} height={height} rx={cornerRadius} {...paint} />
       )}
     </svg>
   )
@@ -70,9 +83,8 @@ function ElementView({ element }: { element: Element }) {
 // 문서를 그리기만 한다. 네트워크 요청과 편집 상태는 다루지 않는다
 // 텍스트와 이미지는 DOM, 도형은 SVG로 그린다
 export function SlideRenderer({ canvas, slide, scale, hiddenElementId, children }: Props) {
-  const elements = slide.elementIds
-    .map((id) => slide.elements[id])
-    .filter((element) => element && !element.deletedAt && element.id !== hiddenElementId)
+  const elements = slide.elements
+    .filter((element) => !element.deletedAt && element.id !== hiddenElementId)
     .sort((a, b) => a.geometry.z - b.geometry.z)
 
   return (
