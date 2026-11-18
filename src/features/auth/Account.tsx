@@ -38,8 +38,8 @@ export default function Account() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   if (!user) return null
   const activeUser = user
-  const emailIdentity = user.identities.some((identity) => identity.provider === 'email')
-  const emailEnabled = capabilities?.authProviders.some((item) => item.provider === 'email' && item.enabled)
+  const hasEmail = !!user.email
+  const emailEnabled = capabilities?.authProviders.some((item) => item.provider === 'email' && item.reauthEnabled)
   const seconds = Math.max(0, Math.ceil((retryAt - now) / 1000))
 
   async function act(work: () => Promise<void>) {
@@ -105,15 +105,17 @@ export default function Account() {
       description="본인 확인 후 탈퇴할 수 있어요. 이 작업은 되돌릴 수 없어요">
       <div className={authStyles.form}>
         {user.ownedProjectCount > 0 ? <p>소유 프로젝트를 먼저 이전하거나 삭제해 주세요</p> : <>
-          {!proof && (emailIdentity ? <>
+          {!proof && (hasEmail ? <>
             <p>{user.email}로 본인 확인 코드를 받아 주세요</p>
             <Button variant="secondary" loading={busy} disabled={!emailEnabled || seconds > 0} onClick={() => void sendCode()}>{seconds > 0 ? `${seconds}초 후 재전송` : challenge ? '코드 다시 받기' : '본인 확인 코드 받기'}</Button>
             {!emailEnabled && <p>이메일 본인 확인을 준비 중이에요</p>}
             {challenge && <Field label="본인 확인 코드" value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6}
               error={Date.parse(challenge.expiresAt) <= now ? '코드가 만료됐어요. 새 코드를 받아 주세요' : undefined} />}
           </> : <>{user.identities.filter((identity) => identity.provider !== 'email').map((identity) => <Button key={identity.provider}
-            disabled={!capabilities?.authProviders.some((item) => item.provider === identity.provider && item.enabled)}
+            disabled={!capabilities?.authProviders.some((item) => item.provider === identity.provider && item.reauthEnabled)}
             onClick={() => window.location.assign(oauthUrl(identity.provider, 'reauth', '/account'))}>{providerNames[identity.provider]}로 본인 확인</Button>)}</>)}
+          {!hasEmail && <p>카카오 본인 확인은 카카오톡 안의 브라우저에서 지원되지 않아요. 외부 브라우저에서 진행해 주세요</p>}
+          {!hasEmail && !user.identities.some((identity) => capabilities?.authProviders.some((item) => item.provider === identity.provider && item.reauthEnabled)) && <p>현재 사용할 수 있는 본인 확인 수단이 없어요. 계정 지원 담당자에게 문의해 주세요</p>}
           {proof && <p>본인 확인을 마쳤어요</p>}
           <Field label="확인을 위해 탈퇴를 입력해 주세요" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
           <div className={authStyles.actions}><Button variant="secondary" disabled={busy} onClick={close}>취소</Button><Button variant="danger" loading={busy}
