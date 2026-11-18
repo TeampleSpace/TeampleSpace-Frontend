@@ -117,3 +117,57 @@ test('제한 시간을 넘기면 timeout으로 알린다', async () => {
     hanging.request('/x', okSchema, { timeoutMs: 10 }),
   ).rejects.toMatchObject({ kind: 'timeout' })
 })
+
+// 세션 조회만 원하는 때에 끝나는 가짜 fetch
+function gatedBootstrap() {
+  let release = () => {}
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL, _init: RequestInit = {}) => {
+    if (String(input) !== '/v1/auth/bootstrap') return json(200, { ok: true })
+    await gate
+    return json(200, bootstrapBody)
+  })
+  const sent = (path: string) => fetchImpl.mock.calls.filter(([url]) => url === `/v1${path}`)
+  return { fetchImpl, release, sent }
+}
+
+test('세션 조회가 응답하지 않아도 변경 요청은 제한 시간에 끝난다', async () => {
+  const { fetchImpl, sent } = gatedBootstrap()
+  const client = createApiClient(fetchImpl)
+
+  const error = await client
+    .request('/x', okSchema, { method: 'PATCH', body: {}, timeoutMs: 10 })
+    .catch((e: unknown) => e)
+  expect(error).toBeInstanceOf(TransportError)
+  expect(error).toMatchObject({ kind: 'timeout' })
+  // 실제 변경 요청은 보내지 않았고 세션 조회에도 자체 시간 제한이 걸려 있다
+  expect(sent('/x')).toHaveLength(0)
+  expect(sent('/auth/bootstrap')[0][1]?.signal).toBeInstanceOf(AbortSignal)
+})
+
+test('세션 조회를 기다리던 요청을 취소해도 함께 기다리던 요청은 진행한다', async () => {
+  const { fetchImpl, release, sent } = gatedBootstrap()
+  const client = createApiClient(fetchImpl)
+  const controller = new AbortController()
+
+  const canceled = client
+    .request('/a', okSchema, { method: 'PATCH', body: {}, signal: controller.signal })
+    .catch((e: unknown) => e)
+  const other = client.request('/b', okSchema, { method: 'PATCH', body: {} })
+
+  controller.abort()
+  expect(await canceled).toMatchObject({ name: 'AbortError' })
+
+  release()
+  await expect(other).resolves.toEqual({ ok: true })
+  expect(sent('/a')).toHaveLength(0)
+  expect(sent('/b')).toHaveLength(1)
+
+  // 조회가 끝난 뒤의 변경 요청은 다시 조회하지 않고 토큰을 싣는다
+  await client.request('/c', okSchema, { method: 'POST', body: {}, timeoutMs: 1000 })
+  expect(sent('/auth/bootstrap')).toHaveLength(1)
+  const headers = sent('/c')[0][1]?.headers as Record<string, string>
+  expect(headers[CSRF_HEADER]).toBe(bootstrapBody.csrfToken)
+})
