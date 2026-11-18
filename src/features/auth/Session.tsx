@@ -16,6 +16,7 @@ export function SessionProvider() {
   const generation = useRef(0)
   const refresh = useCallback(async () => {
     const current = ++generation.current
+    setLoading(true)
     try {
       const [session, config] = await Promise.all([api.bootstrap(), authApi.capabilities()])
       const nextUser = session.status === 'authenticated' ? await authApi.me() : null
@@ -26,7 +27,7 @@ export function SessionProvider() {
       throw reason
     } finally { if (current === generation.current) setLoading(false) }
   }, [])
-  useEffect(() => { void refresh().catch(() => {}) }, [refresh])
+  useEffect(() => { void Promise.resolve().then(refresh).catch(() => {}) }, [refresh])
   return <SessionContext value={{ user, capabilities, loading, error, refresh, setUser }}><Outlet /></SessionContext>
 }
 

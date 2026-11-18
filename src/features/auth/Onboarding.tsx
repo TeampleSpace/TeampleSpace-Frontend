@@ -53,6 +53,11 @@ export default function Onboarding() {
       <Button type="submit" disabled={!canSubmit} loading={busy}>동의 후 시작하기</Button>
     </form>
     <RequestError error={error} action={<Button variant="text" onClick={() => void refresh().catch(setError)}>최신 정보 확인</Button>} />
-    <Button variant="text" disabled={busy} onClick={() => void authApi.logout().then(() => refresh()).then(() => navigate('/login', { replace: true })).catch(setError)}>로그아웃</Button>
+    <Button variant="text" disabled={busy} onClick={() => void authApi.logout().then(() => {
+      setUser(null)
+      const refreshing = refresh()
+      navigate('/login', { replace: true })
+      return refreshing
+    }).catch(setError)}>로그아웃</Button>
   </AuthLayout>
 }

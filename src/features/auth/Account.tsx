@@ -64,7 +64,10 @@ export default function Account() {
       if (!currentProof) return
       setProof(currentProof)
       await authApi.deleteAccount(currentProof)
-      setLeaving(true); setUser(null); navigate('/login', { replace: true })
+      setLeaving(true); setUser(null)
+      const refreshing = refresh()
+      navigate('/login', { replace: true })
+      await refreshing
     })
   }
 
@@ -93,7 +96,10 @@ export default function Account() {
     <Modal open={modal === 'logout'} title="로그아웃할까요?" size="confirm" onClose={close}
       description={dirty ? '저장하지 않은 이름 변경은 사라져요' : '현재 기기의 로그인 상태를 종료해요'}
       footer={<><Button variant="secondary" disabled={busy} onClick={close}>취소</Button><Button loading={busy} onClick={() => void act(async () => {
-        await authApi.logout(); setLeaving(true); setUser(null); navigate('/login', { replace: true })
+        await authApi.logout(); setLeaving(true); setUser(null)
+        const refreshing = refresh()
+        navigate('/login', { replace: true })
+        await refreshing
       })}>로그아웃</Button></>}><RequestError error={error} /></Modal>
     <Modal open={modal === 'delete'} title="회원 탈퇴" size="confirm" onClose={close}
       description="본인 확인 후 탈퇴할 수 있어요. 이 작업은 되돌릴 수 없어요">
