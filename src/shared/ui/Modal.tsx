@@ -7,8 +7,9 @@ type Props = {
   open: boolean
   title: string
   description?: string
-  // dialog는 간결한 확인과 안내에 쓰는 560px, form은 입력이 여러 개인 760px 모달이다
-  size?: 'dialog' | 'form'
+  // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
+  // form은 입력이 여러 개인 760px 모달이다
+  size?: 'dialog' | 'confirm' | 'form'
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -74,7 +75,7 @@ export function Modal({
             닫기
           </Button>
         </header>
-        {size === 'dialog' && descriptionText}
+        {size !== 'form' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
         {footer && <footer className={styles.footer}>{footer}</footer>}
       </div>

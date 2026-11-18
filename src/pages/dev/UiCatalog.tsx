@@ -226,6 +226,7 @@ export default function UiCatalog() {
 
       <Modal
         open={modal === 'confirm'}
+        size="confirm"
         title="프로젝트를 삭제할까요?"
         description="프로젝트의 자료와 발표자료에 더 이상 접근할 수 없어요."
         onClose={close}
@@ -246,6 +247,7 @@ export default function UiCatalog() {
 
       <Modal
         open={modal === 'progress'}
+        size="confirm"
         title="파일을 만들고 있어요"
         description="완료되면 내려받을 수 있습니다."
         onClose={close}
