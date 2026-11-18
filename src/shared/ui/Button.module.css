@@ -13,6 +13,24 @@
   font: var(--text-button-secondary);
   text-align: center;
   cursor: pointer;
+  transition:
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    color var(--motion-fast) ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button {
+    transition:
+      background-color var(--motion-fast) ease-out,
+      border-color var(--motion-fast) ease-out,
+      color var(--motion-fast) ease-out,
+      transform var(--motion-fast) var(--motion-ease-out);
+  }
+
+  .button:not(:disabled, [aria-disabled='true']):active {
+    transform: translateY(1px);
+  }
 }
 
 .primary {
