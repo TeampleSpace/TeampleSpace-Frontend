@@ -48,3 +48,8 @@ export function requiredDocuments(capabilities: AuthCapabilities | null) {
 export function oauthUrl(provider: Provider, purpose: 'login' | 'reauth', returnTo: string) {
   return `/v1/auth/oauth/${provider}/authorize?${new URLSearchParams({ purpose, returnTo: safeReturnTo(returnTo) })}`
 }
+
+export function authDestination(needsOnboarding: boolean, returnTo: string | null) {
+  const destination = safeReturnTo(returnTo)
+  return needsOnboarding ? `/onboarding?${new URLSearchParams({ returnTo: destination })}` : destination
+}
