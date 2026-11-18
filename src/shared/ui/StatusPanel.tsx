@@ -1,4 +1,6 @@
+import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Button } from './Button.tsx'
 import styles from './StatusPanel.module.css'
 
 type Props = {
@@ -10,7 +12,7 @@ type Props = {
   action?: ReactNode
 }
 
-// 로딩, 빈 상태, 오류를 화면 가운데의 안내 문구 틀로 표시한다
+// 오류는 간결한 안내로, 로딩과 빈 상태는 가운데 안내로 표시한다
 export function StatusPanel({
   kind,
   title,
@@ -18,6 +20,9 @@ export function StatusPanel({
   requestId,
   action,
 }: Props) {
+  const detailsId = useId()
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
   return (
     <div
       className={[styles.panel, styles[kind]].join(' ')}
@@ -28,8 +33,26 @@ export function StatusPanel({
       )}
       <p className={styles.title}>{title}</p>
       {description && <p className={styles.description}>{description}</p>}
-      {requestId && <p className={styles.meta}>요청 번호 {requestId}</p>}
-      {action && <div className={styles.actions}>{action}</div>}
+      {(action || requestId) && (
+        <div className={styles.actions}>
+          {action}
+          {requestId && (
+            <Button
+              variant="text"
+              aria-expanded={detailsOpen}
+              aria-controls={detailsId}
+              onClick={() => setDetailsOpen((open) => !open)}
+            >
+              상세 정보
+            </Button>
+          )}
+        </div>
+      )}
+      {requestId && (
+        <p id={detailsId} className={styles.meta} hidden={!detailsOpen}>
+          요청 번호 {requestId}
+        </p>
+      )}
     </div>
   )
 }

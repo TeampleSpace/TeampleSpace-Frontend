@@ -33,7 +33,9 @@ const texts = [
   ['dialog-title', '확인 모달 제목'],
   ['lead', '입력 값과 설명 본문'],
   ['body', '일반 UI 본문'],
-  ['button', '버튼'],
+  ['button', '주요 버튼'],
+  ['button-secondary', '보조 버튼과 텍스트 버튼'],
+  ['status-title', '오류 안내 제목'],
   ['meta', '보조 정보'],
   ['nav', '탐색과 입력 이름'],
 ]
@@ -41,7 +43,7 @@ const texts = [
 const longText =
   '아주 긴 문구가 들어와도 버튼과 모달이 화면 밖으로 넘치지 않고 줄을 바꿔서 끝까지 보여야 합니다'
 
-type ModalKind = 'form' | 'confirm' | 'notice' | 'long'
+type ModalKind = 'progress' | 'form' | 'confirm' | 'notice' | 'long'
 
 // 공통 UI의 상태를 한 화면에서 확인하는 개발용 화면
 // 모달 예시는 피그마의 프로젝트 생성, 프로젝트 삭제 확인, 일시 오류 화면과 같은 구성이다
@@ -146,6 +148,9 @@ export default function UiCatalog() {
       <section className={styles.section}>
         <h2>상태 표시</h2>
         <StatusPanel kind="loading" title="불러오는 중이에요" />
+        <Button variant="secondary" onClick={() => setModal('progress')}>
+          파일 생성 진행 안내 열기
+        </Button>
         <StatusPanel
           kind="empty"
           title="페이지를 찾을 수 없어요"
@@ -162,7 +167,7 @@ export default function UiCatalog() {
           title="저장하지 못했어요"
           description="입력한 내용은 그대로 있어요. 다시 시도해 주세요."
           requestId="req_example"
-          action={<Button>다시 시도</Button>}
+          action={<Button variant="secondary">다시 시도</Button>}
         />
       </section>
 
@@ -204,7 +209,17 @@ export default function UiCatalog() {
           </>
         }
       >
-        <Field label="확인을 위해 프로젝트 이름 입력" />
+        <Field multiline rows={1} label="확인을 위해 프로젝트 이름 입력" />
+      </Modal>
+
+      <Modal
+        open={modal === 'progress'}
+        title="파일을 만들고 있어요"
+        description="완료되면 내려받을 수 있습니다."
+        onClose={close}
+        footer={<Button onClick={close}>닫기</Button>}
+      >
+        <p className={styles.info} role="status">PPTX, 전체 슬라이드</p>
       </Modal>
 
       <Modal
@@ -212,16 +227,9 @@ export default function UiCatalog() {
         title="잠시 후 다시 시도해주세요"
         description="요청이 많아 처리에 시간이 걸리고 있어요."
         onClose={close}
-        footer={
-          <>
-            <Button onClick={close}>다시 시도</Button>
-            <Button variant="secondary" onClick={close}>
-              닫기
-            </Button>
-          </>
-        }
+        footer={<Button onClick={close}>다시 시도</Button>}
       >
-        <p className={styles.info}>입력한 내용은 유지됩니다.</p>
+        <p>입력한 내용은 유지됩니다.</p>
       </Modal>
 
       <Modal
