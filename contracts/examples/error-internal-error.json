@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "요청을 처리하지 못했어요.",
+    "retryable": false
+  },
+  "requestId": "req_5f0d1c2b3a4948578695a4b3c2d1e0f9"
+}

@@ -173,11 +173,45 @@
         "generation": { "$ref": "#/$defs/Version" },
         "payload": { "type": "object" }
       },
-      "if": {
-        "properties": { "type": { "enum": ["element.updated", "element.deleted"] } }
-      },
-      "then": {
-        "properties": { "payload": { "$ref": "#/$defs/DocumentChange" } }
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["element.updated", "element.deleted"] } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/DocumentChange" } } }
+        },
+        {
+          "description": "문서 버전을 올리는 이벤트는 문서 버전과 세대를 싣는다. 클라이언트가 빠진 변경을 알아채는 기준이다",
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "element.updated",
+                  "element.deleted",
+                  "slide.created",
+                  "slide.deleted",
+                  "slide.order.updated",
+                  "presentation.replaced"
+                ]
+              }
+            }
+          },
+          "then": { "required": ["presentationVersion", "generation"] }
+        },
+        {
+          "if": { "properties": { "type": { "enum": ["change.created", "change.finalized"] } } },
+          "then": {
+            "required": ["resourceId"],
+            "properties": { "payload": { "$ref": "#/$defs/ChangeGroupPayload" } }
+          }
+        }
+      ]
+    },
+    "ChangeGroupPayload": {
+      "description": "변경 묶음이 생기거나 닫혔음을 알리는 이벤트의 payload. resourceId도 같은 변경 식별자다",
+      "type": "object",
+      "required": ["changeId", "groupState"],
+      "properties": {
+        "changeId": { "$ref": "#/$defs/Uuid" },
+        "groupState": { "enum": ["open", "closed"] }
       }
     },
     "EventType": {
