@@ -1,0 +1,122 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { authApi } from './api.ts'
+import { oauthUrl, providerNames } from './model.ts'
+import type { Challenge } from './model.ts'
+import { useSession } from './sessionContext.ts'
+import { Button } from '../../shared/ui/Button.tsx'
+import { Field } from '../../shared/ui/Field.tsx'
+import { Modal } from '../../shared/ui/Modal.tsx'
+import { RequestError } from '../../shared/ui/RequestError.tsx'
+import { UnsavedGuard } from '../../shared/ui/UnsavedGuard.tsx'
+import styles from '../../app/AppShell.module.css'
+import authStyles from './Auth.module.css'
+
+export default function Account() {
+  const { user, setUser, capabilities, refresh } = useSession()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [proof, setProof] = useState(() => new URLSearchParams(location.hash.slice(1)).get('reauthProof') ?? '')
+  const [name, setName] = useState(user?.name ?? '')
+  const [modal, setModal] = useState<'logout' | 'delete' | null>(proof ? 'delete' : null)
+  const [challenge, setChallenge] = useState<Challenge | null>(null)
+  const [code, setCode] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const lock = useRef(false)
+  const [error, setError] = useState<unknown>()
+  const [notice, setNotice] = useState('')
+  const [retryAt, setRetryAt] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
+  const dirty = !!user && name !== user.name
+  useEffect(() => {
+    if (new URLSearchParams(location.hash.slice(1)).has('reauthProof')) {
+      navigate({ pathname: location.pathname, search: location.search, hash: '' }, { replace: true })
+    }
+  }, [location.hash, location.pathname, location.search, navigate])
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
+  if (!user) return null
+  const activeUser = user
+  const emailIdentity = user.identities.some((identity) => identity.provider === 'email')
+  const emailEnabled = capabilities?.authProviders.some((item) => item.provider === 'email' && item.enabled)
+  const seconds = Math.max(0, Math.ceil((retryAt - now) / 1000))
+
+  async function act(work: () => Promise<void>) {
+    if (lock.current) return
+    lock.current = true; setBusy(true); setError(undefined); setNotice('')
+    try { await work() } catch (reason) { setError(reason) }
+    finally { lock.current = false; setBusy(false) }
+  }
+  function close() { if (!busy) { setModal(null); setError(undefined); setCode(''); setConfirmation(''); setProof('') } }
+  async function sendCode() {
+    if (!activeUser.email || seconds > 0) return
+    await act(async () => {
+      const next = await authApi.challenge(activeUser.email!, 'reauth')
+      setChallenge(next); setRetryAt(Date.now() + next.retryAfter * 1000); setCode('')
+    })
+  }
+  async function removeAccount() {
+    if (confirmation !== '탈퇴' || activeUser.ownedProjectCount > 0) return
+    await act(async () => {
+      let currentProof = proof
+      if (!currentProof && challenge) currentProof = (await authApi.reauthenticate(challenge.challengeId, code)).reauthProof
+      if (!currentProof) return
+      setProof(currentProof)
+      await authApi.deleteAccount(currentProof)
+      setLeaving(true); setUser(null); navigate('/login', { replace: true })
+    })
+  }
+
+  return <>
+    <header className={styles.header}><h1>내 계정</h1><Link to="/">돌아가기</Link></header>
+    <div className={styles.content}>
+      <form className={authStyles.form} onSubmit={(event) => { event.preventDefault(); void act(async () => {
+        const next = await authApi.update(name.trim(), activeUser.version); setUser(next); setName(next.name); setNotice('이름을 저장했어요')
+      }) }}>
+        <Field label="이름" value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} autoComplete="name" />
+        <Field label="이메일" value={user.email ?? '제공된 이메일 없음'} readOnly />
+        <p className={authStyles.notice}>이메일은 로그인 계정 정보입니다</p>
+        <div className={authStyles.actions}><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
+          <Button variant="secondary" disabled={busy} onClick={() => { setError(undefined); setModal('logout') }}>로그아웃</Button></div>
+      </form>
+      {notice && <p role="status">{notice}</p>}
+      {!modal && <RequestError error={error} action={<Button variant="text" onClick={() => void act(async () => { const next = await refresh(); if (next) setName(next.name) })}>최신 정보 다시 불러오기</Button>} />}
+      <section className={styles.section}><h2>로그인 수단</h2><p>현재 연결된 로그인 수단을 확인하세요. 추가 연결은 후속 출시 예정입니다</p>
+        {(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <p key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</p>)}
+      </section>
+      <section className={styles.section}><h2 className={styles.danger}>계정 삭제</h2><p>탈퇴 전에 소유 프로젝트를 이전하거나 삭제해야 합니다</p>
+        {user.ownedProjectCount > 0 && <p>현재 소유한 프로젝트 {user.ownedProjectCount}개 <Link to="/">프로젝트 확인</Link></p>}
+        <div><Button variant="secondary" disabled={busy || user.ownedProjectCount > 0} onClick={() => { setError(undefined); setModal('delete') }}>회원 탈퇴</Button></div>
+      </section>
+    </div>
+    <Modal open={modal === 'logout'} title="로그아웃할까요?" size="confirm" onClose={close}
+      description={dirty ? '저장하지 않은 이름 변경은 사라져요' : '현재 기기의 로그인 상태를 종료해요'}
+      footer={<><Button variant="secondary" disabled={busy} onClick={close}>취소</Button><Button loading={busy} onClick={() => void act(async () => {
+        await authApi.logout(); setLeaving(true); setUser(null); navigate('/login', { replace: true })
+      })}>로그아웃</Button></>}><RequestError error={error} /></Modal>
+    <Modal open={modal === 'delete'} title="회원 탈퇴" size="confirm" onClose={close}
+      description="본인 확인 후 탈퇴할 수 있어요. 이 작업은 되돌릴 수 없어요">
+      <div className={authStyles.form}>
+        {user.ownedProjectCount > 0 ? <p>소유 프로젝트를 먼저 이전하거나 삭제해 주세요</p> : <>
+          {!proof && (emailIdentity ? <>
+            <p>{user.email}로 본인 확인 코드를 받아 주세요</p>
+            <Button variant="secondary" loading={busy} disabled={!emailEnabled || seconds > 0} onClick={() => void sendCode()}>{seconds > 0 ? `${seconds}초 후 재전송` : challenge ? '코드 다시 받기' : '본인 확인 코드 받기'}</Button>
+            {!emailEnabled && <p>이메일 본인 확인을 준비 중이에요</p>}
+            {challenge && <Field label="본인 확인 코드" value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+              error={Date.parse(challenge.expiresAt) <= now ? '코드가 만료됐어요. 새 코드를 받아 주세요' : undefined} />}
+          </> : <>{user.identities.filter((identity) => identity.provider !== 'email').map((identity) => <Button key={identity.provider}
+            disabled={!capabilities?.authProviders.some((item) => item.provider === identity.provider && item.enabled)}
+            onClick={() => window.location.assign(oauthUrl(identity.provider, 'reauth', '/account'))}>{providerNames[identity.provider]}로 본인 확인</Button>)}</>)}
+          {proof && <p>본인 확인을 마쳤어요</p>}
+          <Field label="확인을 위해 탈퇴를 입력해 주세요" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
+          <div className={authStyles.actions}><Button variant="secondary" disabled={busy} onClick={close}>취소</Button><Button variant="danger" loading={busy}
+            disabled={confirmation !== '탈퇴' || (!proof && (!challenge || code.length !== 6 || Date.parse(challenge.expiresAt) <= now))}
+            onClick={() => void removeAccount()}>회원 탈퇴</Button></div>
+        </>}
+        <RequestError error={error} />
+      </div>
+    </Modal>
+    <UnsavedGuard dirty={dirty && !leaving} />
+  </>
+}

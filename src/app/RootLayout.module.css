@@ -1,4 +1,5 @@
 .skip {
+  z-index: 10;
   position: absolute;
   top: var(--space-8);
   left: var(--space-8);
@@ -26,6 +27,8 @@
 .main:focus {
   outline: none;
 }
+
+.product { min-height: 100dvh; outline: none; }
 
 @media (max-width: 640px) {
   .main {
