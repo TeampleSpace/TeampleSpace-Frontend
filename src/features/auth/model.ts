@@ -19,7 +19,7 @@ export const userSchema = z.object({
 })
 export type User = z.infer<typeof userSchema>
 export const authCapabilitiesSchema = capabilitiesSchema.extend({
-  authProviders: z.array(z.object({ provider: providerSchema, enabled: z.boolean() })),
+  authProviders: z.array(z.object({ provider: providerSchema, enabled: z.boolean(), reauthEnabled: z.boolean().default(false) })),
 })
 export type AuthCapabilities = z.infer<typeof authCapabilitiesSchema>
 export const challengeSchema = z.object({ challengeId: z.string(), expiresAt: z.string(), retryAfter: z.number().nonnegative() })

@@ -36,3 +36,8 @@ test('필수 약관 두 개의 실제 주소와 버전이 있어야 동의할 �
   expect(requiredDocuments({ ...config, legalDocuments: [terms, { ...privacy, url: 'javascript:alert(1)' }] })).toEqual([])
   expect(requiredDocuments({ ...config, legalDocuments: [terms, privacy] })).toEqual([terms, privacy])
 })
+
+test('로그인 제공자의 활성 상태만으로 재인증을 허용하지 않는다', () => {
+  const value = authCapabilitiesSchema.parse({ ...config, authProviders: [{ provider: 'google', enabled: true }] })
+  expect(value.authProviders[0].reauthEnabled).toBe(false)
+})
