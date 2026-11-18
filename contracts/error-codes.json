@@ -22,6 +22,24 @@
     { "code": "RATE_LIMITED", "httpStatus": 429, "retryable": true, "basis": "기술 선택", "meaning": "요청이 너무 잦다. Retry-After를 함께 돌려준다" },
     { "code": "INTERNAL_ERROR", "httpStatus": 500, "retryable": false, "basis": "기술 선택", "meaning": "서버가 예상하지 못한 오류로 처리하지 못했다. 내부 정보는 응답에 넣지 않는다" },
     { "code": "SERVICE_UNAVAILABLE", "httpStatus": 503, "retryable": true, "basis": "기술 선택", "meaning": "일시적으로 처리할 수 없다. 다시 시도할 수 있으면 Retry-After를 함께 돌려준다" },
-    { "code": "JOB_INPUT_STALE", "httpStatus": null, "retryable": false, "basis": "설계", "meaning": "작업 결과를 게시할 때 입력이 바뀌어 있었다. HTTP 오류가 아니라 작업의 error.code로 전달한다" }
+    { "code": "JOB_INPUT_STALE", "httpStatus": null, "retryable": false, "basis": "설계", "meaning": "작업 결과를 게시할 때 입력이 바뀌어 있었다. HTTP 오류가 아니라 작업의 error.code로 전달한다" },
+    {"code": "CSRF_INVALID", "httpStatus": 403, "retryable": false, "basis": "기술 선택", "meaning": "요청 확인 정보가 만료됐어요."},
+    {"code": "INVALID_EMAIL", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "이메일을 확인해 주세요."},
+    {"code": "INVALID_CODE", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "인증 코드를 확인해 주세요."},
+    {"code": "CHALLENGE_EXPIRED", "httpStatus": 410, "retryable": false, "basis": "기술 선택", "meaning": "인증 코드가 만료됐어요."},
+    {"code": "REQUIRED_CONSENT", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "필수 약관에 동의해 주세요."},
+    {"code": "LEGAL_DOCUMENTS_UNAVAILABLE", "httpStatus": 503, "retryable": false, "basis": "기술 선택", "meaning": "가입 약관을 준비하고 있어요."},
+    {"code": "ONBOARDING_REQUIRED", "httpStatus": 403, "retryable": false, "basis": "기술 선택", "meaning": "가입 정보를 먼저 입력해 주세요."},
+    {"code": "REAUTH_REQUIRED", "httpStatus": 401, "retryable": false, "basis": "기술 선택", "meaning": "본인 확인을 다시 진행해 주세요."},
+    {"code": "OWNED_PROJECTS_EXIST", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "소유한 프로젝트를 이전하거나 삭제해 주세요."},
+    {"code": "IDENTITY_CONFLICT", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "기존 로그인 수단으로 로그인해 주세요."},
+    {"code": "PROVIDER_UNAVAILABLE", "httpStatus": 503, "retryable": true, "basis": "기술 선택", "meaning": "로그인 제공자를 사용할 수 없어요."},
+    {"code": "UNSUPPORTED_PROVIDER", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "지원하지 않는 로그인 제공자예요."},
+    {"code": "INVALID_RETURN_TO", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "돌아갈 주소가 올바르지 않아요."},
+    {"code": "OAUTH_STATE_MISMATCH", "httpStatus": 403, "retryable": false, "basis": "기술 선택", "meaning": "로그인 요청을 확인할 수 없어요."},
+    {"code": "OAUTH_EXPIRED", "httpStatus": 410, "retryable": false, "basis": "기술 선택", "meaning": "로그인 요청이 만료됐어요."},
+    {"code": "OAUTH_CANCELED", "httpStatus": 400, "retryable": false, "basis": "기술 선택", "meaning": "로그인을 취소했어요."},
+    {"code": "OAUTH_CODE_INVALID", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "로그인 정보를 확인할 수 없어요."},
+    {"code": "ID_TOKEN_INVALID", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "로그인 제공자 확인에 실패했어요."}
   ]
 }

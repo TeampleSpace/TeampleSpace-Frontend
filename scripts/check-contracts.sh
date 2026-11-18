@@ -2,7 +2,7 @@
 # 프론트엔드의 계약 복사본이 백엔드에 커밋된 계약과 같은지 확인한다
 # 백엔드에서 작업 중인 미커밋 변경은 보지 않고 지정한 커밋의 계약만 비교한다
 #   BACKEND_DIR  백엔드 저장소 위치. 기본값은 나란히 받은 ../Backend
-#   BACKEND_REF  비교할 브랜치나 커밋. 기본값은 main이 있으면 main, 없으면 HEAD
+#   BACKEND_REF  비교할 브랜치나 커밋. 기본값은 contracts-source.json의 고정 커밋
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,7 +14,11 @@ fi
 
 ref="${BACKEND_REF:-}"
 if [ -z "$ref" ]; then
-  if git -C "$backend" rev-parse --verify --quiet main >/dev/null; then ref=main; else ref=HEAD; fi
+  ref="$(node -p 'require("./contracts-source.json").commit')"
+  if [[ ! "$ref" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "계약 기준은 전체 커밋 SHA여야 합니다"
+    exit 2
+  fi
 fi
 
 work="$(mktemp -d)"

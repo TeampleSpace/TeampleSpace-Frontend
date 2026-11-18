@@ -19,14 +19,24 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # 계약 복사본이 백엔드 main의 계약과 같은지 확인한다
+  # 계약 복사본이 명시한 백엔드 커밋의 계약과 같은지 확인한다
   # 실패하면 contracts 폴더를 다시 복사해야 한다는 뜻이다
   contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: 계약 기준 읽기
+        id: contract
+        run: |
+          ref="$(node -p 'require("./contracts-source.json").commit')"
+          [[ "$ref" =~ ^[0-9a-f]{40}$ ]]
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
           repository: TeampleSpace/TeampleSpace-Backend
+          ref: ${{ steps.contract.outputs.ref }}
           path: backend
       - run: BACKEND_DIR=backend BACKEND_REF=HEAD bash scripts/check-contracts.sh

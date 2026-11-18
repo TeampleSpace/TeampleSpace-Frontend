@@ -184,8 +184,8 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 요소 수정 | `PATCH /v1/slides/{slideId}/elements/{elementId}` | `ElementPatchRequest`, `MutationResponse` | 저장 처리와 시험이 있다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 이벤트 기록과 커서 뒤 재생, 시험이 있다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | 문서와 커서를 같은 시점에 읽는 처리와 시험이 있다. 팀원, 디자인, 작업, 자료 요약은 없다 | 4단계 |
-| 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 형식만 | 1단계 |
-| 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 형식만 | 1단계 |
+| 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
+| 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |
 | 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 형식만 | 3단계 |
 | 프로젝트 작업 목록 | `GET /v1/projects/{projectId}/jobs` | `JobList` | 형식만 | 2단계 |
 | 작업 조회 | `GET /v1/jobs/{jobId}` | `Job` | 형식만 | 2단계 |
