@@ -80,6 +80,10 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 
 API 클라이언트는 `src/shared/api`, 문서 형식은 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 복사한 커밋, 아직 합의되지 않은 항목, 확인 기록은 `docs/contract-notes.md`에 정리한다.
 
+## 진행 상태
+
+기반 작업의 구현, 자동 검증, 사람의 확인 대기 상태는 `docs/foundation-status.md`에 정리한다.
+
 ## 협업 규칙
 
 이슈, 브랜치, 커밋, PR 작성 규칙은 팀의 협업 규칙 문서를 따른다. 기능 브랜치는 `feat/#이슈번호` 형식이고 PR 대상은 `main`이다.
