@@ -14,7 +14,7 @@
 | 항목 | 값 |
 | --- | --- |
 | 복사한 저장소 | TeampleSpace/TeampleSpace-Backend |
-| 복사한 기준 | `604bf2aa829dfaeffe5814d1386baf10ea53d57e`. 인증 기능의 검토 중인 계약을 고정한 기준이며 `contracts-source.json`에 같은 값을 기록한다 |
+| 복사한 기준 | `d8b4d03bfe91bb7a6407b3f24ba6371b98159bba`. 인증과 프로젝트 기능의 검토 중인 계약을 고정한 기준이며 `contracts-source.json`에 같은 값을 기록한다 |
 | 복사한 날 | 2026-11-18 |
 
 계약이 바뀌면 폴더를 통째로 다시 복사하고 위 표를 고친 뒤 `npm test`를 돌린다. 어긋난 곳은 `src/shared/api/contracts.test.ts`가 알려 준다.

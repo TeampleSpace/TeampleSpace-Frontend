@@ -208,5 +208,40 @@
     "example": "auth-challenge-response.json",
     "schema": "stage-1.schema.json#/$defs/ChallengeResponse",
     "valid": true
+  },
+  {
+    "example": "project.json",
+    "schema": "stage-1.schema.json#/$defs/Project",
+    "valid": true
+  },
+  {
+    "example": "project-list.json",
+    "schema": "stage-1.schema.json#/$defs/ProjectList",
+    "valid": true
+  },
+  {
+    "example": "member-list.json",
+    "schema": "stage-1.schema.json#/$defs/MemberList",
+    "valid": true
+  },
+  {
+    "example": "project-create-request.json",
+    "schema": "stage-1.schema.json#/$defs/CreateProjectRequest",
+    "valid": true
+  },
+  {
+    "example": "invitation-preview.json",
+    "schema": "stage-1.schema.json#/$defs/InvitationPreview",
+    "valid": true
+  },
+  {
+    "example": "invitation-accepted.json",
+    "schema": "stage-1.schema.json#/$defs/InvitationAccepted",
+    "valid": true
+  },
+  {
+    "example": "member-remove-response.json",
+    "schema": "stage-1.schema.json#/$defs/RemoveMemberResponse",
+    "valid": true
   }
 ]

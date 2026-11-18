@@ -1,6 +1,5 @@
 import { createBrowserRouter } from 'react-router'
 import type { RouteObject } from 'react-router'
-import Home from '../pages/Home.tsx'
 import NotFound from '../pages/NotFound.tsx'
 import RootLayout from './RootLayout.tsx'
 import RouteError from './RouteError.tsx'
@@ -10,6 +9,9 @@ import Onboarding from '../features/auth/Onboarding.tsx'
 import AuthResult from '../features/auth/AuthResult.tsx'
 import Account from '../features/auth/Account.tsx'
 import AppShell from './AppShell.tsx'
+import ProjectHome from '../features/projects/ProjectHome.tsx'
+import ProjectPage from '../features/projects/ProjectPage.tsx'
+import Invitation from '../features/projects/Invitation.tsx'
 
 // 개발용 화면은 개발 서버에서만 등록하고 운영 빌드에는 포함하지 않는다
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -46,10 +48,13 @@ export const router = createBrowserRouter([
         { path: 'auth/email', element: <Login /> },
         { path: 'auth/result', element: <AuthResult /> },
         { path: 'auth/error', element: <AuthResult /> },
+        { path: 'invite/:token', element: <Invitation /> },
         { element: <RequireSession onboarding />, children: [{ path: 'onboarding', element: <Onboarding /> }] },
         { element: <RequireSession />, children: [{ element: <AppShell />, children: [
-          { index: true, element: <Home /> },
+          { index: true, element: <ProjectHome /> },
           { path: 'account', element: <Account /> },
+          { path: 'projects/:projectId', element: <ProjectPage /> },
+          { path: 'projects/:projectId/settings', element: <ProjectPage /> },
         ] }] },
       ] },
       ...devRoutes,

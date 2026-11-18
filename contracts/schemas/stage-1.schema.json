@@ -226,6 +226,352 @@
           "const": "completed"
         }
       }
+    },
+    "Project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "topic",
+        "presentationConstraints",
+        "ownerId",
+        "version",
+        "memberCount",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "topic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "presentationConstraints": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ownerId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "memberCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "createdAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "Member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "userId",
+        "name",
+        "role",
+        "membershipVersion",
+        "isOwner"
+      ],
+      "properties": {
+        "userId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "owner",
+            "member"
+          ]
+        },
+        "membershipVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "isOwner": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProjectList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "nextCursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Project"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "api.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MemberList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "nextCursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Member"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "api.schema.json#/$defs/Uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CreateProjectRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "topic": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "presentationConstraints": {
+          "type": "string",
+          "maxLength": 10000
+        }
+      }
+    },
+    "UpdateProjectRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "topic": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "presentationConstraints": {
+          "type": "string",
+          "maxLength": 10000
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "required": [
+            "topic"
+          ]
+        },
+        {
+          "required": [
+            "presentationConstraints"
+          ]
+        }
+      ]
+    },
+    "DeleteProjectRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "confirmationName"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "confirmationName": {
+          "type": "string"
+        }
+      }
+    },
+    "OwnershipRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetUserId",
+        "expectedVersion"
+      ],
+      "properties": {
+        "targetUserId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "expectedVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        }
+      }
+    },
+    "RemoveMemberRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedMembershipVersion",
+        "clientMutationId"
+      ],
+      "properties": {
+        "expectedMembershipVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "clientMutationId": {
+          "$ref": "api.schema.json#/$defs/ClientMutationId"
+        }
+      }
+    },
+    "RemoveMemberResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientMutationId",
+        "tombstone",
+        "membershipVersion",
+        "eventId"
+      ],
+      "properties": {
+        "clientMutationId": {
+          "$ref": "api.schema.json#/$defs/ClientMutationId"
+        },
+        "tombstone": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "id",
+            "deleted"
+          ],
+          "properties": {
+            "type": {
+              "const": "membership"
+            },
+            "id": {
+              "$ref": "api.schema.json#/$defs/Uuid"
+            },
+            "deleted": {
+              "const": true
+            }
+          }
+        },
+        "membershipVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "eventId": {
+          "$ref": "api.schema.json#/$defs/EventCursor"
+        }
+      }
+    },
+    "InvitationLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "expiresAt"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "expiresAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "InvitationPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectName",
+        "inviterName",
+        "expiresAt",
+        "alreadyMember"
+      ],
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "inviterName": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "alreadyMember": {
+          "type": "boolean"
+        }
+      }
+    },
+    "InvitationAccepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "alreadyMember"
+      ],
+      "properties": {
+        "projectId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "alreadyMember": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }
