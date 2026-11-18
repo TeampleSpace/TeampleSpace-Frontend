@@ -4,6 +4,8 @@ import errorCodes from '../../../contracts/error-codes.json'
 import manifest from '../../../contracts/examples/manifest.json'
 import apiSchema from '../../../contracts/schemas/api.schema.json'
 import documentSchema from '../../../contracts/schemas/document.schema.json'
+import stageSchema from '../../../contracts/schemas/stage-1.schema.json'
+import { authCapabilitiesSchema, userSchema, challengeSchema, loginSchema } from '../../features/auth/model.ts'
 import {
   editorSnapshotSchema,
   elementChangeSchema,
@@ -25,7 +27,7 @@ import {
 
 // 백엔드에서 복사한 계약을 기준으로 프론트엔드 형식과 모킹이 어긋나지 않는지 확인한다
 
-const ajv = new Ajv2020({ schemas: [documentSchema, apiSchema] })
+const ajv = new Ajv2020({ schemas: [documentSchema, apiSchema, stageSchema] })
 const examples = import.meta.glob<unknown>('../../../contracts/examples/**/*.json', {
   eager: true,
   import: 'default',
@@ -56,6 +58,9 @@ const frontendSchemas = [
   [api('Event'), eventEnvelopeSchema],
   [api('AuthBootstrap'), sessionBootstrapSchema],
   [api('Capabilities'), capabilitiesSchema],
+  ['stage-1.schema.json#/$defs/User', userSchema],
+  ['stage-1.schema.json#/$defs/ChallengeResponse', challengeSchema],
+  ['stage-1.schema.json#/$defs/LoginResponse', loginSchema],
   [api('SyncSnapshot'), editorSnapshotSchema],
 ] as const
 
@@ -180,4 +185,9 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
   }
   // 저장된 문서도 문서 스키마를 지킨다
   expect(check('document.schema.json', server.getDocument())).toEqual([])
+})
+
+
+test('인증 기능 지원 응답을 화면 계약으로 읽을 수 있다', () => {
+  expect(authCapabilitiesSchema.safeParse(example('capabilities.json')).success).toBe(true)
 })

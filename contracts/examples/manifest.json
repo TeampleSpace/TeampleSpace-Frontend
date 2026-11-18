@@ -188,5 +188,25 @@
     "example": "invalid/event-change-created-without-state.json",
     "schema": "api.schema.json#/$defs/Event",
     "valid": false
+  },
+  {
+    "example": "auth-user.json",
+    "schema": "stage-1.schema.json#/$defs/User",
+    "valid": true
+  },
+  {
+    "example": "auth-login-response.json",
+    "schema": "stage-1.schema.json#/$defs/LoginResponse",
+    "valid": true
+  },
+  {
+    "example": "auth-challenge-request.json",
+    "schema": "stage-1.schema.json#/$defs/ChallengeRequest",
+    "valid": true
+  },
+  {
+    "example": "auth-challenge-response.json",
+    "schema": "stage-1.schema.json#/$defs/ChallengeResponse",
+    "valid": true
   }
 ]

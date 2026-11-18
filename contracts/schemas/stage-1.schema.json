@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage-1.schema.json",
+  "$defs": {
+    "User": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "email",
+        "consentVersions",
+        "ownedProjectCount",
+        "onboardingStatus",
+        "identities",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "consentVersions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ownedProjectCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onboardingStatus": {
+          "enum": [
+            "pending",
+            "completed"
+          ]
+        },
+        "identities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "maskedEmail",
+              "linkedAt"
+            ],
+            "properties": {
+              "provider": {
+                "enum": [
+                  "email",
+                  "google",
+                  "kakao",
+                  "naver"
+                ]
+              },
+              "maskedEmail": {
+                "type": "string"
+              },
+              "linkedAt": {
+                "$ref": "api.schema.json#/$defs/Timestamp"
+              }
+            }
+          }
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "canEmailReauth": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ChallengeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "email",
+        "purpose"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "purpose": {
+          "enum": [
+            "login",
+            "reauth"
+          ]
+        }
+      }
+    },
+    "ChallengeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "challengeId",
+        "expiresAt",
+        "retryAfter"
+      ],
+      "properties": {
+        "challengeId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "expiresAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "retryAfter": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "VerifyRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "challengeId",
+        "code"
+      ],
+      "properties": {
+        "challengeId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[0-9]{6}$"
+        }
+      }
+    },
+    "LoginResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user",
+        "needsOnboarding"
+      ],
+      "properties": {
+        "user": {
+          "$ref": "#/$defs/User"
+        },
+        "needsOnboarding": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProfileRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "consentVersions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ReauthenticationResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reauthProof",
+        "expiresAt"
+      ],
+      "properties": {
+        "reauthProof": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "AccountDeletionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reauthProof",
+        "confirmationText"
+      ],
+      "properties": {
+        "reauthProof": {
+          "type": "string"
+        },
+        "confirmationText": {
+          "const": "탈퇴"
+        }
+      }
+    },
+    "AccountDeletionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deletionRequestId",
+        "status"
+      ],
+      "properties": {
+        "deletionRequestId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "status": {
+          "const": "completed"
+        }
+      }
+    }
+  }
+}
