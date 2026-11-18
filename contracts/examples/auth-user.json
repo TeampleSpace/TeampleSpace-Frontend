@@ -1,0 +1,19 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000d1",
+  "name": "정혁",
+  "email": "member@example.test",
+  "consentVersions": {
+    "terms": "test-v1",
+    "privacy": "test-v1"
+  },
+  "ownedProjectCount": 0,
+  "onboardingStatus": "completed",
+  "identities": [
+    {
+      "provider": "email",
+      "maskedEmail": "m***@example.test",
+      "linkedAt": "2026-11-18T01:00:00Z"
+    }
+  ],
+  "version": 2
+}

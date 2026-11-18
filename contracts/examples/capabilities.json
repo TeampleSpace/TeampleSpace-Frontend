@@ -1,6 +1,12 @@
 {
-  "configVersion": "2026-11-18.1",
-  "policyRevision": "draft",
+  "configVersion": "stage-1",
+  "policyRevision": "unconfigured",
+  "authProviders": [
+    { "provider": "email", "enabled": false, "reauthEnabled": false },
+    { "provider": "kakao", "enabled": false, "reauthEnabled": false },
+    { "provider": "naver", "enabled": false, "reauthEnabled": false },
+    { "provider": "google", "enabled": false, "reauthEnabled": false }
+  ],
   "uploadTypes": [],
   "formats": [],
   "fonts": [],
