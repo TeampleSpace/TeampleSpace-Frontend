@@ -50,6 +50,9 @@ type ModalKind = 'progress' | 'form' | 'confirm' | 'notice' | 'long'
 export default function UiCatalog() {
   const [modal, setModal] = useState<ModalKind | null>(null)
   const [saving, setSaving] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submits, setSubmits] = useState(0)
+  const [clicks, setClicks] = useState(0)
   const close = () => setModal(null)
 
   return (
@@ -125,6 +128,35 @@ export default function UiCatalog() {
           />
           <Field label="수정할 수 없는 값" defaultValue="고정 값" disabled />
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2>폼 제출</h2>
+        <p>
+          제출하면 3초 동안 진행 중이 된다. 그동안 버튼을 누르거나 입력란에서 Enter를 눌러도
+          횟수가 늘지 않아야 한다
+        </p>
+        <form
+          className={styles.fields}
+          onSubmit={(event) => {
+            event.preventDefault()
+            setSubmits((count) => count + 1)
+            setSubmitting(true)
+            setTimeout(() => setSubmitting(false), 3000)
+          }}
+        >
+          <Field label="제출할 값" defaultValue="예시" />
+          <Button
+            type="submit"
+            loading={submitting}
+            onClick={() => setClicks((count) => count + 1)}
+          >
+            {submitting ? '제출 중' : '제출'}
+          </Button>
+          <p role="status">
+            폼 제출 {submits}회, 클릭 처리 {clicks}회
+          </p>
+        </form>
       </section>
 
       <section className={styles.section}>
