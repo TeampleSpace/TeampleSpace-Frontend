@@ -9,6 +9,7 @@ export const providerNames: Record<Provider, string> = {
 
 export const userSchema = z.object({
   id: z.string(), name: z.string(), email: z.string().nullable(),
+  canEmailReauth: z.boolean().default(false),
   consentVersions: z.record(z.string(), z.string()),
   ownedProjectCount: z.number().int().nonnegative(),
   onboardingStatus: z.enum(['pending', 'completed']),
