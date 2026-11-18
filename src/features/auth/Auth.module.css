@@ -51,7 +51,7 @@
   .titleLine + .titleLine { animation-delay: 180ms; }
   .brandDescription { animation: auth-reveal 600ms 240ms var(--motion-ease-out) both; }
   .card { animation: auth-reveal 650ms 120ms var(--motion-ease-out) both; }
-  .social { animation: auth-reveal 450ms 180ms var(--motion-ease-out) both; }
+  .social:not(:disabled) { animation: auth-reveal 450ms 180ms var(--motion-ease-out) both; }
   .social:nth-child(2) { animation-delay: 240ms; }
   .social:nth-child(3) { animation-delay: 300ms; }
   .titleInk {
