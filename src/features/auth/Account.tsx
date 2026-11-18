@@ -38,7 +38,7 @@ export default function Account() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
   if (!user) return null
   const activeUser = user
-  const hasEmail = !!user.email
+  const hasEmail = !!user.email && user.canEmailReauth
   const emailEnabled = capabilities?.authProviders.some((item) => item.provider === 'email' && item.reauthEnabled)
   const seconds = Math.max(0, Math.ceil((retryAt - now) / 1000))
 
