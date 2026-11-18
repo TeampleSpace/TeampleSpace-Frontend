@@ -101,7 +101,6 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
       fetchImpl,
       projectId: exampleSnapshot.projectId,
       saveDelayMs: 5,
-      groupIdleMs: 40,
     })
     session.start()
     return session
@@ -120,13 +119,14 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
   // 저장, 묶음 종료, 끌어서 옮기기
   a.edit(textId, { content: { text: '계약 확인용 입력' } })
   await vi.waitFor(() => expect(statusOf(a, textId)).toBe('saved'))
-  await vi.waitFor(() =>
-    expect(server.events.some((event) => event.type === 'change.finalized')).toBe(true),
-  )
   const moved = server.getDocument().slides[1].elements[0].geometry
   a.edit(textId, { geometry: { ...moved, x: 96 } })
   a.endEdit(textId)
   await vi.waitFor(() => expect(statusOf(a, textId)).toBe('saved'))
+  // 편집을 끝내면 묶음이 닫힌다
+  await vi.waitFor(() =>
+    expect(server.events.some((event) => event.type === 'change.finalized')).toBe(true),
+  )
 
   // 오래된 버전으로 보낸 요청과 닫힌 묶음을 다시 쓴 요청
   const stale = requests.find((request) => (request as { patch?: unknown }).patch)
@@ -174,7 +174,7 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
   }
   expect(seenCodes).toEqual(expect.arrayContaining(['VERSION_CONFLICT', 'EDIT_GROUP_CLOSED']))
 
-  expect(server.events.length).toBeGreaterThanOrEqual(5)
+  expect(server.events.length).toBeGreaterThanOrEqual(4)
   for (const event of server.events) {
     expect(check(api('Event'), event), event.type).toEqual([])
   }

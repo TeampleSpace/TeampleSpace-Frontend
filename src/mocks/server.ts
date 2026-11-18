@@ -244,11 +244,13 @@ export function createMockServer(
         status = statusOf('VALIDATION_FAILED')
         response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
       } else {
-        // 다른 작성자가 같은 요소를 고치면 열려 있던 묶음을 닫는다
+        // 다른 작성자가 같은 요소를 고치거나 같은 작성자가 다른 요소를 저장하면
+        // 열려 있던 묶음을 닫는다. 편집 세션 구분은 인증 단계에서 정해져 지금은 작성자로 본다
         for (const other of groups.values()) {
-          if (!other.closed && other.elementId === elementId && other.actorId !== actorId) {
-            closeGroup(other)
-          }
+          if (other.closed || other === group) continue
+          const sameElement = other.elementId === elementId
+          const sameActor = other.actorId === actorId
+          if (sameElement !== sameActor) closeGroup(other)
         }
 
         let saved = element

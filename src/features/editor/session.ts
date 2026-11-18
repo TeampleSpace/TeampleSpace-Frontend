@@ -42,7 +42,8 @@ type Timer = ReturnType<typeof setTimeout>
 type Flight = { key: string; body: ElementSaveRequest; seq: number; attempt: number }
 
 // 검토 이력 한 건으로 묶이는 연속 편집
-type Group = { id: string; openedAt: number; saved: boolean; closing: boolean; idleTimer?: Timer }
+// lastAckAt은 이 묶음의 저장을 서버가 마지막으로 확인해 준 시각이다
+type Group = { id: string; openedAt: number; saved: boolean; closing: boolean; lastAckAt?: number }
 
 type Entry = {
   status: SaveStatus
@@ -147,8 +148,13 @@ export function createEditorSession(options: {
   }
 
   function dropGroup(entry: Entry) {
-    clearTimeout(entry.group?.idleTimer)
     entry.group = undefined
+  }
+
+  // 서버는 2초 동안 저장이 없으면 묶음을 닫는다. 시간에 따른 종료는 서버가 판단하므로
+  // 클라이언트는 닫는 요청을 보내지 않고, 닫혔을 묶음을 다시 쓰지 않도록 여기서 가려낸다
+  function isExpired(group: Group) {
+    return group.lastAckAt !== undefined && Date.now() - group.lastAckAt >= groupIdleMs
   }
 
   // 입력 반영
@@ -167,10 +173,6 @@ export function createEditorSession(options: {
     entry.seq += 1
     entry.composing = input.composing ?? false
     entry.status = entry.flight ? 'saving' : 'dirty'
-
-    entry.group ??= newGroup()
-    clearTimeout(entry.group.idleTimer)
-    entry.group.idleTimer = setTimeout(() => closeGroup(elementId, false), groupIdleMs)
 
     // 한글 조합 중에는 저장을 예약하지 않는다. 조합이 끝난 입력부터 대기 시간을 센다
     clearTimeout(entry.saveTimer)
@@ -192,27 +194,28 @@ export function createEditorSession(options: {
     entry.composing = false
     // 충돌 해결 뒤 다시 열어 둔 입력처럼 묶음 없이 남은 입력도 여기서 저장한다
     if (entry.draft && entry.status !== 'conflict') entry.group ??= newGroup()
-    closeGroup(elementId, true)
+    closeGroup(elementId)
     publish()
   }
 
-  function closeGroup(elementId: string, sendNow: boolean) {
+  // 편집 종료와 이동처럼 화면에서만 알 수 있는 종료를 서버에 알린다
+  function closeGroup(elementId: string) {
     const entry = entries.get(elementId)
     const group = entry?.group
     if (!entry || !group) return
-    clearTimeout(group.idleTimer)
 
     if (entry.draft || (entry.flight && entry.flight.body.editGroupId === group.id)) {
       // 남은 입력을 저장하는 요청에 종료 표시를 함께 싣는다
       group.closing = true
-      if (entry.draft && !entry.flight && (sendNow || !entry.composing)) {
+      if (entry.draft && !entry.flight) {
         clearTimeout(entry.saveTimer)
         entry.saveTimer = undefined
         send(elementId)
       }
-    } else if (group.saved) {
+    } else if (group.saved && !isExpired(group)) {
       sendFinalizeOnly(elementId, group)
     } else {
+      // 저장한 적이 없거나 서버가 이미 시간 기준으로 닫았을 묶음이다
       entry.group = undefined
     }
   }
@@ -226,6 +229,11 @@ export function createEditorSession(options: {
     if (connection !== 'online' || entry.status === 'conflict') return
 
     const { element } = locate(elementId)
+    if (entry.group && isExpired(entry.group)) {
+      // 닫혔을 묶음 대신 새 묶음을 연다. 편집을 끝내는 중이었다면 새 묶음도 이 저장으로 닫는다
+      const closing = entry.group.closing
+      entry.group = { ...newGroup(), closing }
+    }
     const group = (entry.group ??= newGroup())
     const finalize = group.closing || Date.now() - group.openedAt >= groupMaxMs
 
@@ -324,7 +332,10 @@ export function createEditorSession(options: {
     entry.flight = undefined
 
     if (flight.body.patch) {
-      if (entry.group?.id === flight.body.editGroupId) entry.group.saved = true
+      if (entry.group?.id === flight.body.editGroupId) {
+        entry.group.saved = true
+        entry.group.lastAckAt = Date.now()
+      }
       if (entry.seq === flight.seq) {
         // 이 요청에 담긴 입력까지만 확인됐다
         entry.draft = undefined
@@ -636,7 +647,6 @@ export function createEditorSession(options: {
     for (const entry of entries.values()) {
       clearTimeout(entry.saveTimer)
       clearTimeout(entry.retryTimer)
-      clearTimeout(entry.group?.idleTimer)
     }
   }
 
