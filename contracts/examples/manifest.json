@@ -168,5 +168,25 @@
     "example": "invalid/event-unknown-type.json",
     "schema": "api.schema.json#/$defs/Event",
     "valid": false
+  },
+  {
+    "example": "error-bad-request.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-internal-error.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "invalid/event-element-updated-without-version.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": false
+  },
+  {
+    "example": "invalid/event-change-created-without-state.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": false
   }
 ]

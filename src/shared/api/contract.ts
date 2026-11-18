@@ -4,7 +4,7 @@ import { z } from 'zod'
 // 기준은 contracts/schemas/api.schema.json이며 형식을 따로 만들지 않는다
 // 계약 예제가 이 형식을 통과하는지는 contracts.test.ts에서 확인한다
 
-// 미확정. CSRF 토큰을 싣는 요청 헤더 이름은 계약에 아직 없다
+// GET이 아닌 모든 요청에 세션 초기 정보의 csrfToken을 싣는 헤더
 export const CSRF_HEADER = 'X-CSRF-Token'
 
 // 모든 응답에 오는 요청 식별자 헤더. 오류 본문의 requestId와 같은 값이다

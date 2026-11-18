@@ -468,8 +468,8 @@ test('커서가 보관 범위를 벗어나면 스냅샷을 다시 읽어 맞춘�
   expect(textOf(a)).toBe('둘째 변경')
 })
 
-test('여러 번 저장해도 검토 이력은 하나로 묶이고 2초 쉬면 닫힌다', async () => {
-  const { open, eventCount } = setup()
+test('여러 번 저장해도 검토 이력은 하나로 묶이고 2초 쉰 뒤의 입력은 새 묶음이 된다', async () => {
+  const { open, eventCount, patches } = setup()
   const a = open('user-a')
   await tick()
 
@@ -481,14 +481,37 @@ test('여러 번 저장해도 검토 이력은 하나로 묶이고 2초 쉬면 �
   expect(eventCount('change.created')).toBe(1)
   expect(eventCount('change.finalized')).toBe(0)
 
+  // 시간에 따른 종료는 서버가 판단한다. 클라이언트는 닫는 요청을 보내지 않는다
   await tick(2000)
-  expect(eventCount('change.finalized')).toBe(1)
-  // 묶음만 닫는 요청은 내용 버전을 올리지 않는다
-  expect(eventCount('element.updated')).toBe(5)
+  expect(patches()).toHaveLength(5)
+  expect(eventCount('change.finalized')).toBe(0)
 
-  a.edit(bodyId, text('닫힌 뒤의 입력'))
+  // 다음 저장에서 서버가 이전 묶음을 닫고 새 묶음이 열린다. 닫힌 묶음을 다시 써서 거절당하지 않는다
+  a.edit(bodyId, text('쉰 뒤의 입력'))
+  await tick(700)
+  expect(patches()).toHaveLength(6)
+  expect(eventCount('change.finalized')).toBe(1)
+  expect(eventCount('change.created')).toBe(2)
+  expect(statusOf(a)).toBe('saved')
+})
+
+test('다른 요소로 옮겨 가면 이전 요소의 묶음을 닫는다', async () => {
+  const { open, eventCount, patches } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('먼저 고친 요소'))
+  await tick(700)
+  a.endEdit(bodyId)
+  await tick()
+  // 내용 없이 묶음만 닫는 요청이 한 번 간다
+  expect(patches().filter((call) => !patchOf(call).patch)).toHaveLength(1)
+  expect(eventCount('change.finalized')).toBe(1)
+
+  a.edit(titleId, text('다음에 고친 요소'))
   await tick(700)
   expect(eventCount('change.created')).toBe(2)
+  expect(eventCount('change.finalized')).toBe(1)
 })
 
 test('30초 넘게 이어 쓰면 묶음을 닫고 새 묶음으로 이어 간다', async () => {

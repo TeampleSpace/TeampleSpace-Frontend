@@ -247,6 +247,28 @@ test('묶음 식별자를 다른 작성자나 다른 요소가 쓰면 거절한�
   expect(element().version).toBe(2)
 })
 
+test('같은 작성자가 다른 요소를 저장하면 이전 요소의 묶음이 닫힌다', async () => {
+  const { server, client } = setup()
+  await save(client, 'key-1', saveRequest())
+
+  const otherElementId = '0193a000-0000-7000-8000-00000000e011'
+  await client.request(`/slides/${slideId}/elements/${otherElementId}`, elementSaveResultSchema, {
+    method: 'PATCH',
+    idempotencyKey: 'key-2',
+    body: saveRequest({
+      editGroupId: '0193a000-0000-7000-8000-0000000000f4',
+      clientMutationId: 'm-2',
+    }),
+  })
+  expect(eventTypes(server)).toEqual([
+    'element.updated',
+    'change.created',
+    'change.finalized',
+    'element.updated',
+    'change.created',
+  ])
+})
+
 async function readStream(response: Response, untilIncludes: string) {
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()

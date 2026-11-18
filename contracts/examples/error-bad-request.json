@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "요청 형식이 올바르지 않아요.",
+    "retryable": false
+  },
+  "requestId": "req_5f0d1c2b3a4948578695a4b3c2d1e0f9"
+}
