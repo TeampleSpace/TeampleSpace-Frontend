@@ -73,6 +73,22 @@ function readRetryAfter(response: Response): number | undefined {
   return Number.isInteger(seconds) && seconds >= 0 ? seconds : undefined
 }
 
+// 세션 조회가 끝나지 않아 뒤따르는 요청이 계속 막히는 일을 막는다
+const BOOTSTRAP_TIMEOUT_MS = 10000
+
+// 신호가 먼저 끝나면 기다리던 일은 그대로 두고 빠져나온다
+function waitUnless<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort))
+  })
+}
+
 export type ApiClient = ReturnType<typeof createApiClient>
 
 // 모든 요청은 /v1 아래로 보내고 세션 쿠키와 CSRF 토큰을 함께 싣는다
@@ -96,28 +112,33 @@ export function createApiClient(
     if (options.idempotencyKey) {
       headers['Idempotency-Key'] = options.idempotencyKey
     }
-    if (method !== 'GET') {
-      if (!csrfToken) await bootstrap()
-      if (csrfToken) headers[CSRF_HEADER] = csrfToken
-    }
 
+    // 시간 제한은 세션 조회를 기다리는 시간까지 포함해서 센다
     const signals = [
       options.signal,
       options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
     ].filter((signal) => signal !== undefined)
+    const signal = signals.length > 0 ? AbortSignal.any(signals) : undefined
 
     let response: Response
     try {
+      if (method !== 'GET') {
+        // 세션 조회는 여러 요청이 함께 기다리므로 이 요청의 신호로 끊지 않고 기다리기만 그만둔다
+        if (!csrfToken) await waitUnless(bootstrap(), signal)
+        if (csrfToken) headers[CSRF_HEADER] = csrfToken
+      }
       response = await fetchImpl(`/v1${path}`, {
         method,
         headers,
         credentials: 'same-origin',
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        signal: signals.length > 0 ? AbortSignal.any(signals) : undefined,
+        signal,
       })
     } catch (cause) {
       // 호출한 쪽에서 취소한 요청은 그대로 알린다
       if (options.signal?.aborted) throw cause
+      // 세션 조회가 실패한 이유는 바꾸지 않는다
+      if (cause instanceof ApiError || cause instanceof TransportError) throw cause
       const timedOut =
         cause instanceof DOMException && cause.name === 'TimeoutError'
       throw new TransportError(timedOut ? 'timeout' : 'network', { cause })
@@ -153,7 +174,9 @@ export function createApiClient(
 
   // 세션 컨텍스트를 읽고 CSRF 토큰을 보관한다
   function bootstrap(): Promise<SessionBootstrap> {
-    bootstrapping ??= request('/auth/bootstrap', sessionBootstrapSchema)
+    bootstrapping ??= request('/auth/bootstrap', sessionBootstrapSchema, {
+      timeoutMs: BOOTSTRAP_TIMEOUT_MS,
+    })
       .then((session) => {
         csrfToken = session.csrfToken
         return session
