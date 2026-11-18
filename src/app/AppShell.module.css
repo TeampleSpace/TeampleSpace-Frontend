@@ -1,0 +1,16 @@
+.shell { min-height: 100dvh; display: flex; }
+.sidebar { width: 264px; flex-shrink: 0; background: var(--color-subtle); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; }
+.brand { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); font: 600 18px/28px var(--font-body); text-decoration: none; }
+.brand span { color: white; background: var(--color-accent-bright); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font: 700 20px/28px var(--font-body); }
+.navigation { display: flex; flex-direction: column; gap: var(--space-20); }
+.navigation a, .account { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: var(--space-12); min-height: 48px; border-radius: var(--radius-md); font: var(--text-nav); }
+.navigation a:hover, .account:hover { background: var(--color-muted); }
+.navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-primary); }
+.navigation .search { background: var(--color-surface); border: 1px solid var(--color-border-control); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
+.account { margin-top: auto; }
+.workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-16); }
+.content { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); }
+.section { border-top: 1px solid var(--color-border); padding-top: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+.danger { color: var(--color-danger); }
+@media (max-width: 800px) { .shell { flex-direction: column; } .sidebar { width: 100%; height: auto; position: static; gap: var(--space-12); } .navigation { flex-direction: row; flex-wrap: wrap; gap: var(--space-8); } .account { margin-top: 0; } .workspace { padding: var(--space-20); } }
