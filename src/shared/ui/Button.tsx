@@ -25,7 +25,8 @@ export function Button({
       // 진행 중에는 포커스를 유지한 채 중복 실행만 막는다
       aria-disabled={loading || undefined}
       aria-busy={loading || undefined}
-      onClick={loading ? undefined : onClick}
+      // 제출 버튼이면 폼의 기본 제출도 함께 막는다. 입력란에서 Enter를 눌러도 이 클릭을 거친다
+      onClick={loading ? (event) => event.preventDefault() : onClick}
     >
       {loading && <span className={styles.spinner} aria-hidden="true" />}
       {children}
