@@ -40,10 +40,10 @@ npm run dev
 
 ## 환경변수
 
-`.env.example`을 `.env.local`로 복사해서 사용한다. `.env.local`은 저장소에 올리지 않는다.
+필요한 값은 `.env.local`을 직접 만들어 설정한다. 이 파일은 저장소에 올리지 않는다.
 
-```bash
-cp .env.example .env.local
+```dotenv
+API_PROXY_TARGET=http://localhost:8080
 ```
 
 | 이름 | 설명 |
@@ -86,4 +86,4 @@ API 클라이언트는 `src/shared/api`, 문서 형식은 `src/entities/presenta
 
 ## 협업 규칙
 
-이슈, 브랜치, 커밋, PR 작성 규칙은 팀의 협업 규칙 문서를 따른다. 기능 브랜치는 `feat/#이슈번호` 형식이고 PR 대상은 `main`이다.
+이슈, 브랜치, 커밋, PR 작성 규칙은 상위 TeampleSpace 프로젝트 루트의 `AGENTS.md`를 따른다. 기능 브랜치는 `feat/#이슈번호` 형식이고 PR 대상은 `main`이다.
