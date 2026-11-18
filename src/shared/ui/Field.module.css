@@ -17,6 +17,14 @@
   background: var(--color-surface);
   color: var(--color-ink);
   font: var(--text-lead);
+  transition:
+    border-color var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out;
+}
+
+.input:not(:disabled, [readonly], [aria-invalid='true']):hover,
+.textarea:not(:disabled, [readonly], [aria-invalid='true']):hover {
+  border-color: var(--color-secondary);
 }
 
 .textarea {
