@@ -70,6 +70,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | `Idempotency-Key` | 문서를 바꾸는 모든 요청에 필수. 재시도할 때 같은 값을 다시 보낸다 |
 | `Retry-After` | 429, 다시 시도할 수 있는 503, `REQUEST_IN_PROGRESS` 응답에 초 단위로 온다 |
 | `Last-Event-ID` | 이벤트 구독을 다시 연결할 때 마지막으로 받은 eventId를 보낸다 |
+| `X-Request-Id` | 모든 응답에 서버가 만든 요청 식별자가 온다. 오류 본문의 `requestId`와 같은 값이다 |
 
 ## 문서 형식
 
@@ -171,6 +172,9 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - 묶음만 닫는 요청은 세대만 확인하고 `baseVersion`은 확인하지 않는 것
 - 같은 편집 세션이 다른 요소를 저장하면 서버가 이전 묶음을 닫는 것. 편집 세션을 식별하는 방법은 인증 기능을 만들 때 정한다
 - 묶음 식별자를 다른 작성자, 다른 편집 세션, 다른 요소가 쓰면 `VALIDATION_FAILED`로 거절하는 것
+- 한글 줄바꿈을 낱말 단위로 할지 글자 단위로 할지. 출력 실험에서 보는 프로그램마다 달랐다
+- 요청 식별자 응답 헤더 이름 `X-Request-Id`와 예상하지 못한 서버 오류의 코드 `INTERNAL_ERROR`
+- 없는 경로 외에 스프링이 직접 거절하는 요청 오류의 코드. 지금은 공통 오류 형식으로 바꾸지 않는다
 - 출처를 PPTX와 PDF에 표시하는 방식
 
 값이 정해지지 않아 예제를 비워 둔 항목도 있다. 업로드 허용 형식과 크기, 지원 글꼴, 약관 문서, 내보내기 형식이 그렇다.

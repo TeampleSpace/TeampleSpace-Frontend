@@ -3,6 +3,8 @@ import {
   elementSchema,
 } from '../entities/presentation/schema.ts'
 import type { EditorSnapshot, Element } from '../entities/presentation/schema.ts'
+import errorCodes from '../../contracts/error-codes.json'
+import { REQUEST_ID_HEADER } from '../shared/api/contract.ts'
 import type { EventEnvelope } from '../shared/api/contract.ts'
 
 // 공통 계약의 저장, 멱등, 이력 묶음, 이벤트 규칙을 메모리에서 흉내 내는 가짜 서버다
@@ -58,22 +60,41 @@ export function createMockServer(
     delayMs: 0,
     // 반영은 하고 응답만 잃는다
     dropNextResponse: false,
+    // 다음 저장 요청을 이 오류 코드로 거절한다. 반영하지 않는다
+    failNextCode: '',
     // 이벤트를 두 번씩 보낸다
     duplicateEvents: false,
   }
 
+  const nextRequestId = () => `req_mock_${(requestSeq += 1)}`
+
+  // 모든 응답에 요청 식별자 헤더를 싣는다. 오류 본문의 requestId와 같은 값이다
   function json(status: number, body: unknown, headers: Record<string, string> = {}) {
+    const inBody = (body as { requestId?: unknown } | null)?.requestId
     return new Response(JSON.stringify(body), {
       status,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: {
+        'Content-Type': 'application/json',
+        [REQUEST_ID_HEADER]: typeof inBody === 'string' ? inBody : nextRequestId(),
+        ...headers,
+      },
     })
   }
 
+  // 오류의 상태와 재시도 여부는 계약의 오류 코드 목록에서 읽는다
+  function contractOf(code: string) {
+    const entry = errorCodes.codes.find((candidate) => candidate.code === code)
+    if (!entry || entry.httpStatus === null) {
+      throw new Error(`mock: 계약에 없는 오류 코드 ${code}`)
+    }
+    return { status: entry.httpStatus, retryable: entry.retryable }
+  }
+  const statusOf = (code: string) => contractOf(code).status
+
   function errorBody(code: string, message: string, extra: object = {}) {
-    requestSeq += 1
     return {
-      error: { code, message, retryable: false, ...extra },
-      requestId: `req_mock_${requestSeq}`,
+      error: { code, message, retryable: contractOf(code).retryable, ...extra },
+      requestId: nextRequestId(),
     }
   }
 
@@ -141,7 +162,12 @@ export function createMockServer(
   ): Promise<Response> {
     const key = new Headers(init.headers).get('Idempotency-Key')
     if (!key) {
-      return json(400, errorBody('IDEMPOTENCY_KEY_REQUIRED', '멱등 키가 필요해요.'))
+      return json(statusOf('IDEMPOTENCY_KEY_REQUIRED'), errorBody('IDEMPOTENCY_KEY_REQUIRED', '멱등 키가 필요해요.'))
+    }
+    if (faults.failNextCode) {
+      const code = faults.failNextCode
+      faults.failNextCode = ''
+      return json(statusOf(code), errorBody(code, '요청을 처리하지 못했어요.'))
     }
     const body = String(init.body)
     const resultKey = `${actorId} PATCH ${path} ${key}`
@@ -150,12 +176,12 @@ export function createMockServer(
     const stored = results.get(resultKey)
     if (stored) {
       if (stored.body !== body) {
-        return json(409, errorBody('IDEMPOTENCY_KEY_REUSED', '같은 키로 다른 요청을 보냈어요.'))
+        return json(statusOf('IDEMPOTENCY_KEY_REUSED'), errorBody('IDEMPOTENCY_KEY_REUSED', '같은 키로 다른 요청을 보냈어요.'))
       }
       if (stored.pending) {
         return json(
-          409,
-          errorBody('REQUEST_IN_PROGRESS', '같은 요청을 처리하고 있어요.', { retryable: true }),
+          statusOf('REQUEST_IN_PROGRESS'),
+          errorBody('REQUEST_IN_PROGRESS', '같은 요청을 처리하고 있어요.'),
           { 'Retry-After': '1' },
         )
       }
@@ -176,10 +202,10 @@ export function createMockServer(
     let status = 200
     let response: unknown
     if (!slide || index < 0) {
-      status = 404
+      status = statusOf('NOT_FOUND')
       response = errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')
     } else if (!request.success) {
-      status = 422
+      status = statusOf('VALIDATION_FAILED')
       response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
     } else {
       const element = slide.elements[index]
@@ -195,7 +221,7 @@ export function createMockServer(
         // 내용 없이 묶음만 닫는 요청은 요소 버전을 검사하지 않는다
         (patch && request.data.baseVersion !== element.version)
       ) {
-        status = 409
+        status = statusOf('VERSION_CONFLICT')
         response = errorBody('VERSION_CONFLICT', '이후 수정이 있어요.', {
           fieldErrors: [],
           currentVersions: {
@@ -205,13 +231,17 @@ export function createMockServer(
             presentationVersion: doc.version,
           },
         })
+      } else if (group && (group.actorId !== actorId || group.elementId !== elementId)) {
+        // 묶음 식별자를 다른 작성자나 다른 요소가 쓰면 거절한다
+        status = statusOf('VALIDATION_FAILED')
+        response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
       } else if (group?.closed || (!group && !patch)) {
-        status = 409
+        status = statusOf('EDIT_GROUP_CLOSED')
         response = errorBody('EDIT_GROUP_CLOSED', '이미 닫힌 편집 묶음이에요.', {
           currentVersions: { generation: doc.generation, elementVersion: element.version },
         })
       } else if (next && !next.success) {
-        status = 422
+        status = statusOf('VALIDATION_FAILED')
         response = errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })
       } else {
         // 다른 작성자가 같은 요소를 고치면 열려 있던 묶음을 닫는다
@@ -369,7 +399,7 @@ export function createMockServer(
     const save =
       method === 'PATCH' && path.match(/^\/v1\/slides\/([^/]+)\/elements\/([^/]+)$/)
     if (save) return saveElement(actorId, path, save[1], save[2], init)
-    return json(404, errorBody('NOT_FOUND', '대상을 찾을 수 없어요.'))
+    return json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.'))
   }
 
   // 사용자 한 명의 브라우저 세션이 쓰는 fetch를 만든다

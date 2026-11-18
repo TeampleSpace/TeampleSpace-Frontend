@@ -84,6 +84,17 @@ test('계약과 다른 응답은 성공으로 처리하지 않는다', async () 
   })
 })
 
+test('공통 오류 형식이 아닌 응답도 헤더의 요청 식별자로 추적할 수 있다', async () => {
+  const client = createApiClient(
+    fakeFetch(() => json(400, { status: 400 }, { 'X-Request-Id': 'req_from_header' })),
+  )
+  await expect(client.request('/x', okSchema)).rejects.toMatchObject({
+    kind: 'invalid_response',
+    status: 400,
+    requestId: 'req_from_header',
+  })
+})
+
 test('응답을 받지 못한 경우를 서버 오류와 구분한다', async () => {
   const offline = createApiClient(
     fakeFetch(() => {

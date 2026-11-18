@@ -278,6 +278,29 @@ test('요청이 서버에 닿지 못했을 때도 같은 요청으로 다시 보
   expect(statusOf(a)).toBe('saved')
 })
 
+test('서버 내부 오류는 자동으로 다시 보내지 않고 입력을 남기며 다시 시도하면 같은 요청을 보낸다', async () => {
+  const { server, open, patches, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+  server.faults.failNextCode = 'INTERNAL_ERROR'
+
+  a.edit(bodyId, text('서버 오류 시험'))
+  await tick(600)
+  expect(statusOf(a)).toBe('failed')
+  expect(textOf(a)).toBe('서버 오류 시험')
+  expect(serverText()).not.toBe('서버 오류 시험')
+
+  await tick(10000)
+  expect(patches()).toHaveLength(1)
+
+  a.retry(bodyId)
+  await tick()
+  expect(patches()[1].key).toBe(patches()[0].key)
+  expect(patches()[1].body).toBe(patches()[0].body)
+  expect(serverText()).toBe('서버 오류 시험')
+  expect(statusOf(a)).toBe('saved')
+})
+
 test('다른 사람이 먼저 저장했으면 덮어쓰지 않고 두 내용을 함께 남긴다', async () => {
   const { open, patches, saveDirectly, serverText } = setup()
   // 다른 사람의 변경 이벤트를 받기 전에 저장을 시도하는 상황

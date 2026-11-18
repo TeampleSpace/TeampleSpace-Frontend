@@ -221,6 +221,32 @@ test('다른 작성자가 같은 요소를 고치면 열려 있던 묶음이 닫
   ])
 })
 
+test('모든 응답에 요청 식별자 헤더가 오고 오류 본문의 값과 같다', async () => {
+  const { server } = setup()
+  const fetchA = server.fetchAs(userA)
+  const ok = await fetchA(`/v1/projects/${projectId}/sync-snapshot?scope=editor`)
+  expect(ok.headers.get('X-Request-Id')).toMatch(/^req_/)
+
+  const missing = await fetchA('/v1/no-such-path')
+  const body = (await missing.json()) as { error: { code: string }; requestId: string }
+  expect(missing.status).toBe(404)
+  expect(body.error.code).toBe('NOT_FOUND')
+  expect(missing.headers.get('X-Request-Id')).toBe(body.requestId)
+})
+
+test('묶음 식별자를 다른 작성자나 다른 요소가 쓰면 거절한다', async () => {
+  const { client, other, element } = setup()
+  await save(client, 'key-a', saveRequest())
+
+  const error = await save(
+    other,
+    'key-b',
+    saveRequest({ baseVersion: 2, clientMutationId: 'm-b' }),
+  ).catch((e: unknown) => e)
+  expect(error).toMatchObject({ status: 422, code: 'VALIDATION_FAILED' })
+  expect(element().version).toBe(2)
+})
+
 async function readStream(response: Response, untilIncludes: string) {
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()

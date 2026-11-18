@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import {
   CSRF_HEADER,
+  REQUEST_ID_HEADER,
   errorBodySchema,
   sessionBootstrapSchema,
 } from './contract.ts'
@@ -50,12 +51,18 @@ export class ApiError extends Error {
 export class TransportError extends Error {
   readonly kind: 'network' | 'timeout' | 'invalid_response'
   readonly status?: number
+  // 응답 헤더로 받은 요청 식별자. 본문을 읽지 못해도 서버 로그와 이어 볼 수 있다
+  readonly requestId?: string
 
-  constructor(kind: TransportError['kind'], status?: number, cause?: unknown) {
-    super(`요청 결과를 확인하지 못했습니다 (${kind})`, { cause })
+  constructor(
+    kind: TransportError['kind'],
+    details: { status?: number; requestId?: string; cause?: unknown } = {},
+  ) {
+    super(`요청 결과를 확인하지 못했습니다 (${kind})`, { cause: details.cause })
     this.name = 'TransportError'
     this.kind = kind
-    this.status = status
+    this.status = details.status
+    this.requestId = details.requestId
   }
 }
 
@@ -113,7 +120,7 @@ export function createApiClient(
       if (options.signal?.aborted) throw cause
       const timedOut =
         cause instanceof DOMException && cause.name === 'TimeoutError'
-      throw new TransportError(timedOut ? 'timeout' : 'network', undefined, cause)
+      throw new TransportError(timedOut ? 'timeout' : 'network', { cause })
     }
 
     const json: unknown =
@@ -121,10 +128,13 @@ export function createApiClient(
         ? undefined
         : await response.json().catch(() => undefined)
 
+    // 서버는 모든 응답에 요청 식별자를 싣는다
+    const requestId = response.headers.get(REQUEST_ID_HEADER) ?? undefined
+
     if (!response.ok) {
       const error = errorBodySchema.safeParse(json)
       if (!error.success) {
-        throw new TransportError('invalid_response', response.status)
+        throw new TransportError('invalid_response', { status: response.status, requestId })
       }
       throw new ApiError(response.status, error.data, readRetryAfter(response))
     }
@@ -132,7 +142,11 @@ export function createApiClient(
     // 계약과 다른 성공 응답을 조용히 통과시키지 않는다
     const parsed = schema.safeParse(json)
     if (!parsed.success) {
-      throw new TransportError('invalid_response', response.status, parsed.error)
+      throw new TransportError('invalid_response', {
+        status: response.status,
+        requestId,
+        cause: parsed.error,
+      })
     }
     return parsed.data
   }

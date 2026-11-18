@@ -17,6 +17,7 @@
     { "code": "VALIDATION_FAILED", "httpStatus": 422, "retryable": false, "decided": false, "meaning": "입력이 올바르지 않다. fieldErrors를 함께 돌려준다" },
     { "code": "RATE_LIMITED", "httpStatus": 429, "retryable": true, "decided": false, "meaning": "요청이 너무 잦다. Retry-After를 함께 돌려준다" },
     { "code": "SERVICE_UNAVAILABLE", "httpStatus": 503, "retryable": true, "decided": false, "meaning": "일시적으로 처리할 수 없다. 다시 시도할 수 있으면 Retry-After를 함께 돌려준다" },
+    { "code": "INTERNAL_ERROR", "httpStatus": 500, "retryable": false, "decided": false, "meaning": "서버가 예상하지 못한 오류로 처리하지 못했다. 내부 정보는 응답에 넣지 않는다" },
     { "code": "JOB_INPUT_STALE", "httpStatus": null, "retryable": false, "decided": true, "meaning": "작업 결과를 게시할 때 입력이 바뀌어 있었다. HTTP 오류가 아니라 작업의 error.code로 전달한다" }
   ]
 }
