@@ -9,6 +9,11 @@
   overflow: hidden;
 }
 
+.confirm {
+  width: min(var(--dialog-width-confirm), calc(100vw - 32px));
+  border-radius: var(--radius-xl);
+}
+
 .form {
   width: min(var(--dialog-width-form), calc(100vw - 32px));
   border-radius: var(--radius-xl);
@@ -27,6 +32,7 @@
   overflow-y: auto;
 }
 
+.confirm .panel,
 .form .panel {
   gap: var(--space-24);
   padding: var(--space-32);
@@ -80,6 +86,12 @@
   padding-top: var(--space-8);
 }
 
+.confirm .footer {
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding-top: 0;
+}
+
 .form .footer {
   justify-content: flex-end;
   min-height: var(--control-height);
@@ -89,6 +101,7 @@
 
 @media (max-width: 480px) {
   .panel,
+  .confirm .panel,
   .form .panel {
     padding: var(--space-20);
   }
