@@ -6,6 +6,7 @@ import apiSchema from '../../../contracts/schemas/api.schema.json'
 import documentSchema from '../../../contracts/schemas/document.schema.json'
 import stageSchema from '../../../contracts/schemas/stage-1.schema.json'
 import { authCapabilitiesSchema, userSchema, challengeSchema, loginSchema } from '../../features/auth/model.ts'
+import { projectSchema, projectListSchema, memberListSchema, invitationSchema, acceptSchema, removalSchema } from '../../features/projects/model.ts'
 import {
   editorSnapshotSchema,
   elementChangeSchema,
@@ -61,6 +62,12 @@ const frontendSchemas = [
   ['stage-1.schema.json#/$defs/User', userSchema],
   ['stage-1.schema.json#/$defs/ChallengeResponse', challengeSchema],
   ['stage-1.schema.json#/$defs/LoginResponse', loginSchema],
+  ['stage-1.schema.json#/$defs/Project', projectSchema],
+  ['stage-1.schema.json#/$defs/ProjectList', projectListSchema],
+  ['stage-1.schema.json#/$defs/MemberList', memberListSchema],
+  ['stage-1.schema.json#/$defs/InvitationPreview', invitationSchema],
+  ['stage-1.schema.json#/$defs/InvitationAccepted', acceptSchema],
+  ['stage-1.schema.json#/$defs/RemoveMemberResponse', removalSchema],
   [api('SyncSnapshot'), editorSnapshotSchema],
 ] as const
 

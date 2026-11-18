@@ -5,7 +5,7 @@
 .navigation { display: flex; flex-direction: column; gap: var(--space-20); }
 .navigation a, .account { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: var(--space-12); min-height: 48px; border-radius: var(--radius-md); font: var(--text-nav); }
 .navigation a:hover, .account:hover { background: var(--color-muted); }
-.navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-primary); }
+.navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-primary); background: var(--color-primary-soft); }
 .navigation .search { background: var(--color-surface); border: 1px solid var(--color-border-control); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
 .account { margin-top: auto; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
