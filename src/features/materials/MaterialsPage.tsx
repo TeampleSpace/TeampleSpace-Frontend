@@ -16,6 +16,7 @@ import { MaterialDetail } from './MaterialDetail.tsx'
 import type { ManageAction } from './MaterialDetail.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
 import { MaterialNote } from './MaterialNote.tsx'
+import { MaterialJob } from './MaterialJob.tsx'
 import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from './model.ts'
 import type { Material, MaterialKind, MaterialList, MaterialSummary } from './model.ts'
 import styles from './Materials.module.css'
@@ -280,7 +281,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
 
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
-          onRetry={() => void reprocess()} onManage={setView}>
+          onRetry={() => void reprocess()} onManage={setView}
+          jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}>
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}
         {!visible && selectedId && gone && <div className={styles.guidance}>

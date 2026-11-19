@@ -151,6 +151,31 @@ test('분석 실패는 파일을 다시 올리지 않고 같은 키로 다시 �
   expect(mock.calls.some((call) => call.path.includes('/uploads'))).toBe(false)
 })
 
+test('분석 취소 응답을 잃어도 작업을 조회해 취소를 확인하고 원본으로 다시 시도한다', async () => {
+  mock.faults.holdAnalysis = true
+  mock.seed('file', '취소할 보고서.pdf', { status: 'processing' })
+  mount()
+  mock.faults.dropNextResponse = '/cancel'
+  fireEvent.click(await screen.findByRole('button', { name: '분석 취소' }))
+  expect(await screen.findByText('분석을 취소했어요')).toBeTruthy()
+  expect(mock.jobs()[0].status).toBe('canceled')
+  expect(mock.calls.some((call) => call.method === 'GET' && call.path.includes('/jobs/'))).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+  expect(await screen.findByText('자료를 정리하고 있어요')).toBeTruthy()
+  expect(mock.jobs()).toHaveLength(2)
+})
+
+test('다른 팀원의 분석 취소 거절은 자료와 미저장 메모를 가리지 않는다', async () => {
+  mock.faults.holdAnalysis = true
+  mock.seed('file', '소유자의 보고서.pdf', { status: 'processing' })
+  actor = member
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '분석 취소' }))
+  expect(await screen.findByText('이 작업을 할 권한이 없습니다')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '소유자의 보고서.pdf' })).toBeTruthy()
+  expect(mock.jobs()[0].status).toBe('running')
+})
+
 test('이름 변경이 충돌하면 입력을 남기고 최신 정보를 확인한 뒤 다시 저장한다', async () => {
   const id = mock.seed('memo', '회의록')
   mount()

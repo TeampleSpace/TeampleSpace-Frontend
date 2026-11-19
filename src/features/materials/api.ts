@@ -31,6 +31,7 @@ export function createMaterialsApi(client: ApiClient) {
     saveNote: (id: string, expectedVersion: number, markdown: string) =>
       client.request(`/materials/${segment(id)}/note`, materialNoteSavedSchema, { method: 'PUT', body: { expectedVersion, markdown }, timeoutMs: 15000 }),
     job: (id: string, signal?: AbortSignal) => client.request(`/jobs/${segment(id)}`, jobSchema, { timeoutMs: 10000, signal }),
+    cancelJob: (id: string) => client.request(`/jobs/${segment(id)}/cancel`, jobSchema, { method: 'POST', timeoutMs: 15000 }),
   }
 }
 export type MaterialsApi = ReturnType<typeof createMaterialsApi>
