@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import styles from './Modal.module.css'
@@ -7,7 +7,10 @@ type Props = {
   open: boolean
   title: string
   description?: string
-  size?: 'dialog' | 'confirm' | 'form' | 'team' | 'invite'
+  // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
+  // form은 입력이 여러 개인 760px 모달, viewer는 원문을 보는 960px 모달이다
+  size?: 'dialog' | 'confirm' | 'form' | 'viewer' | 'team' | 'invite'
+  minHeight?: number
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -20,6 +23,7 @@ export function Modal({
   title,
   description,
   size = 'dialog',
+  minHeight,
   onClose,
   children,
   footer,
@@ -41,6 +45,11 @@ export function Modal({
     }
     if (!open && dialog.open) dialog.close()
   }, [open, title])
+  // 열린 채로 화면에서 빠질 때도 먼저 닫아서 포커스를 호출한 곳으로 돌려준다
+  useLayoutEffect(() => {
+    const dialog = ref.current
+    return () => { if (dialog?.open) dialog.close() }
+  }, [])
 
   const descriptionText = description && (
     <p id={descriptionId} className={styles.description}>
@@ -63,22 +72,22 @@ export function Modal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={styles.panel}>
+      <div className={styles.panel} style={minHeight ? { minHeight: `min(${minHeight}px, calc(100dvh - 32px))` } : undefined}>
         <header className={styles.header}>
           <div className={styles.titles}>
             <h2 id={titleId} className={styles.title}>
               {title}
             </h2>
             {/* 입력 모달은 설명을 제목 바로 아래에 둔다 */}
-            {(size === 'form' || size === 'invite') && descriptionText}
+            {(size === 'form' || size === 'viewer' || size === 'invite') && descriptionText}
           </div>
           <Button variant="text" onClick={onClose}>
             닫기
           </Button>
         </header>
-        {size !== 'form' && size !== 'invite' && descriptionText}
+        {size !== 'form' && size !== 'viewer' && size !== 'invite' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
-        {footer && <footer className={styles.footer}>{footer}</footer>}
+        {footer && <footer className={styles.footer} style={minHeight ? { marginTop: 'auto' } : undefined}>{footer}</footer>}
       </div>
     </dialog>
   )

@@ -71,6 +71,12 @@
           "description": "여러 요소를 다루는 요청에서 요소 식별자별 현재 버전",
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/Version" }
+        },
+        "noteVersion": {
+          "description": "자료 팀 메모의 현재 버전. 아직 쓰지 않은 메모는 0이다",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       }
     },
@@ -418,12 +424,13 @@
       "description": "자료별 팀 공유 메모. 아직 쓰지 않은 메모는 version 0이다",
       "type": "object",
       "additionalProperties": false,
-      "required": ["materialId", "markdown", "version", "updatedBy", "updatedAt"],
+      "required": ["materialId", "markdown", "version", "updatedBy", "updatedByName", "updatedAt"],
       "properties": {
         "materialId": { "$ref": "#/$defs/Uuid" },
-        "markdown": { "type": "string" },
+        "markdown": { "type": "string", "maxLength": 20000 },
         "version": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
         "updatedBy": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "updatedByName": { "description": "마지막으로 저장한 사람의 표시 이름", "type": ["string", "null"] },
         "updatedAt": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] }
       }
     },
@@ -433,7 +440,7 @@
       "required": ["expectedVersion", "markdown"],
       "properties": {
         "expectedVersion": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "markdown": { "type": "string" }
+        "markdown": { "type": "string", "maxLength": 20000 }
       }
     },
     "MaterialNoteSaveResponse": {

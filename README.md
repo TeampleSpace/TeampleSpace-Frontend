@@ -37,6 +37,7 @@ npm run dev
 | `npm test` | Vitest 단위 테스트 |
 | `npm run contracts:check` | 계약 복사본이 백엔드 `main`에 커밋된 계약과 같은지 확인 |
 | `npm run preview` | 빌드 결과 미리보기 |
+| `npm run dev -- --mode mock` | 서버 없이 자료 화면을 메모리 모킹으로 확인하는 개발 전용 모드. 실제 서버 연동을 대신하지 않는다 |
 
 ## 환경변수
 
@@ -58,7 +59,7 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 
 ## 디자인 기준
 
-공통 스타일과 기본 UI는 피그마 Product Design 파일의 제품 화면을 기준으로 한다. 확인한 화면, 반영한 값, 설계서나 컴포넌트 정의와 화면이 서로 다른 부분은 `docs/design-notes.md`에 정리한다.
+공통 스타일과 기본 UI는 피그마 Product Design 파일의 제품 화면을 기준으로 한다. 확인한 화면, 반영한 값, 설계서나 컴포넌트 정의와 화면이 서로 다른 부분은 `../Docs/fe/design-notes.md`에 정리한다.
 
 ## 개발용 화면
 
@@ -70,7 +71,7 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 | `/dev/editor` | 공유 문서 예제로 한글 입력, 선택, 확대, 저장 흐름을 확인하는 편집 실험. 모킹 서버로 동작한다 |
 | `/dev/reference` | 백엔드의 PPTX, PDF 출력과 비교할 기준 화면. 같은 예제 문서를 문서 좌표 그대로 그린다 |
 
-편집 실험의 확인 기록은 `docs/editor-experiment.md`, 파일 출력 비교 기준과 결과는 `docs/output-comparison.md`에 있다.
+편집 실험의 확인 기록은 `../Docs/fe/editor-experiment.md`, 파일 출력 비교 기준과 결과는 `../Docs/fe/output-comparison.md`에 있다.
 
 ## 서버 계약
 
@@ -78,11 +79,11 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 
 테스트는 복사본을 기준으로 돌기 때문에 복사본이 오래되어도 통과한다. 복사본이 최신인지는 `npm run contracts:check`로 확인한다. 백엔드 저장소를 옆 폴더 `../Backend`에 받아 두면 그 저장소의 `main`에 커밋된 계약과 비교하고, CI에서도 같은 검사를 따로 돌린다. 다르다고 나오면 폴더를 통째로 다시 복사하고 `npm test`로 어긋난 곳을 확인한다.
 
-API 클라이언트는 `src/shared/api`, 문서 형식은 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 복사한 커밋, 아직 합의되지 않은 항목, 확인 기록은 `docs/contract-notes.md`에 정리한다.
+API 클라이언트는 `src/shared/api`, 문서 형식은 `src/entities/presentation`에 있다. 서버가 준비되기 전에는 `src/mocks/server.ts`의 모킹 서버로 확인한다. 복사한 커밋, 아직 합의되지 않은 항목, 확인 기록은 `../Docs/fe/contract-notes.md`에 정리한다.
 
 ## 진행 상태
 
-기반 작업의 구현, 자동 검증, 사람의 확인 대기 상태는 `docs/foundation-status.md`에 정리한다.
+기반 작업의 구현, 자동 검증, 사람의 확인 대기 상태는 `../Docs/fe/foundation-status.md`에 정리한다.
 
 ## 협업 규칙
 

@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": "UPLOAD_REJECTED",
+    "message": "파일을 확인하지 못했어요. 다시 선택해 주세요.",
+    "retryable": false,
+    "fieldErrors": [
+      {
+        "field": "file",
+        "code": "CHECKSUM_MISMATCH",
+        "message": "전송한 파일이 처음 선택한 파일과 달라요."
+      }
+    ]
+  },
+  "requestId": "req_01JD3Z8K4R"
+}

@@ -1,0 +1,56 @@
+{
+  "items": [
+    {
+      "id": "0193a000-0000-7000-8000-0000000000b1",
+      "projectId": "0193a000-0000-7000-8000-000000000001",
+      "kind": "file",
+      "title": "교내 일회용품 조사.pdf",
+      "status": "ready",
+      "version": 2,
+      "pageCount": 6,
+      "createdBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d1",
+        "name": "팀원 1"
+      },
+      "createdAt": "2026-11-19T05:20:00.000000Z",
+      "updatedAt": "2026-11-19T05:20:08.000000Z"
+    },
+    {
+      "id": "0193a000-0000-7000-8000-0000000000b2",
+      "projectId": "0193a000-0000-7000-8000-000000000001",
+      "kind": "link",
+      "title": "example.com",
+      "status": "processing",
+      "version": 1,
+      "pageCount": null,
+      "createdBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d2",
+        "name": "팀원 2"
+      },
+      "createdAt": "2026-11-19T05:20:00.000000Z",
+      "updatedAt": "2026-11-19T05:20:00.000000Z"
+    },
+    {
+      "id": "0193a000-0000-7000-8000-0000000000b3",
+      "projectId": "0193a000-0000-7000-8000-000000000001",
+      "kind": "memo",
+      "title": "다회용컵 사용 인터뷰",
+      "status": "ready",
+      "version": 1,
+      "pageCount": null,
+      "createdBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d2",
+        "name": "팀원 2"
+      },
+      "createdAt": "2026-11-19T05:20:00.000000Z",
+      "updatedAt": "2026-11-19T05:20:00.000000Z"
+    }
+  ],
+  "nextCursor": null,
+  "counts": {
+    "all": 3,
+    "file": 1,
+    "link": 1,
+    "memo": 1
+  }
+}

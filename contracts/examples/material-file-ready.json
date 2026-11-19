@@ -1,0 +1,60 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000b1",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "kind": "file",
+  "title": "교내 일회용품 조사.pdf",
+  "description": null,
+  "status": "ready",
+  "version": 2,
+  "pageCount": 6,
+  "createdBy": {
+    "userId": "0193a000-0000-7000-8000-0000000000d1",
+    "name": "팀원 1"
+  },
+  "createdAt": "2026-11-19T05:20:00.000000Z",
+  "updatedAt": "2026-11-19T05:20:08.000000Z",
+  "source": {
+    "fileName": "교내 일회용품 조사.pdf",
+    "mimeType": "application/pdf",
+    "sizeBytes": 482113,
+    "url": null
+  },
+  "currentRevision": {
+    "id": "0193a000-0000-7000-8000-0000000000e1",
+    "sourceVersion": 1,
+    "pageCount": 6,
+    "summary": null,
+    "excerpt": {
+      "text": "다회용컵 사용 여부에는 반납 장소까지의 거리와 이용 가능한 시간대가 영향을 주었다.",
+      "page": 3
+    },
+    "createdBy": {
+      "userId": "0193a000-0000-7000-8000-0000000000d1",
+      "name": "팀원 1"
+    },
+    "createdAt": "2026-11-19T05:20:08.000000Z"
+  },
+  "job": {
+    "id": "0193a000-0000-7000-8000-0000000000f7",
+    "projectId": "0193a000-0000-7000-8000-000000000001",
+    "type": "material_analysis",
+    "status": "succeeded",
+    "progress": 100,
+    "targetType": "material",
+    "targetId": "0193a000-0000-7000-8000-0000000000b1",
+    "attempt": 1,
+    "inputVersions": {
+      "materialVersion": 1
+    },
+    "resultRef": {
+      "materialId": "0193a000-0000-7000-8000-0000000000b1",
+      "revisionId": "0193a000-0000-7000-8000-0000000000e1"
+    },
+    "error": null,
+    "cancelRequestedAt": null,
+    "createdAt": "2026-11-19T05:20:00.000000Z",
+    "updatedAt": "2026-11-19T05:20:08.000000Z",
+    "finishedAt": "2026-11-19T05:20:08.000000Z"
+  },
+  "canDelete": true
+}

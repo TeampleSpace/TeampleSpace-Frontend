@@ -1,0 +1,43 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000b2",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "kind": "link",
+  "title": "example.com",
+  "description": "감축 사례 참고",
+  "status": "processing",
+  "version": 1,
+  "pageCount": null,
+  "createdBy": {
+    "userId": "0193a000-0000-7000-8000-0000000000d2",
+    "name": "팀원 2"
+  },
+  "createdAt": "2026-11-19T05:20:00.000000Z",
+  "updatedAt": "2026-11-19T05:20:00.000000Z",
+  "source": {
+    "fileName": null,
+    "mimeType": null,
+    "sizeBytes": null,
+    "url": "https://example.com/reuse-cup"
+  },
+  "currentRevision": null,
+  "job": {
+    "id": "0193a000-0000-7000-8000-0000000000f8",
+    "projectId": "0193a000-0000-7000-8000-000000000001",
+    "type": "material_analysis",
+    "status": "queued",
+    "progress": 0,
+    "targetType": "material",
+    "targetId": "0193a000-0000-7000-8000-0000000000b2",
+    "attempt": 0,
+    "inputVersions": {
+      "materialVersion": 1
+    },
+    "resultRef": null,
+    "error": null,
+    "cancelRequestedAt": null,
+    "createdAt": "2026-11-19T05:20:00.000000Z",
+    "updatedAt": "2026-11-19T05:20:00.000000Z",
+    "finishedAt": null
+  },
+  "canDelete": false
+}

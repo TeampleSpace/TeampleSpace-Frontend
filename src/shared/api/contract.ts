@@ -33,6 +33,8 @@ export const currentVersionsSchema = z.object({
   slideVersion: version.optional(),
   elementVersion: version.optional(),
   elementVersions: z.record(z.string(), version).optional(),
+  // 팀 메모는 아직 쓰지 않았으면 0이다
+  noteVersion: z.number().int().min(0).optional(),
 })
 export type CurrentVersions = z.infer<typeof currentVersionsSchema>
 

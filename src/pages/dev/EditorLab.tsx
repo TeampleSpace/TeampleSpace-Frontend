@@ -188,7 +188,7 @@ export default function EditorLab() {
             </li>
           ))}
         </ol>
-        <p>결과는 실행일, 브라우저, 입력기와 함께 docs/editor-experiment.md의 표에 적는다</p>
+        <p>결과는 실행일, 브라우저, 입력기와 함께 ../Docs/fe/editor-experiment.md의 표에 적는다</p>
       </details>
 
       <div className={styles.panels}>

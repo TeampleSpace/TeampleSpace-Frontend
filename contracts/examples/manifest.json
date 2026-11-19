@@ -243,5 +243,195 @@
     "example": "member-remove-response.json",
     "schema": "stage-1.schema.json#/$defs/RemoveMemberResponse",
     "valid": true
+  },
+  {
+    "example": "job-material-analysis-queued.json",
+    "schema": "api.schema.json#/$defs/Job",
+    "valid": true
+  },
+  {
+    "example": "job-material-analysis-failed.json",
+    "schema": "api.schema.json#/$defs/Job",
+    "valid": true
+  },
+  {
+    "example": "material-file-ready.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": true
+  },
+  {
+    "example": "material-link-processing.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": true
+  },
+  {
+    "example": "material-link-failed.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": true
+  },
+  {
+    "example": "material-memo.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": true
+  },
+  {
+    "example": "material-list.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialList",
+    "valid": true
+  },
+  {
+    "example": "material-list-empty.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialList",
+    "valid": true
+  },
+  {
+    "example": "upload-request.json",
+    "schema": "stage-2.schema.json#/$defs/UploadRequest",
+    "valid": true
+  },
+  {
+    "example": "upload-ticket.json",
+    "schema": "stage-2.schema.json#/$defs/UploadTicket",
+    "valid": true
+  },
+  {
+    "example": "material-file-request.json",
+    "schema": "stage-2.schema.json#/$defs/FileMaterialRequest",
+    "valid": true
+  },
+  {
+    "example": "material-link-request.json",
+    "schema": "stage-2.schema.json#/$defs/LinkMaterialRequest",
+    "valid": true
+  },
+  {
+    "example": "material-memo-request.json",
+    "schema": "stage-2.schema.json#/$defs/MemoMaterialRequest",
+    "valid": true
+  },
+  {
+    "example": "material-created-file.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": true
+  },
+  {
+    "example": "material-created-memo.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": true
+  },
+  {
+    "example": "material-patch-request.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialPatchRequest",
+    "valid": true
+  },
+  {
+    "example": "material-delete-request.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialDeleteRequest",
+    "valid": true
+  },
+  {
+    "example": "material-deleted.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialDeleted",
+    "valid": true
+  },
+  {
+    "example": "material-source-file.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSource",
+    "valid": true
+  },
+  {
+    "example": "material-source-memo.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSource",
+    "valid": true
+  },
+  {
+    "example": "material-source-link.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSource",
+    "valid": true
+  },
+  {
+    "example": "error-upload-rejected.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-material-version-conflict.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "error-note-version-conflict.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "invalid/material-unknown-status.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSummary",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-patch-without-change.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialPatchRequest",
+    "valid": false
+  },
+  {
+    "example": "invalid/upload-request-uppercase-checksum.json",
+    "schema": "stage-2.schema.json#/$defs/UploadRequest",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-source-kind-mismatch.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSource",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-source-without-content.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSource",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-ready-without-revision.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-file-without-origin.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-memo-with-job.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-created-file-without-job.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-created-memo-with-job.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-memo-processing.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-link-with-page-count.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-page-count-without-revision.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-summary-memo-processing.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSummary",
+    "valid": false
   }
 ]

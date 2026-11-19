@@ -5,6 +5,45 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-19 자료와 작업 처리 계약 추가
+
+자료 기능 구현에 앞서 정리한 계약이다. 경로별 구현 상태는 `README.md`의 표를 본다.
+프론트엔드가 검토 중인 계약을 가져오면 실제로 복사한 기능 브랜치 커밋을 기록한다.
+
+스키마
+
+- `stage-2.schema.json` 추가. 자료 목록과 상세, 개정, 출처, 업로드 준비, 자료 등록과 수정, 삭제, 원문 형식이다
+- 원문 형식은 유형에 맞는 항목만 값을 갖도록 검사한다. 파일 자료는 `file`, 마크다운 자료는 `markdown`, 링크 자료는 `link`다
+- 자료 형식은 ready일 때 현재 개정을 필수로 검사한다. 파일 자료는 파일 출처와 작업, 링크 자료는 주소와 작업을 갖고 마크다운 자료는 작업이 없다
+- 등록 응답의 최상위 `job`도 자료 유형에 맞게 검사한다. 마크다운 자료는 null, 파일과 링크 자료는 작업 객체다
+- 마크다운 자료는 목록과 상세에서 항상 ready다. 쪽수는 파일 자료의 현재 개정이 있을 때만 있고 출처 항목은 유형에 맞는 것만 값이 있다
+- `MaterialNote`에 필수 항목 `updatedByName` 추가. 본문은 20000자까지다
+- `CurrentVersions`에 `noteVersion` 추가
+
+오류 코드
+
+- 추가: `MATERIAL_DELETED` 410, `MATERIAL_STATE_CONFLICT` 409, `UPLOAD_TYPE_NOT_ALLOWED` 415, `UPLOAD_TOO_LARGE` 413, `UPLOAD_EXPIRED` 410, `UPLOAD_INCOMPLETE` 409, `UPLOAD_REJECTED` 422, `UPLOAD_ALREADY_USED` 409, `INVALID_URL` 422, `FILE_URL_EXPIRED` 403
+- 작업의 `error.code`로만 전달하는 코드 추가: `ANALYSIS_FAILED`, `MATERIAL_UNREADABLE`, `LINK_FETCH_FAILED`, `LINK_BLOCKED`, `LINK_UNSUPPORTED_CONTENT`, `LINK_TOO_LARGE`, `JOB_ATTEMPTS_EXHAUSTED`, `JOB_TARGET_GONE`
+
+예제
+
+- 자료, 목록, 업로드, 등록과 수정 요청, 삭제 응답, 원문, 자료 분석 작업, 새 오류 예제 추가
+- 기능 지원 정보 예제의 `configVersion`을 `stage-2`로, `uploadTypes`를 PDF 20MB로 바꿨다
+
+문서
+
+- `stage-2.md` 추가. 경로, 권한, 자료와 작업의 상태 전이, 이벤트, 외부 설정이 없어 남은 항목을 적었다
+- 작업 종류 이름을 `material_analysis`로 정했다
+
+프론트엔드가 확인할 것
+
+- 팀 메모 응답에 `updatedByName`이 늘었다. 형식 검사에 추가한다
+- 자료 등록, 링크와 마크다운 자료 등록, 분석 다시 시도는 `Idempotency-Key`가 필수다
+- 파일 전송 요청에는 `uploadHeaders`만 싣는다. CSRF 헤더를 싣지 않는다
+- 원문 주소는 저장하지 않고 만료되면 원문 조회를 다시 요청한다
+- 요약 모델이 연결되지 않아 `summary`는 null로 온다. null이면 요약 영역을 숨긴다
+- 작업과 자료의 상태 변화는 이벤트 구독이 열리기 전까지 다시 조회해 확인한다
+
 ## 2026-11-18 인증과 프로젝트 계약 추가
 
 인증과 프로젝트 기능 PR에서 검토 중인 계약이다. 아직 main에 머지되지 않았다.

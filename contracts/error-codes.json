@@ -47,6 +47,24 @@
     {"code": "OWNER_TRANSFER_REQUIRED", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "소유권을 먼저 이전해 주세요."},
     {"code": "INVITE_INVALID", "httpStatus": 404, "retryable": false, "basis": "기술 선택", "meaning": "초대 링크를 확인해 주세요."},
     {"code": "INVITE_EXPIRED", "httpStatus": 410, "retryable": false, "basis": "기술 선택", "meaning": "초대 링크가 만료됐어요."},
-    {"code": "INVALID_CURSOR", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "목록을 처음부터 다시 불러와 주세요."}
+    {"code": "INVALID_CURSOR", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "목록을 처음부터 다시 불러와 주세요."},
+    { "code": "MATERIAL_DELETED", "httpStatus": 410, "retryable": false, "basis": "기술 선택", "meaning": "삭제된 자료다. 상세, 원문, 팀 메모 요청에 돌려준다" },
+    { "code": "MATERIAL_STATE_CONFLICT", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "지금 자료 상태에서는 할 수 없는 요청이다. 분석이 끝나지 않은 자료의 원문 조회, 실패하지 않은 자료의 분석 다시 시도가 여기에 든다" },
+    { "code": "UPLOAD_TYPE_NOT_ALLOWED", "httpStatus": 415, "retryable": false, "basis": "기술 선택", "meaning": "올릴 수 없는 파일 형식이다. 허용 형식은 기능 지원 정보의 uploadTypes에 있다" },
+    { "code": "UPLOAD_TOO_LARGE", "httpStatus": 413, "retryable": false, "basis": "기술 선택", "meaning": "파일이 허용 크기를 넘었다. 허용 크기는 기능 지원 정보의 uploadTypes에 있다" },
+    { "code": "UPLOAD_EXPIRED", "httpStatus": 410, "retryable": false, "basis": "기술 선택", "meaning": "업로드 준비가 만료됐다. 업로드 준비부터 다시 한다" },
+    { "code": "UPLOAD_INCOMPLETE", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "파일 전송이 끝나지 않았다. 같은 전송 주소로 파일을 다시 보낸 뒤 등록한다" },
+    { "code": "UPLOAD_REJECTED", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "전송한 파일이 검사를 통과하지 못했다. fieldErrors의 code는 SIZE_MISMATCH, CHECKSUM_MISMATCH, NOT_PDF 가운데 하나다. 업로드 준비부터 다시 한다" },
+    { "code": "UPLOAD_ALREADY_USED", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "이미 자료로 등록한 업로드다" },
+    { "code": "INVALID_URL", "httpStatus": 422, "retryable": false, "basis": "기술 선택", "meaning": "링크 주소가 올바르지 않거나 허용하지 않는 주소다. fieldErrors의 field는 url이다" },
+    { "code": "FILE_URL_EXPIRED", "httpStatus": 403, "retryable": false, "basis": "기술 선택", "meaning": "전송 주소나 원문 주소가 만료됐거나 올바르지 않다. 주소를 다시 발급받는다" },
+    { "code": "ANALYSIS_FAILED", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "자료 분석 중 일시적인 오류가 났다. 작업의 error.code로 전달하며 다시 시도할 수 있다" },
+    { "code": "MATERIAL_UNREADABLE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "파일을 읽을 수 없다. 손상됐거나 암호가 걸린 PDF다. 작업의 error.code로 전달한다" },
+    { "code": "LINK_FETCH_FAILED", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "링크 문서를 가져오지 못했다. 응답 지연, 연결 실패, 서버 오류가 여기에 든다. 작업의 error.code로 전달한다" },
+    { "code": "LINK_BLOCKED", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "내부망이나 허용하지 않는 주소로 이어지는 링크다. 작업의 error.code로 전달한다" },
+    { "code": "LINK_UNSUPPORTED_CONTENT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "글로 읽을 수 없는 형식의 링크다. 작업의 error.code로 전달한다" },
+    { "code": "LINK_TOO_LARGE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "링크 문서가 허용 크기를 넘었다. 작업의 error.code로 전달한다" },
+    { "code": "JOB_ATTEMPTS_EXHAUSTED", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "내부 재시도 횟수를 다 써서 작업을 끝냈다. 작업의 error.code로 전달하며 사용자가 다시 시도할 수 있다" },
+    { "code": "JOB_TARGET_GONE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "작업 대상이 삭제되어 결과를 반영하지 않았다. 작업의 error.code로 전달한다" }
   ]
 }

@@ -1,0 +1,569 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage-2.schema.json",
+  "title": "자료, 원문, 업로드 형식",
+  "$defs": {
+    "MaterialKind": { "description": "file은 PDF, link는 웹 주소, memo는 마크다운 자료다", "enum": ["file", "link", "memo"] },
+    "MaterialStatus": {
+      "description": "processing은 분석 중, ready는 원문을 읽을 수 있음, failed는 분석 실패다. 삭제한 자료는 목록과 상세에 나오지 않는다",
+      "enum": ["processing", "ready", "failed"]
+    },
+    "Person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userId", "name"],
+      "properties": {
+        "userId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "name": { "type": "string" }
+      }
+    },
+    "PageCount": { "description": "PDF의 실제 쪽수. PDF가 아니거나 아직 분석 전이면 null", "type": ["integer", "null"], "minimum": 1 },
+    "MaterialSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "projectId",
+        "kind",
+        "title",
+        "status",
+        "version",
+        "pageCount",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "projectId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "status": {
+          "$ref": "#/$defs/MaterialStatus"
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "pageCount": {
+          "$ref": "#/$defs/PageCount"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/Person"
+        },
+        "createdAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        }
+      },
+      "description": "마크다운 자료는 등록과 동시에 ready다. 쪽수는 파일 자료에만 있다",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "memo"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "ready"
+              },
+              "pageCount": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "link"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "pageCount": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "MaterialList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor", "counts"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/MaterialSummary" } },
+        "nextCursor": { "type": ["string", "null"] },
+        "counts": {
+          "description": "검색어에 맞는 자료의 유형별 개수. 유형과 상태 필터는 반영하지 않는다",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["all", "file", "link", "memo"],
+          "properties": {
+            "all": { "type": "integer", "minimum": 0 },
+            "file": { "type": "integer", "minimum": 0 },
+            "link": { "type": "integer", "minimum": 0 },
+            "memo": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "MaterialOrigin": {
+      "description": "자료의 출처. 파일은 올린 파일 정보, 링크는 입력한 주소를 가진다. 분석이 실패해도 유지된다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fileName", "mimeType", "sizeBytes", "url"],
+      "properties": {
+        "fileName": { "type": ["string", "null"] },
+        "mimeType": { "type": ["string", "null"] },
+        "sizeBytes": { "type": ["integer", "null"], "minimum": 1 },
+        "url": { "type": ["string", "null"] }
+      }
+    },
+    "MaterialRevision": {
+      "description": "바뀌지 않는 원문 개정. sourceVersion은 자료 안에서 1부터 오르는 개정 번호다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceVersion", "pageCount", "summary", "excerpt", "createdBy", "createdAt"],
+      "properties": {
+        "id": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "sourceVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "pageCount": { "$ref": "#/$defs/PageCount" },
+        "summary": { "description": "요약 모델이 연결되지 않았으면 null", "type": ["string", "null"] },
+        "excerpt": {
+          "description": "원문에서 뽑은 발췌. 추출한 글이 없으면 null",
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text", "page"],
+              "properties": {
+                "text": { "type": "string", "minLength": 1 },
+                "page": { "type": ["integer", "null"], "minimum": 1 }
+              }
+            }
+          ]
+        },
+        "createdBy": { "$ref": "#/$defs/Person" },
+        "createdAt": { "$ref": "api.schema.json#/$defs/Timestamp" }
+      }
+    },
+    "Material": {
+      "description": "ready면 현재 개정이 있다. 파일 자료는 파일 출처와 분석 작업, 링크 자료는 주소와 분석 작업을 갖는다. 마크다운 자료는 작업 없이 항상 ready다",
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "ready"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "currentRevision": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "currentRevision": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "pageCount": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "file"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "properties": {
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "sizeBytes": {
+                    "type": "integer"
+                  },
+                  "url": {
+                    "type": "null"
+                  }
+                }
+              },
+              "job": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "link"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "properties": {
+                  "fileName": {
+                    "type": "null"
+                  },
+                  "mimeType": {
+                    "type": "null"
+                  },
+                  "sizeBytes": {
+                    "type": "null"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                }
+              },
+              "pageCount": {
+                "type": "null"
+              },
+              "job": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "memo"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "ready"
+              },
+              "source": {
+                "properties": {
+                  "fileName": {
+                    "type": "null"
+                  },
+                  "mimeType": {
+                    "type": "null"
+                  },
+                  "sizeBytes": {
+                    "type": "null"
+                  },
+                  "url": {
+                    "type": "null"
+                  }
+                }
+              },
+              "pageCount": {
+                "type": "null"
+              },
+              "job": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "id",
+        "projectId",
+        "kind",
+        "title",
+        "description",
+        "status",
+        "version",
+        "pageCount",
+        "createdBy",
+        "createdAt",
+        "updatedAt",
+        "source",
+        "currentRevision",
+        "job",
+        "canDelete"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "projectId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "status": {
+          "$ref": "#/$defs/MaterialStatus"
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "pageCount": {
+          "$ref": "#/$defs/PageCount"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/Person"
+        },
+        "createdAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "updatedAt": {
+          "$ref": "api.schema.json#/$defs/Timestamp"
+        },
+        "source": {
+          "$ref": "#/$defs/MaterialOrigin"
+        },
+        "currentRevision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MaterialRevision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job": {
+          "description": "이 자료의 가장 최근 분석 작업. 마크다운 자료는 null",
+          "anyOf": [
+            {
+              "$ref": "api.schema.json#/$defs/Job"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "canDelete": {
+          "description": "요청한 사용자가 소유자이거나 자료 작성자면 true",
+          "type": "boolean"
+        }
+      }
+    },
+    "MaterialCreated": {
+      "description": "job은 material.job과 같은 작업이다. 마크다운 자료는 null이고 파일과 링크 자료는 작업 객체다",
+      "type": "object",
+      "additionalProperties": false,
+      "if": { "properties": { "material": { "properties": { "kind": { "const": "memo" } } } } },
+      "then": { "properties": { "job": { "type": "null" } } },
+      "else": { "properties": { "job": { "type": "object" } } },
+      "required": ["material", "job"],
+      "properties": {
+        "material": { "$ref": "#/$defs/Material" },
+        "job": { "anyOf": [{ "$ref": "api.schema.json#/$defs/Job" }, { "type": "null" }] }
+      }
+    },
+    "UploadRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "fileName", "mimeType", "sizeBytes", "checksumSha256"],
+      "properties": {
+        "kind": { "description": "기능 지원 정보의 uploadTypes에 있는 값", "const": "material_pdf" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "mimeType": { "type": "string", "minLength": 1, "maxLength": 127 },
+        "sizeBytes": { "type": "integer", "minimum": 1 },
+        "checksumSha256": { "description": "파일 전체의 SHA-256 소문자 16진수", "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "UploadTicket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uploadId", "uploadUrl", "uploadMethod", "uploadHeaders", "expiresAt"],
+      "properties": {
+        "uploadId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "uploadUrl": { "description": "받은 그대로 쓴다. 같은 출처의 경로이거나 저장소의 전체 주소다", "type": "string", "minLength": 1 },
+        "uploadMethod": { "const": "PUT" },
+        "uploadHeaders": { "description": "전송 요청에 이 헤더만 싣는다", "type": "object", "additionalProperties": { "type": "string" } },
+        "expiresAt": { "$ref": "api.schema.json#/$defs/Timestamp" }
+      }
+    },
+    "FileMaterialRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uploadId"],
+      "properties": {
+        "uploadId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "title": { "description": "비우면 파일 이름을 쓴다", "type": "string", "maxLength": 255 },
+        "description": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "LinkMaterialRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "title": { "description": "비우면 수집한 문서 제목을 쓴다", "type": "string", "maxLength": 255 },
+        "description": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "MemoMaterialRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "markdown"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "markdown": { "type": "string", "maxLength": 100000 }
+      }
+    },
+    "MaterialPatchRequest": {
+      "description": "보낸 항목만 바꾼다. markdown은 마크다운 자료에만 보낼 수 있고 새 개정을 만든다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "minProperties": 2,
+      "properties": {
+        "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "description": { "description": "빈 문자열이면 설명을 지운다", "type": "string", "maxLength": 2000 },
+        "markdown": { "type": "string", "maxLength": 100000 }
+      }
+    },
+    "MaterialDeleteRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion"],
+      "properties": {
+        "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" }
+      }
+    },
+    "MaterialDeleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tombstone", "eventId"],
+      "properties": {
+        "tombstone": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resourceType", "id", "version", "deletedAt"],
+          "properties": {
+            "resourceType": { "const": "material" },
+            "id": { "$ref": "api.schema.json#/$defs/Uuid" },
+            "version": { "$ref": "api.schema.json#/$defs/Version" },
+            "deletedAt": { "$ref": "api.schema.json#/$defs/Timestamp" }
+          }
+        },
+        "eventId": { "$ref": "api.schema.json#/$defs/EventCursor" }
+      }
+    },
+    "MaterialSource": {
+      "description": "한 개정의 원문. 유형에 맞는 항목 하나만 값이 있다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "revisionId", "sourceVersion", "kind", "title", "file", "markdown", "link"],
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "file" } } },
+          "then": { "properties": { "file": { "type": "object" }, "markdown": { "type": "null" }, "link": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "memo" } } },
+          "then": { "properties": { "file": { "type": "null" }, "markdown": { "type": "string" }, "link": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "link" } } },
+          "then": { "properties": { "file": { "type": "null" }, "markdown": { "type": "null" }, "link": { "type": "object" } } }
+        }
+      ],
+      "properties": {
+        "materialId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "revisionId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "sourceVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "kind": { "$ref": "#/$defs/MaterialKind" },
+        "title": { "type": "string" },
+        "file": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "expiresAt", "mimeType", "fileName", "sizeBytes", "pageCount"],
+              "properties": {
+                "url": { "description": "짧게 유효한 원문 주소. 받은 그대로 쓰고 저장하지 않는다", "type": "string", "minLength": 1 },
+                "expiresAt": { "$ref": "api.schema.json#/$defs/Timestamp" },
+                "mimeType": { "type": "string" },
+                "fileName": { "type": "string" },
+                "sizeBytes": { "type": "integer", "minimum": 1 },
+                "pageCount": { "type": "integer", "minimum": 1 }
+              }
+            }
+          ]
+        },
+        "markdown": { "type": ["string", "null"] },
+        "link": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "title", "text"],
+              "properties": {
+                "url": { "type": "string" },
+                "title": { "type": ["string", "null"] },
+                "text": { "description": "수집한 문서에서 추출한 본문", "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
