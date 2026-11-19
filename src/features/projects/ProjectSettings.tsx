@@ -35,20 +35,20 @@ export function ProjectSettings({ project, onChange, onOpen, onError, leaving }:
     } catch (reason) { setError(reason); onError(reason) }
     finally { lock.current = false; setBusy(false) }
   }
-  return <div className={shell.content}>
+  return <div className={`${shell.content} ${styles.settingsContent}`}>
     <p className={styles.muted}>프로젝트의 기본 정보를 관리합니다</p>
     {!owner && <p className={styles.notice}>기본 정보는 프로젝트 소유자가 변경할 수 있어요</p>}
     {project.version !== base.version && <div className={styles.notice}><p>프로젝트 정보가 변경되었어요. 최신 내용을 확인해 주세요</p>
       <Button variant="text" onClick={() => reset(project)}>작성한 내용 대신 최신 정보 불러오기</Button></div>}
-    <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void save() }}>
+    <form className={styles.settingsForm} onSubmit={(event) => { event.preventDefault(); void save() }}>
       <Field label="프로젝트 이름" multiline rows={1} value={name} required maxLength={255} readOnly={!owner} onChange={(event) => setName(event.target.value)} />
       <Field label="발표 주제" multiline rows={1} value={topic} maxLength={10000} readOnly={!owner} onChange={(event) => setTopic(event.target.value)} />
       <Field label="발표 조건" multiline rows={1} value={constraints} maxLength={10000} readOnly={!owner} onChange={(event) => setConstraints(event.target.value)} />
-      <p className={styles.notice}>{owner ? '내가 소유한 프로젝트' : '참여 중인 프로젝트'}, 팀원 {project.memberCount}명</p>
+      <p className={styles.information}>{owner ? `소유자 ${user.name}` : '참여 중인 프로젝트'}, 팀원 {project.memberCount}명</p>
       <div className={styles.actions}>{owner && <><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
         <Button variant="secondary" disabled={busy} onClick={() => onOpen('transfer')}>소유자 변경</Button></>}
         <Button variant="secondary" disabled={busy} onClick={() => onOpen('leave')}>프로젝트 나가기</Button>
-        {owner && <Button variant="text" disabled={busy} onClick={() => onOpen('delete')}>프로젝트 삭제</Button>}
+        {owner && <Button variant="dangerOutline" disabled={busy} onClick={() => onOpen('delete')}>프로젝트 삭제</Button>}
       </div>
     </form>
     {saved && <p role="status">프로젝트 정보를 저장했어요</p>}

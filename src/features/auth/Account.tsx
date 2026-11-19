@@ -11,6 +11,7 @@ import { RequestError } from '../../shared/ui/RequestError.tsx'
 import { UnsavedGuard } from '../../shared/ui/UnsavedGuard.tsx'
 import styles from '../../app/AppShell.module.css'
 import authStyles from './Auth.module.css'
+import account from './Account.module.css'
 
 export default function Account() {
   const { user, setUser, capabilities, refresh } = useSession()
@@ -77,23 +78,25 @@ export default function Account() {
   return <>
     <header className={styles.header}><h1>내 계정</h1><Link to="/">돌아가기</Link></header>
     <div className={styles.content}>
-      <form className={authStyles.form} onSubmit={(event) => { event.preventDefault(); void act(async () => {
+      <form className={account.form} onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const next = await authApi.update(name.trim(), activeUser.version); setUser(next); setName(next.name); setNotice('이름을 저장했어요')
       }) }}>
         <Field label="이름" value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} autoComplete="name" />
         <Field label="이메일" value={user.email ?? '제공된 이메일 없음'} readOnly />
-        <p className={authStyles.notice}>이메일은 로그인 계정 정보입니다</p>
-        <div className={authStyles.actions}><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
+        <p className={account.information}>이메일은 로그인 계정 정보입니다</p>
+        <div className={account.actions}><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
           <Button variant="secondary" disabled={busy} onClick={() => { setError(undefined); setModal('logout') }}>로그아웃</Button></div>
       </form>
       {notice && <p role="status">{notice}</p>}
       {!modal && <RequestError error={error} action={<Button variant="text" onClick={() => void act(async () => { const next = await refresh(); if (next) setName(next.name) })}>최신 정보 다시 불러오기</Button>} />}
-      <section className={styles.section}><h2>로그인 수단</h2><p>현재 연결된 로그인 수단을 확인하세요. 추가 연결은 후속 출시 예정입니다</p>
-        {(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <p key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</p>)}
+      <section className={account.providers}><h2>로그인 수단</h2><p>현재 연결된 로그인 수단을 확인하세요. 추가 연결은 후속 출시 예정입니다</p>
+        <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</li>)}</ul>
       </section>
-      <section className={styles.section}><h2 className={styles.danger}>계정 삭제</h2><p>탈퇴 전에 소유 프로젝트를 이전하거나 삭제해야 합니다</p>
-        {user.ownedProjectCount > 0 && <p>현재 소유한 프로젝트 {user.ownedProjectCount}개 <Link to="/">프로젝트 확인</Link></p>}
-        <div><Button variant="secondary" disabled={busy || user.ownedProjectCount > 0} onClick={() => { setError(undefined); setModal('delete') }}>회원 탈퇴</Button></div>
+      <section className={account.withdrawal}>
+        <div><h2>회원 탈퇴</h2><p>소유 프로젝트를 이전하거나 삭제한 뒤 탈퇴할 수 있어요 <Link to="/">프로젝트 보기</Link></p>
+          {user.ownedProjectCount > 0 && <p>현재 소유한 프로젝트 {user.ownedProjectCount}개</p>}
+        </div>
+        <Button variant="dangerText" disabled={busy || user.ownedProjectCount > 0} onClick={() => { setError(undefined); setModal('delete') }}>탈퇴하기</Button>
       </section>
     </div>
     <Modal open={modal === 'logout'} title="로그아웃할까요?" size="confirm" onClose={close}

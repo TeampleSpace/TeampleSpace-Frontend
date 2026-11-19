@@ -10,6 +10,7 @@ export default function AppShell() {
   const [currentProject, setCurrentProject] = useState<CurrentProject>(null)
   const match = useMatch('/projects/:projectId/*')
   const location = useLocation()
+  const showingProjects = location.pathname !== '/account'
   const [projects, setProjects] = useState<Project[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [error, setError] = useState(false)
@@ -68,7 +69,7 @@ export default function AppShell() {
         <Link to="/?create=1"><img src="/assets/navigation/plus.svg" alt="" />새 프로젝트</Link>
         <Link to="/?join=1"><img src="/assets/navigation/link.svg" alt="" />초대 링크로 참여</Link>
       </nav>
-      {projects.length > 0 && <nav aria-label="내 프로젝트" className={styles.explorer}>
+      {showingProjects && projects.length > 0 && <nav aria-label="내 프로젝트" className={styles.explorer}>
         <p className={styles.caption}>내 프로젝트</p>
         <ul>{projects.map((project) => {
           const isExpanded = (expanded ?? selected?.id) === project.id
@@ -87,9 +88,9 @@ export default function AppShell() {
         })}</ul>
         {cursor && <Button variant="text" loading={loading} onClick={() => void more()}>프로젝트 더 보기</Button>}
       </nav>}
-      {error && <div role="status" className={styles.caption}>프로젝트 목록을 불러오지 못했어요<Button variant="text" onClick={() => setRevision((value) => value + 1)}>목록 다시 확인</Button></div>}
+      {showingProjects && error && <div role="status" className={styles.caption}>프로젝트 목록을 불러오지 못했어요<Button variant="text" onClick={() => setRevision((value) => value + 1)}>목록 다시 확인</Button></div>}
       <div className={styles.management}>
-      {selected && <nav aria-label="프로젝트 관리" className={styles.managementLinks}>
+      {showingProjects && selected && <nav aria-label="프로젝트 관리" className={styles.managementLinks}>
         <Link to={`/projects/${selected.id}?team=1`}><img src="/assets/navigation/users.svg" alt="" />팀원 관리</Link>
         <NavLink to={`/projects/${selected.id}/settings`}><img src="/assets/navigation/settings.svg" alt="" />프로젝트 설정</NavLink>
       </nav>}
