@@ -18,6 +18,7 @@ export default function AppShell() {
       </nav>
       {current && <nav aria-label="현재 프로젝트" className={styles.navigation}>
         <p>내 프로젝트</p><NavLink to={`/projects/${current.id}`} end>{current.name}</NavLink>
+        <NavLink to={`/projects/${current.id}/materials`}><img src="/assets/navigation/files.svg" alt="" />자료</NavLink>
         <Link to={`/projects/${current.id}?team=1`}><img src="/assets/navigation/users.svg" alt="" />팀원 관리</Link>
         <NavLink to={`/projects/${current.id}/settings`}><img src="/assets/navigation/settings.svg" alt="" />프로젝트 설정</NavLink>
       </nav>}

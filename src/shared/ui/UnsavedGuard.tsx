@@ -1,10 +1,12 @@
 import { useCallback } from 'react'
 import { useBeforeUnload, useBlocker } from 'react-router'
+import type { BlockerFunction } from 'react-router'
 import { Button } from './Button.tsx'
 import { Modal } from './Modal.tsx'
 
-export function UnsavedGuard({ dirty }: { dirty: boolean }) {
-  const blocker = useBlocker(dirty)
+// when을 주면 미저장 내용을 잃는 이동만 골라서 막는다
+export function UnsavedGuard({ dirty, when }: { dirty: boolean; when?: BlockerFunction }) {
+  const blocker = useBlocker(when ? (args) => dirty && when(args) : dirty)
   useBeforeUnload(useCallback((event: BeforeUnloadEvent) => {
     if (dirty) { event.preventDefault(); event.returnValue = '' }
   }, [dirty]))
