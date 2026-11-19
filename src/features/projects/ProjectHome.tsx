@@ -9,12 +9,17 @@ import { CreateProject } from './CreateProject.tsx'
 import { JoinProject } from './JoinProject.tsx'
 import { projectsApi } from './api.ts'
 import type { Project } from './model.ts'
+import { ProjectCard } from './ProjectCard.tsx'
+import { GettingStarted, HowItWorks } from './GettingStarted.tsx'
+import shell from '../../app/AppShell.module.css'
+import buttons from '../../shared/ui/Button.module.css'
 import styles from './Projects.module.css'
 
 export default function ProjectHome() {
   const { user } = useSession()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
+  const searching = params.has('search') || Boolean(query)
   const [result, setResult] = useState<{ query: string; items: Project[]; nextCursor: string | null } | null>(null)
   const [error, setError] = useState<unknown>()
   const [busy, setBusy] = useState(false)
@@ -32,8 +37,9 @@ export default function ProjectHome() {
     }, 200)
     return () => { clearTimeout(timer); controller.abort() }
   }, [query, revision])
-  useEffect(() => { if (params.has('search')) document.getElementById('project-search')?.focus() }, [params])
+  useEffect(() => { if (searching) document.getElementById('project-search')?.focus() }, [searching])
   const visible = result?.query === query ? result : null
+  const displayed = visible ?? (searching ? result : null)
   const setModal = (key?: 'create' | 'join') => {
     const next = new URLSearchParams(params); next.delete('create'); next.delete('join')
     if (key) next.set(key, '1')
@@ -50,23 +56,29 @@ export default function ProjectHome() {
     } catch (reason) { if (current === generation.current) setError(reason) }
     finally { moreLock.current = false; setBusy(false) }
   }
-  return <div className={styles.home}>
-    <header className={styles.header}><div className={styles.greeting}><p className={styles.muted}>내 프로젝트</p><h1>{user?.name}님, 하던 작업을 이어가세요</h1></div><Button onClick={() => setModal('create')}>새 프로젝트</Button></header>
-    <Field label="프로젝트 검색" id="project-search" value={query} type="search"
-      onChange={(event) => { const next = new URLSearchParams(params); next.set('q', event.target.value); setParams(next, { replace: true }) }} placeholder="프로젝트 이름으로 검색" />
+  const empty = visible?.items.length === 0
+  return <div className={searching ? styles.searchPage : styles.home}>
+    {searching ? <header className={shell.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text}`} to="/">돌아가기</Link></header>
+      : <header className={styles.header}><div className={styles.greeting}><p className={styles.muted}>{empty ? '팀 발표를 한곳에서' : '내 프로젝트'}</p>
+        <h1>{empty ? '함께할 팀플, 여기서 시작해요.' : `${user?.name}님, 하던 작업을 이어가세요.`}</h1></div>
+        {visible && !empty && <Button onClick={() => setModal('create')}>새 프로젝트</Button>}</header>}
+    <div className={searching ? styles.searchContent : styles.homeContent}>
+    {searching && <>
+      <p className={styles.muted} role="status">{visible ? empty ? '검색 결과가 없습니다.' : `검색된 프로젝트 ${visible.items.length}개${visible.nextCursor ? ' 이상' : ''}` : '검색하고 있어요'}</p>
+      <Field label="프로젝트 검색" id="project-search" value={query} type="search"
+        onChange={(event) => { const next = new URLSearchParams(params); next.set('q', event.target.value); setParams(next, { replace: true }) }} placeholder="프로젝트 이름으로 검색" />
+    </>}
     {error ? <RequestError error={error} action={<Button onClick={() => setRevision((value) => value + 1)}>다시 시도</Button>} />
-      : !visible ? <StatusPanel kind="loading" title="프로젝트를 불러오고 있어요" />
-      : visible.items.length === 0 ? <StatusPanel kind="empty" title={query ? '검색 결과가 없어요' : '첫 프로젝트를 만들어 보세요'}
-        description={query ? '다른 프로젝트 이름으로 검색해 보세요' : '프로젝트를 만들거나 초대받은 팀 공간에 참여할 수 있어요'}
-        action={query ? <Button variant="secondary" onClick={() => setParams({})}>검색 초기화</Button> : <Button onClick={() => setModal('create')}>새 프로젝트</Button>} />
-      : <div className={styles.grid}>{visible.items.map((project) => <article className={styles.card} key={project.id}>
-        <div className={styles.row}><div className={styles.greeting}><p className={styles.small}>최근 변경 {new Date(project.updatedAt).toLocaleDateString('ko-KR')}</p>
-          <h2><Link to={`/projects/${project.id}`}>{project.name}</Link></h2><p className={styles.muted}>팀원 {project.memberCount}명</p></div><Link to={`/projects/${project.id}`}>프로젝트 열기</Link></div>
-        {project.topic && <p className={styles.notice}>{project.topic}</p>}
-        <div className={styles.actions}><Link to={`/projects/${project.id}?team=1`}>팀원 관리</Link><Link to={`/projects/${project.id}/settings`}>프로젝트 설정</Link></div>
-      </article>)}</div>}
+      : !visible && !displayed?.items.length ? <div className={styles.pending} aria-busy="true"><StatusPanel kind="loading" title="프로젝트를 불러오고 있어요" /></div>
+      : empty ? searching ? <><p className={styles.searchEmpty}>다른 이름으로 검색해 보세요.</p><div><Button onClick={() => setParams({ search: '1' }, { replace: true })}>검색 지우기</Button></div></>
+        : <GettingStarted onCreate={() => setModal('create')} onJoin={() => setModal('join')} />
+      : <div className={styles.grid} aria-busy={!visible}>{displayed?.items.map((project) => <ProjectCard project={project} key={project.id} />)}</div>}
     {visible?.nextCursor && <Button variant="secondary" loading={busy} onClick={() => void more()}>프로젝트 더 보기</Button>}
-    <div className={styles.row}><p className={styles.muted}>내가 참여한 프로젝트만 표시돼요</p><Button variant="text" onClick={() => setModal('join')}>초대 링크로 참여</Button></div>
+    {!searching && visible && <>
+      {!empty && <div className={styles.row}><p className={styles.muted}>참여 중인 프로젝트 {visible.items.length}개{visible.nextCursor ? ' 이상' : ''}</p><Button variant="text" onClick={() => setModal('join')}>초대 링크로 참여</Button></div>}
+      <HowItWorks />
+    </>}
+    </div>
     <CreateProject open={params.has('create')} onClose={() => setModal()} />
     <JoinProject open={params.has('join')} onClose={() => setModal()} />
   </div>
