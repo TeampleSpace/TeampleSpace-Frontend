@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { CreateProject } from './CreateProject.tsx'
 import { ProjectSettings } from './ProjectSettings.tsx'
 import Invitation from './Invitation.tsx'
+import { JoinProject } from './JoinProject.tsx'
 import { SessionContext } from '../auth/sessionContext.ts'
 import type { User } from '../auth/model.ts'
 import type { Project } from './model.ts'
@@ -69,6 +70,39 @@ test('익명 초대 사용자의 로그인 링크에 초대 복귀 경로를 유
   mount(<Invitation />, null, '/invite/valid-invitation-token')
   const link = await screen.findByRole('link', { name: '로그인하고 초대 확인' })
   expect(link.getAttribute('href')).toBe('/login?returnTo=%2Finvite%2Fvalid-invitation-token')
+  expect(projectsApi.accept).not.toHaveBeenCalled()
+})
+
+test('링크 입력 모달 안에서 프로젝트를 확인하고 참여 버튼을 누른 뒤에만 가입한다', async () => {
+  vi.mocked(projectsApi.invitation).mockResolvedValue({ projectName: '팀 과제', inviterName: '소유자', expiresAt: '2026-11-20T00:00:00Z', alreadyMember: false })
+  vi.mocked(projectsApi.accept).mockResolvedValue({ projectId: project.id, alreadyMember: false })
+  mount(<JoinProject open onClose={() => {}} />)
+  fireEvent.change(screen.getByLabelText('초대 링크'), { target: { value: `${window.location.origin}/invite/valid-invitation-token` } })
+  fireEvent.click(screen.getByRole('button', { name: '초대 확인' }))
+  await screen.findByRole('heading', { name: '팀 과제' })
+  expect(screen.getByRole('dialog', { name: '초대받은 프로젝트에 참여' })).toBeTruthy()
+  expect(projectsApi.accept).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: '프로젝트 참여' }))
+  await screen.findByText('프로젝트 이동 완료')
+  expect(projectsApi.accept).toHaveBeenCalledExactlyOnceWith('valid-invitation-token')
+})
+
+test('초대 링크를 변경하면 이전 프로젝트 참여 버튼을 숨긴다', async () => {
+  vi.mocked(projectsApi.invitation).mockResolvedValue({ projectName: '팀 과제', inviterName: '소유자', expiresAt: '2026-11-20T00:00:00Z', alreadyMember: false })
+  mount(<Invitation />, member, '/invite/valid-invitation-token')
+  await screen.findByRole('button', { name: '프로젝트 참여' })
+  fireEvent.change(screen.getByLabelText('초대 링크'), { target: { value: 'https://other.example/invite/valid-invitation-token' } })
+  expect(screen.queryByRole('button', { name: '프로젝트 참여' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '초대 확인' }))
+  await screen.findByText('이 서비스의 올바른 초대 링크를 입력해 주세요')
+  expect(projectsApi.accept).not.toHaveBeenCalled()
+})
+
+test('가입을 마치지 않은 사용자는 초대 경로를 유지하며 프로필 화면으로 이동한다', async () => {
+  vi.mocked(projectsApi.invitation).mockResolvedValue({ projectName: '팀 과제', inviterName: '소유자', expiresAt: '2026-11-20T00:00:00Z', alreadyMember: false })
+  mount(<Invitation />, { ...member, onboardingStatus: 'pending' }, '/invite/valid-invitation-token')
+  const link = await screen.findByRole('link', { name: '가입을 마치고 초대 확인' })
+  expect(link.getAttribute('href')).toBe('/onboarding?returnTo=%2Finvite%2Fvalid-invitation-token')
   expect(projectsApi.accept).not.toHaveBeenCalled()
 })
 

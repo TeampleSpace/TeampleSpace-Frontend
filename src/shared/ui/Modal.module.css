@@ -19,13 +19,37 @@
   border-radius: var(--radius-xl);
 }
 
+.team, .invite { border-radius: var(--radius-xl); }
+.invite { width: min(600px, calc(100vw - 32px)); }
+.team .panel { min-height: min(680px, calc(100dvh - 32px)); }
+.invite .titles { gap: 4px; }
+
 .dialog::backdrop {
   background: rgb(32 36 45 / 0.32);
 }
 
-/* 닫기는 즉시 처리해서 포커스 복귀를 늦추지 않는다 */
 .dialog[open] {
   animation: dialog-enter var(--motion-normal) var(--motion-ease-out);
+}
+
+/* 닫기와 포커스 복귀는 즉시 처리하고 화면에서 사라지는 전환만 유지한다 */
+@supports (transition-behavior: allow-discrete) {
+  .dialog {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    transition: opacity var(--motion-normal) ease-out, transform var(--motion-normal) var(--motion-ease-out), display var(--motion-normal) allow-discrete, overlay var(--motion-normal) allow-discrete;
+  }
+  .dialog[open] { opacity: 1; transform: none; animation: none; }
+  .dialog:not([open]), .dialog:not([open])::backdrop { pointer-events: none; }
+  .dialog::backdrop {
+    opacity: 0;
+    transition: opacity var(--motion-normal) ease-out, display var(--motion-normal) allow-discrete, overlay var(--motion-normal) allow-discrete;
+  }
+  .dialog[open]::backdrop { opacity: 1; animation: none; }
+  @starting-style {
+    .dialog[open] { opacity: 0; transform: translateY(6px) scale(0.985); }
+    .dialog[open]::backdrop { opacity: 0; }
+  }
 }
 
 .dialog[open]::backdrop {
@@ -52,7 +76,9 @@
 }
 
 .confirm .panel,
-.form .panel {
+.form .panel,
+.team .panel,
+.invite .panel {
   gap: var(--space-24);
   padding: var(--space-32);
 }
@@ -81,7 +107,7 @@
   letter-spacing: -0.2px;
 }
 
-.form .title {
+.form .title, .team .title, .invite .title {
   font: var(--text-modal-title);
   letter-spacing: -0.24px;
 }
@@ -121,7 +147,9 @@
 @media (max-width: 480px) {
   .panel,
   .confirm .panel,
-  .form .panel {
+  .form .panel,
+  .team .panel,
+  .invite .panel {
     padding: var(--space-20);
   }
 }
