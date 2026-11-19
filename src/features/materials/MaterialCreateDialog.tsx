@@ -175,7 +175,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
   const uploadMessage = uploadErrorMessage(failure, rule)
 
   return <>
-    <Modal open size="form" title={edit ? '메모 수정' : '자료 추가'} description={`${project.name} · 팀원들과 함께 사용할 자료`} onClose={requestClose}
+    <Modal open size="form" minHeight={type === 'memo' ? 760 : type === 'link' ? 584 : 640} title={edit ? '메모 수정' : '자료 추가'} description={`${project.name} · 팀원들과 함께 사용할 자료`} onClose={requestClose}
       footer={<>
         <Button variant="secondary" onClick={requestClose}>취소</Button>
         {!conflict && <Button loading={busy} disabled={!ready} onClick={submit}>{edit ? '저장' : type === 'memo' ? '메모 추가' : '자료 추가'}</Button>}
