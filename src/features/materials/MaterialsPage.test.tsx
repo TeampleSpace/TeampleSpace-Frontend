@@ -303,3 +303,34 @@ test('삭제된 자료의 주소로 들어오면 삭제됐다고 안내한다', 
   fireEvent.click(screen.getByRole('button', { name: '자료 목록 보기' }))
   await detailTitle('남은 메모')
 })
+
+test('추가 페이지의 처리 중 자료도 갱신하고 더 이상 불필요하게 조회하지 않는다', async () => {
+  mock.faults.holdAnalysis = true
+  mock.seed('file', '오래된 분석 보고서.pdf', { status: 'processing' })
+  for (let index = 0; index < 31; index++) mock.seed('memo', `새 메모 ${index}`)
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '더 보기' }))
+  const target = await row('오래된 분석 보고서.pdf')
+  expect(target.textContent).toContain('처리 중')
+  mock.faults.holdAnalysis = false
+  await vi.advanceTimersByTimeAsync(2100)
+  await waitFor(() => expect(target.textContent).not.toContain('처리 중'))
+  expect(screen.getAllByRole('link').filter((link) => link.textContent?.includes('새 메모'))).toHaveLength(31)
+  const requests = mock.calls.length
+  await vi.advanceTimersByTimeAsync(4200)
+  expect(mock.calls).toHaveLength(requests)
+})
+
+test('열어 둔 자료가 외부에서 삭제되면 복귀 시 본문과 편집 중인 메모를 가린다', async () => {
+  const id = mock.seed('memo', '삭제될 회의록', { markdown: '더 이상 표시하면 안 되는 본문' })
+  mount(`?material=${id}`)
+  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
+  fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '미저장 팀 메모' } })
+  mock.get(id)!.deleted = true
+  fireEvent(window, new Event('focus'))
+  expect(await screen.findByText('삭제된 자료예요')).toBeTruthy()
+  expect(screen.queryByText('더 이상 표시하면 안 되는 본문')).toBeNull()
+  expect(screen.queryByLabelText('팀 메모 내용')).toBeNull()
+  expect(screen.queryByRole('button', { name: '자료 관리' })).toBeNull()
+})
