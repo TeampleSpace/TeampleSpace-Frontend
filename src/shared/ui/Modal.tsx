@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import styles from './Modal.module.css'
@@ -8,8 +8,8 @@ type Props = {
   title: string
   description?: string
   // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
-  // form은 입력이 여러 개인 760px 모달이다
-  size?: 'dialog' | 'confirm' | 'form'
+  // form은 입력이 여러 개인 760px 모달, viewer는 원문을 보는 960px 모달이다
+  size?: 'dialog' | 'confirm' | 'form' | 'viewer'
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -40,6 +40,11 @@ export function Modal({
     }
     if (!open && dialog.open) dialog.close()
   }, [open])
+  // 열린 채로 화면에서 빠질 때도 먼저 닫아서 포커스를 호출한 곳으로 돌려준다
+  useLayoutEffect(() => {
+    const dialog = ref.current
+    return () => { if (dialog?.open) dialog.close() }
+  }, [])
 
   const descriptionText = description && (
     <p id={descriptionId} className={styles.description}>
@@ -69,13 +74,13 @@ export function Modal({
               {title}
             </h2>
             {/* 입력 모달은 설명을 제목 바로 아래에 둔다 */}
-            {size === 'form' && descriptionText}
+            {(size === 'form' || size === 'viewer') && descriptionText}
           </div>
           <Button variant="text" onClick={onClose}>
             닫기
           </Button>
         </header>
-        {size !== 'form' && descriptionText}
+        {size !== 'form' && size !== 'viewer' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
         {footer && <footer className={styles.footer}>{footer}</footer>}
       </div>

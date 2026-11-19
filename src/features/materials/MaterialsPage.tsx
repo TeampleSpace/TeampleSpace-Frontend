@@ -11,6 +11,7 @@ import { useSession } from '../auth/sessionContext.ts'
 import { projectsApi } from '../projects/api.ts'
 import type { Project } from '../projects/model.ts'
 import { materialsApi } from './api.ts'
+import { SourceViewer } from './SourceViewer.tsx'
 import { isAccessLoss, isGone, isUncertain } from './errors.ts'
 import { MaterialDetail } from './MaterialDetail.tsx'
 import type { ManageAction } from './MaterialDetail.tsx'
@@ -93,6 +94,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const [create, setCreate] = useState<{ type: InputType; edit?: { material: Material; markdown: string } } | null>(null)
   const [createDirty, setCreateDirty] = useState(false)
   const [manageError, setManageError] = useState<unknown>()
+  // 원문을 보고 있는 자료
+  const [viewingId, setViewingId] = useState<string | null>(null)
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
   const retryKey = useRef<{ id: string; key: string } | null>(null)
   const generation = useRef(0)
@@ -315,6 +318,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
           onRetry={() => void reprocess()} onManage={setView}
+          actions={visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
           extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
           <RequestError error={manageError} />
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
@@ -338,5 +342,6 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     {visible && view && <MaterialDialogs key={`${visible.id}:${view}`} material={visible} view={view} onClose={() => setView(null)}
       onChanged={apply} onDeleted={clearSelection} onError={onError}
       onRefresh={() => materialsApi.get(visible.id).then(apply)} />}
+    {visible && viewingId === visible.id && <SourceViewer key={visible.id} material={visible} onClose={() => setViewingId(null)} onError={onError} />}
   </div>{overlays}</>
 }
