@@ -241,7 +241,7 @@ test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모�
   await screen.findByRole('heading', { level: 2, name: '새 자료' })
   fireEvent.click(screen.getByRole('link', { name: /기존 메모/ }))
   await screen.findByRole('heading', { level: 2, name: '기존 메모' })
-  fireEvent.click(screen.getByRole('button', { name: '메모 작성' }))
+  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
   fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '아직 저장하지 않은 내용' } })
   void router.navigate(-1)
   const guard = within(await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있어요' }))
