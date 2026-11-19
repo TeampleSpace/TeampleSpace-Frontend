@@ -119,3 +119,14 @@
 .editorInput:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .editorPreview { flex: 1; min-height: 212px; padding: var(--space-16); animation: var(--motion-page-enter); }
 .hintText { font: var(--text-meta); color: var(--color-tertiary); }
+
+/* 원문 보기. 피그마의 문서 영역은 회색 면, 여백 24px, 간격 20px */
+.document { display: flex; flex-direction: column; gap: var(--space-20); min-height: 320px; padding: var(--space-24); border-radius: var(--radius-lg); background: var(--color-subtle); }
+.document h3 { font: var(--text-dialog-title); letter-spacing: -0.2px; overflow-wrap: anywhere; }
+.documentMeta { font: var(--text-meta); color: var(--color-secondary); }
+.documentBody { font: var(--text-lead); }
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+.pdfPage { max-height: min(308px, 40dvh); overflow: auto; border-radius: var(--radius-md); background: var(--color-surface); }
+.pdfPage canvas { display: block; width: 100%; height: auto; }
+.fullView .pdfPage { max-height: none; }
+.returnNote { flex: 1; min-width: 0; color: var(--color-secondary); }

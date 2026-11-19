@@ -191,21 +191,21 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |
 | 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 형식만 | 3단계 |
-| 프로젝트 작업 목록 | `GET /v1/projects/{projectId}/jobs` | `JobList` | 형식만 | 2단계 |
-| 작업 조회 | `GET /v1/jobs/{jobId}` | `Job` | 형식만 | 2단계 |
-| 작업 취소 | `POST /v1/jobs/{jobId}/cancel` | `Job` | 형식만 | 2단계 |
-| 자료 목록 | `GET /v1/projects/{projectId}/materials` | `MaterialList` | 형식만 | 2단계 |
-| 자료 상세 | `GET /v1/materials/{materialId}` | `Material` | 형식만 | 2단계 |
-| 자료 이름과 본문 변경 | `PATCH /v1/materials/{materialId}` | `MaterialPatchRequest`, `Material` | 형식만 | 2단계 |
-| 자료 삭제 | `DELETE /v1/materials/{materialId}` | `MaterialDeleteRequest`, `MaterialDeleted` | 형식만 | 2단계 |
-| 마크다운 자료 등록 | `POST /v1/projects/{projectId}/materials/memo` | `MemoMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
-| 팀 메모 조회 | `GET /v1/materials/{materialId}/note` | `MaterialNote` | 형식만 | 2단계 |
-| 팀 메모 저장 | `PUT /v1/materials/{materialId}/note` | `MaterialNotePutRequest`, `MaterialNoteSaveResponse` | 형식만 | 2단계 |
-| 업로드 준비 | `POST /v1/projects/{projectId}/uploads` | `UploadRequest`, `UploadTicket` | 형식만 | 2단계 |
-| 파일 자료 등록 | `POST /v1/projects/{projectId}/materials/file` | `FileMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
-| 분석 다시 시도 | `POST /v1/materials/{materialId}/reprocess` | `MaterialCreated` | 형식만 | 2단계 |
-| 원문 조회 | `GET /v1/materials/{materialId}/source` | `MaterialSource` | 형식만 | 2단계 |
-| 링크 자료 등록 | `POST /v1/projects/{projectId}/materials/link` | `LinkMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
+| 프로젝트 작업 목록 | `GET /v1/projects/{projectId}/jobs` | `JobList` | 필터와 커서 페이지, 프로젝트 권한 확인 구현 | 2단계 |
+| 작업 조회 | `GET /v1/jobs/{jobId}` | `Job` | 구현. 임대 선점과 내부 재시도, 시험이 있다 | 2단계 |
+| 작업 취소 | `POST /v1/jobs/{jobId}/cancel` | `Job` | 구현. 요청자와 소유자만 취소하고 완료와의 경합 시험이 있다 | 2단계 |
+| 자료 목록 | `GET /v1/projects/{projectId}/materials` | `MaterialList` | 검색, 필터, 유형별 개수, 커서 페이지 구현 | 2단계 |
+| 자료 상세 | `GET /v1/materials/{materialId}` | `Material` | 구현 | 2단계 |
+| 자료 이름과 본문 변경 | `PATCH /v1/materials/{materialId}` | `MaterialPatchRequest`, `Material` | 버전 비교 저장과 마크다운 개정 추가 구현 | 2단계 |
+| 자료 삭제 | `DELETE /v1/materials/{materialId}` | `MaterialDeleteRequest`, `MaterialDeleted` | 소유자와 작성자만 삭제, 개정 보존 구현 | 2단계 |
+| 마크다운 자료 등록 | `POST /v1/projects/{projectId}/materials/memo` | `MemoMaterialRequest`, `MaterialCreated` | 멱등 등록 구현 | 2단계 |
+| 팀 메모 조회 | `GET /v1/materials/{materialId}/note` | `MaterialNote` | 구현 | 2단계 |
+| 팀 메모 저장 | `PUT /v1/materials/{materialId}/note` | `MaterialNotePutRequest`, `MaterialNoteSaveResponse` | 버전 비교 저장 구현 | 2단계 |
+| 업로드 준비 | `POST /v1/projects/{projectId}/uploads` | `UploadRequest`, `UploadTicket` | 형식과 크기 검사, 서명한 전송 주소 발급 구현 | 2단계 |
+| 파일 자료 등록 | `POST /v1/projects/{projectId}/materials/file` | `FileMaterialRequest`, `MaterialCreated` | 크기, 체크섬, PDF 형식 검사 뒤 원본 확정과 멱등 등록 구현 | 2단계 |
+| 분석 다시 시도 | `POST /v1/materials/{materialId}/reprocess` | `MaterialCreated` | 보관한 원본으로 새 작업을 만드는 멱등 요청 구현 | 2단계 |
+| 원문 조회 | `GET /v1/materials/{materialId}/source` | `MaterialSource` | 구현. 파일은 짧게 유효한 주소, 마크다운과 링크는 본문을 돌려준다 | 2단계 |
+| 링크 자료 등록 | `POST /v1/projects/{projectId}/materials/link` | `LinkMaterialRequest`, `MaterialCreated` | 주소 검사와 멱등 등록, 내부망을 막는 수집 작업 구현 | 2단계 |
 
 단계 번호는 개발 순서의 번호다. 1은 인증과 프로젝트, 2는 자료, 3은 구성과 디자인, 4는 편집과 공유 저장, 5는 최초 생성, 6은 이력과 검토, 7은 발표와 내보내기다.
 

@@ -14,7 +14,7 @@
 | 항목 | 값 |
 | --- | --- |
 | 복사한 저장소 | TeampleSpace/TeampleSpace-Backend |
-| 복사한 기준 | `cf06b62e90d584acb07b5096da9965816ef58b90`. 자료와 작업 처리 계약을 정리한 백엔드 브랜치의 커밋이며 `contracts-source.json`에 같은 값을 기록한다 |
+| 복사한 기준 | `421d6b6f2c1bb86147a2a2953b99f59c9ecafe61`. 자료와 링크 수집 구현을 검증한 백엔드 브랜치의 커밋이며 `contracts-source.json`에 같은 값을 기록한다 |
 | 복사한 날 | 2026-11-19 |
 
 계약이 바뀌면 폴더를 통째로 다시 복사하고 위 표를 고친 뒤 `npm test`를 돌린다. 어긋난 곳은 `src/shared/api/contracts.test.ts`가 알려 준다.

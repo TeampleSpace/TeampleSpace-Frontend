@@ -59,6 +59,11 @@ test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => 
     .toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
 })
 
+test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => {
+  expect(await sha256Hex(new File(['abc'], 'checksum.pdf', { type: 'application/pdf' })))
+    .toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+})
+
 test('PDF는 준비, 전송, 등록을 차례로 하고 전송에는 발급받은 헤더만 싣는다', async () => {
   mount()
   await openAdd()
@@ -236,7 +241,7 @@ test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모�
   await screen.findByRole('heading', { level: 2, name: '새 자료' })
   fireEvent.click(screen.getByRole('link', { name: /기존 메모/ }))
   await screen.findByRole('heading', { level: 2, name: '기존 메모' })
-  fireEvent.click(screen.getByRole('button', { name: '메모 작성' }))
+  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
   fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '아직 저장하지 않은 내용' } })
   void router.navigate(-1)
   const guard = within(await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있어요' }))
