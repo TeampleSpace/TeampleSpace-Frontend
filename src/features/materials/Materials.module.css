@@ -126,7 +126,7 @@
 .documentMeta { font: var(--text-meta); color: var(--color-secondary); }
 .documentBody { font: var(--text-lead); }
 .pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
-.pdfPage { max-height: 52dvh; overflow: auto; border-radius: var(--radius-md); background: var(--color-surface); }
+.pdfPage { max-height: min(308px, 40dvh); overflow: auto; border-radius: var(--radius-md); background: var(--color-surface); }
 .pdfPage canvas { display: block; width: 100%; height: auto; }
 .fullView .pdfPage { max-height: none; }
 .returnNote { flex: 1; min-width: 0; color: var(--color-secondary); }

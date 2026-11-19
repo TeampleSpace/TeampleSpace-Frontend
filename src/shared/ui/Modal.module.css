@@ -112,7 +112,6 @@
   letter-spacing: -0.2px;
 }
 
-.form .title,
 .viewer .title,
 .form .title, .team .title, .invite .title {
   font: var(--text-modal-title);

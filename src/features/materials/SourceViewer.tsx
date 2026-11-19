@@ -89,7 +89,7 @@ export function SourceViewer({ material, onClose, onError }: {
   const footer = (close: () => void) => <><p className={styles.returnNote}>{returnNote}</p><Button onClick={close}>이전 화면으로 돌아가기</Button></>
 
   return <>
-    <Modal open size="viewer" title="자료 보기" description="자료의 원문을 확인하세요." onClose={onClose} footer={footer(onClose)}>
+    <Modal open size="viewer" minHeight={720} title="자료 보기" description="자료의 원문을 확인하세요." onClose={onClose} footer={footer(onClose)}>
       <div className={styles.document}>
         {gone ? <>
           <h3>원문을 볼 수 없어요</h3>
