@@ -191,7 +191,9 @@ export function createMaterialsMock(options: {
       const upload = uploads.get(put[1])
       if (!upload || upload.expiresAt <= now()) return fail('FILE_URL_EXPIRED')
       if (upload.state !== 'prepared') return fail('UPLOAD_ALREADY_USED')
-      upload.bytes = new Uint8Array(await new Response(init.body as BodyInit).arrayBuffer())
+      // 브라우저의 파일 객체와 테스트 환경의 파일 객체를 모두 받는다
+      const sent = init.body as BodyInit & { arrayBuffer?: () => Promise<ArrayBuffer> }
+      upload.bytes = new Uint8Array(await (sent.arrayBuffer ? sent.arrayBuffer() : new Response(sent).arrayBuffer()))
       return json(204, null)
     }
     const fileGet = method === 'GET' && path.match(/^\/v1\/storage\/files\/([^.]+)\.(\d+)$/)
@@ -329,7 +331,7 @@ export function createMaterialsMock(options: {
     if (upload.state === 'rejected') return fail('UPLOAD_REJECTED', { fieldErrors: [{ field: 'file', code: 'NOT_PDF', message: '파일을 다시 선택해 주세요.' }] })
     if (upload.expiresAt <= now()) return fail('UPLOAD_EXPIRED')
     if (!upload.bytes) return fail('UPLOAD_INCOMPLETE')
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', upload.bytes.slice().buffer))
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', upload.bytes.slice()))
     const actual = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('')
     const reason = upload.bytes.length !== upload.sizeBytes ? 'SIZE_MISMATCH' : actual !== upload.checksum ? 'CHECKSUM_MISMATCH'
       : new TextDecoder().decode(upload.bytes.slice(0, 5)) !== '%PDF-' ? 'NOT_PDF' : ''

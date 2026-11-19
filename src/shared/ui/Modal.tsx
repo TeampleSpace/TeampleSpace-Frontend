@@ -8,6 +8,7 @@ type Props = {
   title: string
   description?: string
   size?: 'dialog' | 'confirm' | 'form' | 'team' | 'invite'
+  minHeight?: number
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -20,6 +21,7 @@ export function Modal({
   title,
   description,
   size = 'dialog',
+  minHeight,
   onClose,
   children,
   footer,
@@ -63,7 +65,7 @@ export function Modal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={styles.panel}>
+      <div className={styles.panel} style={minHeight ? { minHeight: `min(${minHeight}px, calc(100dvh - 32px))` } : undefined}>
         <header className={styles.header}>
           <div className={styles.titles}>
             <h2 id={titleId} className={styles.title}>
@@ -78,7 +80,7 @@ export function Modal({
         </header>
         {size !== 'form' && size !== 'invite' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
-        {footer && <footer className={styles.footer}>{footer}</footer>}
+        {footer && <footer className={styles.footer} style={minHeight ? { marginTop: 'auto' } : undefined}>{footer}</footer>}
       </div>
     </dialog>
   )
