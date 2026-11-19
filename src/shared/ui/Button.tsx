@@ -3,7 +3,7 @@ import styles from './Button.module.css'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   // 주요와 삭제는 44px, 보조와 텍스트는 40px 높이다
-  variant?: 'primary' | 'secondary' | 'text' | 'danger'
+  variant?: 'primary' | 'secondary' | 'text' | 'danger' | 'dangerOutline' | 'dangerText'
   loading?: boolean
 }
 

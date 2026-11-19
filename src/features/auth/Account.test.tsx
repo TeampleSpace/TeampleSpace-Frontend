@@ -24,7 +24,7 @@ function openDeletion(email: boolean, kakao: boolean) {
   const router = createMemoryRouter([{ path: '/account', element: <Account /> }], { initialEntries: ['/account'] })
   render(<SessionContext value={{ user, capabilities, loading: false, error: undefined,
     refresh: async () => user, setUser: () => {} }}><RouterProvider router={router} /></SessionContext>)
-  fireEvent.click(screen.getByRole('button', { name: '회원 탈퇴' }))
+  fireEvent.click(screen.getByRole('button', { name: '탈퇴하기' }))
 }
 
 test('검증된 이메일이 있어도 메일 기능이 꺼지면 연결된 소셜 재인증을 제공한다', () => {

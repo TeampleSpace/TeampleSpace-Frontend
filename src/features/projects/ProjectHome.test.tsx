@@ -17,7 +17,7 @@ beforeAll(() => {
 })
 afterEach(() => { cleanup(); vi.resetAllMocks() })
 function mount(path = '/', shell = false) {
-  const routes = shell ? [{ element: <AppShell />, children: [{ path: '/', element: <ProjectHome /> }] }] : [{ path: '/', element: <ProjectHome /> }]
+  const routes = shell ? [{ element: <AppShell />, children: [{ path: '/', element: <ProjectHome /> }, { path: '/account', element: <h1>계정 정보</h1> }] }] : [{ path: '/', element: <ProjectHome /> }]
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   render(<SessionContext value={{ user: null, capabilities: null, loading: false, error: undefined, refresh: async () => null, setUser: () => {} }}><RouterProvider router={router} /></SessionContext>)
   return router
@@ -79,4 +79,18 @@ test('추가 페이지의 프로젝트를 열고 설정으로 이동해도 탐�
   await act(() => router.navigate('/projects/extra/settings'))
   await waitFor(() => expect(projectsApi.list).toHaveBeenCalledTimes(6))
   expect(screen.getByRole('link', { name: extra.name })).toBeTruthy()
+})
+
+test('내 계정에서는 프로젝트 메뉴를 숨기고 홈에 돌아오면 탐색을 복원한다', async () => {
+  vi.mocked(projectsApi.list).mockResolvedValue({ items: [project], nextCursor: null })
+  const router = mount('/', true)
+  await screen.findByRole('navigation', { name: '내 프로젝트' })
+  fireEvent.click(screen.getByRole('link', { name: '내 계정' }))
+  await screen.findByRole('heading', { name: '계정 정보' })
+  expect(screen.queryByRole('navigation', { name: '내 프로젝트' })).toBeNull()
+  expect(screen.queryByRole('navigation', { name: '프로젝트 관리' })).toBeNull()
+  expect(screen.getByRole('link', { name: '내 계정' }).getAttribute('aria-current')).toBe('page')
+  await act(() => router.navigate('/'))
+  await screen.findByRole('navigation', { name: '내 프로젝트' })
+  expect(screen.getByRole('navigation', { name: '프로젝트 관리' })).toBeTruthy()
 })

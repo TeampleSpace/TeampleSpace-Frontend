@@ -70,6 +70,26 @@
   color: var(--color-surface);
 }
 
+.dangerOutline {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-danger);
+}
+
+.dangerText {
+  color: var(--color-danger);
+}
+
+.dangerOutline:not(:disabled, [aria-disabled='true']):hover,
+.dangerText:not(:disabled, [aria-disabled='true']):hover {
+  background: var(--color-subtle);
+}
+
+.dangerOutline:not(:disabled, [aria-disabled='true']):active,
+.dangerText:not(:disabled, [aria-disabled='true']):active {
+  background: var(--color-muted);
+}
+
 .button:disabled,
 .button[aria-disabled='true'] {
   background: var(--color-muted);
@@ -79,7 +99,9 @@
 }
 
 .text:disabled,
-.text[aria-disabled='true'] {
+.text[aria-disabled='true'],
+.dangerText:disabled,
+.dangerText[aria-disabled='true'] {
   background: transparent;
 }
 

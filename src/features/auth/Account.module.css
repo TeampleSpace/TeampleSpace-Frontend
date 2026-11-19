@@ -1,0 +1,16 @@
+.form { display: flex; flex-direction: column; gap: 20px; }
+.form input { height: 56px; font: var(--text-body); }
+.information { padding: 16px; border-radius: 12px; background: var(--color-subtle); }
+.actions { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.providers { width: 560px; max-width: 100%; border-top: 1px solid var(--color-border); padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+.providers h2 { font: 700 20px/30px var(--font-body); }
+.providers > p { color: var(--color-secondary); }
+.identities { display: flex; flex-direction: column; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.withdrawal { border-top: 1px solid var(--color-border); padding: 20px 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.withdrawal h2 { font: 600 16px/24px var(--font-body); }
+.withdrawal > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.withdrawal p { color: var(--color-secondary); }
+.withdrawal > button { flex-shrink: 0; }
+.withdrawal a { display: inline-flex; padding: 8px 12px; text-decoration: none; border-radius: 8px; color: var(--color-ink); transition: background-color var(--motion-fast) ease-out; }
+.withdrawal a:hover, .withdrawal a:active { background: var(--color-subtle); }
+@media (max-width: 480px) { .withdrawal { align-items: flex-start; flex-direction: column; gap: 12px; } }

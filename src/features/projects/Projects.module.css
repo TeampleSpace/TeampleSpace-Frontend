@@ -67,3 +67,7 @@
 .invitationSummary h3 { font: 700 20px/28px var(--font-body); }
 .invitationForm { display: flex; flex-direction: column; gap: 20px; }
 .invitationForm input { font: var(--text-body); }
+
+.settingsContent, .settingsForm { display: flex; flex-direction: column; gap: 24px; }
+.information { padding: 16px; border-radius: 12px; background: var(--color-subtle); }
+.settingsForm .actions { align-items: flex-start; }

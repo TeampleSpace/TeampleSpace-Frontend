@@ -121,7 +121,7 @@ test('미저장 입력이 있어도 삭제를 완료하면 목록으로 이동�
   expect(projectsApi.remove).toHaveBeenCalledExactlyOnceWith(project.id, project.version, project.name)
   await waitFor(() => expect(authApi.me).toHaveBeenCalledTimes(1))
   fireEvent.click(screen.getByRole('link', { name: '내 계정 가기' }))
-  expect((await screen.findByRole('button', { name: '회원 탈퇴' }) as HTMLButtonElement).disabled).toBe(false)
+  expect((await screen.findByRole('button', { name: '탈퇴하기' }) as HTMLButtonElement).disabled).toBe(false)
 })
 
 test('소유권 이전 뒤 계정을 갱신하고 남은 미저장 입력이 있어도 프로젝트를 나갈 수 있다', async () => {
@@ -146,5 +146,5 @@ test('소유권 이전 뒤 계정을 갱신하고 남은 미저장 입력이 있
   expect(projectsApi.removeMember).toHaveBeenCalledTimes(1)
   expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경이 있어요' })).toBeNull()
   fireEvent.click(screen.getByRole('link', { name: '내 계정 가기' }))
-  expect((await screen.findByRole('button', { name: '회원 탈퇴' }) as HTMLButtonElement).disabled).toBe(false)
+  expect((await screen.findByRole('button', { name: '탈퇴하기' }) as HTMLButtonElement).disabled).toBe(false)
 })
