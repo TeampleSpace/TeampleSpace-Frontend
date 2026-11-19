@@ -5,6 +5,13 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 GlobalWorkerOptions.workerSrc = workerUrl
 
 export function openPdf(url: string) {
-  const task = getDocument({ url })
+  const assetBase = import.meta.env.BASE_URL + 'pdfjs/'
+  const task = getDocument({
+    url,
+    cMapUrl: assetBase + 'cmaps/',
+    cMapPacked: true,
+    standardFontDataUrl: assetBase + 'standard_fonts/',
+    wasmUrl: assetBase + 'wasm/',
+  })
   return { promise: task.promise, destroy: () => void task.destroy() }
 }
