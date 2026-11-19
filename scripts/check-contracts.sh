@@ -31,6 +31,6 @@ if diff -r "$work/contracts" contracts; then
   echo "계약 복사본이 백엔드 계약과 같습니다. 기준 $ref $head, 계약을 마지막으로 바꾼 커밋 $last"
 else
   echo "계약 복사본이 백엔드 계약과 다릅니다. 기준 $ref $head, 계약을 마지막으로 바꾼 커밋 $last"
-  echo "contracts 폴더를 통째로 다시 복사하고 docs/contract-notes.md의 복사한 커밋을 고친 뒤 npm test를 실행하세요"
+  echo "contracts 폴더를 통째로 다시 복사하고 ../Docs/fe/contract-notes.md의 복사한 커밋을 고친 뒤 npm test를 실행하세요"
   exit 1
 fi
