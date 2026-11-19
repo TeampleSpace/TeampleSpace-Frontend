@@ -44,6 +44,11 @@ export async function addPdf(
   progress: UploadProgress, onStep: (step: UploadStep) => void, signal?: AbortSignal,
 ): Promise<Material> {
   try {
+    // 응답을 잃은 등록은 티켓이 만료됐어도 먼저 같은 요청으로 확인한다
+    if (progress.register) {
+      onStep('registering')
+      return (await api.createFile(projectId, progress.register.body, progress.register.key)).material
+    }
     if (!progress.ticket || new Date(progress.ticket.expiresAt).getTime() <= Date.now()) {
       onStep('hashing')
       const checksumSha256 = await sha256Hex(file)

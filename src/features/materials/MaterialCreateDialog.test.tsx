@@ -52,7 +52,12 @@ beforeEach(() => {
   mock.seed('memo', '기존 메모')
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => mock.fetchAs(mock.ownerId)(input, init))
 })
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+
+test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => {
+  expect(await sha256Hex(new File(['abc'], 'checksum.pdf', { type: 'application/pdf' })))
+    .toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+})
 
 test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => {
   expect(await sha256Hex(new File(['abc'], 'checksum.pdf', { type: 'application/pdf' })))
@@ -82,7 +87,7 @@ test('PDF는 준비, 전송, 등록을 차례로 하고 전송에는 발급받�
   expect(mock.count()).toBe(2)
 })
 
-test('등록 응답을 못 받으면 파일을 다시 올리지 않고 같은 키로 다시 등록한다', async () => {
+test.each([false, true])('등록 응답 유실 뒤 업로드 만료 여부 %s에서도 같은 키로 결과를 확인한다', async (expired) => {
   mount()
   await openAdd()
   fireEvent.change(dialog().getByLabelText('PDF 파일'), { target: { files: [pdf()] } })
@@ -90,6 +95,7 @@ test('등록 응답을 못 받으면 파일을 다시 올리지 않고 같은 �
   submit()
   const failure = within(await screen.findByRole('dialog', { name: '자료를 추가하지 못했어요' }))
   expect(failure.getByText('선택한 자료와 입력 내용은 유지됩니다.')).toBeTruthy()
+  if (expired) vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 24 * 60 * 60 * 1000)
   fireEvent.click(failure.getByRole('button', { name: '다시 시도' }))
   expect(await screen.findByText('자료를 정리하고 있어요')).toBeTruthy()
   const registrations = calls('/materials/file')
@@ -224,4 +230,49 @@ test('메모를 추가한 뒤 고치고 다른 사람과 충돌하면 고른 뒤
   await waitFor(() => expect(mock.get(id)?.revisions).toHaveLength(2))
   expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('내가 고친 내용')
   await waitFor(() => expect(screen.queryByRole('dialog', { name: '메모 수정' })).toBeNull())
+})
+
+test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
+  const router = mount()
+  await openAdd('메모')
+  fireEvent.change(dialog().getByLabelText('메모 제목'), { target: { value: '새 자료' } })
+  fireEvent.change(dialog().getByLabelText('메모 내용'), { target: { value: '원문' } })
+  submit('메모 추가')
+  await screen.findByRole('heading', { level: 2, name: '새 자료' })
+  fireEvent.click(screen.getByRole('link', { name: /기존 메모/ }))
+  await screen.findByRole('heading', { level: 2, name: '기존 메모' })
+  fireEvent.click(screen.getByRole('button', { name: '메모 작성' }))
+  fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '아직 저장하지 않은 내용' } })
+  void router.navigate(-1)
+  const guard = within(await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있어요' }))
+  fireEvent.click(guard.getByRole('button', { name: '계속 작성' }))
+  expect(screen.getByLabelText('팀 메모 내용')).toHaveProperty('value', '아직 저장하지 않은 내용')
+  expect(screen.getByRole('heading', { level: 2, name: '기존 메모' })).toBeTruthy()
+})
+
+test.each(['REQUEST_IN_PROGRESS', 'RATE_LIMITED', 'SERVICE_UNAVAILABLE'])('%s의 Retry-After 동안 재시도와 원래 제출을 막는다', async (code) => {
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await mock.fetchAs(mock.ownerId)(input, init)
+    if (!response.ok) response.headers.set('Retry-After', '1')
+    return response
+  })
+  mount()
+  await openAdd('링크')
+  fireEvent.change(dialog().getByLabelText('링크 주소'), { target: { value: 'https://example.com/' } })
+  mock.faults.failNext = { match: '/materials/link', code }
+  submit()
+  const failure = within(await screen.findByRole('dialog', { name: '자료를 추가하지 못했어요' }))
+  const retry = failure.getByRole('button', { name: '잠시 후 다시 시도' })
+  expect(retry).toHaveProperty('disabled', true)
+  fireEvent.click(retry)
+  expect(calls('/materials/link')).toHaveLength(1)
+  fireEvent.click(failure.getByRole('button', { name: '링크 다시 입력' }))
+  expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', true)
+  submit()
+  expect(calls('/materials/link')).toHaveLength(1)
+  await waitFor(() => expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', false), { timeout: 2000 })
+  submit()
+  await screen.findByText('자료를 정리하고 있어요')
+  expect(calls('/materials/link')).toHaveLength(2)
+  expect(mock.count()).toBe(2)
 })

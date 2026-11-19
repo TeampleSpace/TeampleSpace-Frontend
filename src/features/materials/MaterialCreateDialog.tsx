@@ -31,6 +31,13 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
   // 바꾸려는 입력 유형이나 닫기. 확인을 받기 전에는 옮기지 않는다
   const [pending, setPending] = useState<InputType | 'close' | null>(null)
   const [busy, setBusy] = useState(false)
+  const [retryDelay, setRetryDelay] = useState(0)
+  const retryBlocked = useRef(false)
+  useEffect(() => {
+    if (!retryDelay) return
+    const timer = setTimeout(() => { retryBlocked.current = false; setRetryDelay(0) }, retryDelay * 1000)
+    return () => clearTimeout(timer)
+  }, [retryDelay])
   const [error, setError] = useState<unknown>()
   const [failure, setFailure] = useState<unknown>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -102,10 +109,14 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
   }
 
   async function run(work: () => Promise<Material>, onFail: (reason: unknown) => void) {
-    if (lock.current) return
+    if (lock.current || retryBlocked.current) return
     lock.current = true; setBusy(true); setError(undefined); setFailure(undefined); setFieldErrors({})
     try { onDone(await work()) }
     catch (reason) {
+      if (reason instanceof ApiError && reason.retryAfterSeconds) {
+        retryBlocked.current = true
+        setRetryDelay(reason.retryAfterSeconds)
+      }
       if (reason instanceof ApiError && reason.fieldErrors.length && reason.code !== 'UPLOAD_REJECTED') {
         setFieldErrors(Object.fromEntries(reason.fieldErrors.map((item) => [item.field, item.message])))
       } else onFail(reason)
@@ -175,10 +186,10 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
   const uploadMessage = uploadErrorMessage(failure, rule)
 
   return <>
-    <Modal open size="form" title={edit ? '메모 수정' : '자료 추가'} description={`${project.name} · 팀원들과 함께 사용할 자료`} onClose={requestClose}
+    <Modal open size="form" minHeight={type === 'memo' ? 760 : type === 'link' ? 584 : 640} title={edit ? '메모 수정' : '자료 추가'} description={`${project.name} · 팀원들과 함께 사용할 자료`} onClose={requestClose}
       footer={<>
         <Button variant="secondary" onClick={requestClose}>취소</Button>
-        {!conflict && <Button loading={busy} disabled={!ready} onClick={submit}>{edit ? '저장' : type === 'memo' ? '메모 추가' : '자료 추가'}</Button>}
+        {!conflict && <Button loading={busy} disabled={!ready || !!retryDelay} onClick={submit}>{edit ? '저장' : type === 'memo' ? '메모 추가' : '자료 추가'}</Button>}
       </>}>
       {!edit && <div className={styles.tabs} role="tablist" aria-label="자료 유형">
         {(Object.keys(typeLabels) as InputType[]).map((value) => <Button key={value} variant="text" role="tab" aria-selected={type === value}
@@ -230,7 +241,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
           <p>{conflict.material.title} 자료를 다른 팀원이 먼저 수정했어요. 내 입력은 그대로 있어요</p>
           <p className={styles.plain}>{conflict.markdown}</p>
           <div className={styles.actions}>
-            <Button loading={busy} onClick={() => { const latest = conflict; setConflict(null); setBase(latest); void run(() => save(latest, memoTitle.trim(), markdown), setError) }}>내 내용으로 저장</Button>
+            <Button loading={busy} disabled={!!retryDelay} onClick={() => { const latest = conflict; setConflict(null); setBase(latest); void run(() => save(latest, memoTitle.trim(), markdown), setError) }}>내 내용으로 저장</Button>
             <Button variant="secondary" disabled={busy} onClick={() => { setMemoTitle(conflict.material.title); setMarkdown(conflict.markdown); setBase(conflict); setConflict(null); setError(undefined) }}>최신 내용으로 바꾸기</Button>
           </div>
         </div>}
@@ -253,7 +264,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
     <Modal open={!!failure} size="dialog" title="자료를 추가하지 못했어요" onClose={() => setFailure(undefined)}
       description={type === 'file' ? '파일을 올리는 중 문제가 생겼어요.' : '링크 주소와 접근 상태를 확인해 주세요.'}
       footer={<>
-        <Button onClick={() => { setFailure(undefined); submit() }} data-autofocus>다시 시도</Button>
+        <Button disabled={!!retryDelay} onClick={() => { setFailure(undefined); submit() }} data-autofocus>{retryDelay ? '잠시 후 다시 시도' : '다시 시도'}</Button>
         <Button variant="secondary" onClick={() => {
           setFailure(undefined)
           if (type === 'file') { progress.current = {}; setFile(null); setFileError(null) }

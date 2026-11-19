@@ -98,6 +98,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   // 원문을 보고 있는 자료
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
+  const skipGuard = useRef(false)
   const retryKey = useRef<{ id: string; key: string } | null>(null)
   const generation = useRef(0)
   const loadedPages = useRef({ key: '', count: 1 })
@@ -218,11 +219,12 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     const next = new URLSearchParams(params)
     next.delete('material')
     // 자료가 사라진 뒤의 이동은 미저장 확인을 거치지 않는다
-    setParams(next, { replace: true, state: { skipGuard: true } })
+    skipGuard.current = true
+    try { setParams(next, { replace: true }) } finally { skipGuard.current = false }
     setListRevision((value) => value + 1)
   }
   const blocks: BlockerFunction = ({ currentLocation, nextLocation }) => {
-    if ((nextLocation.state as { skipGuard?: boolean } | null)?.skipGuard) return false
+    if (skipGuard.current) return false
     if (createDirty || currentLocation.pathname !== nextLocation.pathname) return true
     return (new URLSearchParams(nextLocation.search).get('material') ?? pinnedId) !== selectedId
   }
@@ -279,7 +281,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     if (edited || noteDirty) return
     const next = new URLSearchParams(params)
     next.set('material', material.id)
-    setParams(next, { state: { skipGuard: true } })
+    skipGuard.current = true
+    try { setParams(next) } finally { skipGuard.current = false }
   }
 
   const add = (type: InputType) => setCreate({ type })

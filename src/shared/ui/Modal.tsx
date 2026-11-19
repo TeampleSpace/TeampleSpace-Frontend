@@ -10,6 +10,7 @@ type Props = {
   // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
   // form은 입력이 여러 개인 760px 모달, viewer는 원문을 보는 960px 모달이다
   size?: 'dialog' | 'confirm' | 'form' | 'viewer' | 'team' | 'invite'
+  minHeight?: number
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -22,6 +23,7 @@ export function Modal({
   title,
   description,
   size = 'dialog',
+  minHeight,
   onClose,
   children,
   footer,
@@ -70,7 +72,7 @@ export function Modal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={styles.panel}>
+      <div className={styles.panel} style={minHeight ? { minHeight: `min(${minHeight}px, calc(100dvh - 32px))` } : undefined}>
         <header className={styles.header}>
           <div className={styles.titles}>
             <h2 id={titleId} className={styles.title}>
@@ -85,7 +87,7 @@ export function Modal({
         </header>
         {size !== 'form' && size !== 'viewer' && size !== 'invite' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
-        {footer && <footer className={styles.footer}>{footer}</footer>}
+        {footer && <footer className={styles.footer} style={minHeight ? { marginTop: 'auto' } : undefined}>{footer}</footer>}
       </div>
     </dialog>
   )
