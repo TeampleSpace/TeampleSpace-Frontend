@@ -52,7 +52,7 @@ beforeEach(() => {
   mock.seed('memo', '기존 메모')
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => mock.fetchAs(mock.ownerId)(input, init))
 })
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => {
   expect(await sha256Hex(new File(['abc'], 'checksum.pdf', { type: 'application/pdf' })))
@@ -82,7 +82,7 @@ test('PDF는 준비, 전송, 등록을 차례로 하고 전송에는 발급받�
   expect(mock.count()).toBe(2)
 })
 
-test('등록 응답을 못 받으면 파일을 다시 올리지 않고 같은 키로 다시 등록한다', async () => {
+test.each([false, true])('등록 응답 유실 뒤 업로드 만료 여부 %s에서도 같은 키로 결과를 확인한다', async (expired) => {
   mount()
   await openAdd()
   fireEvent.change(dialog().getByLabelText('PDF 파일'), { target: { files: [pdf()] } })
@@ -90,6 +90,7 @@ test('등록 응답을 못 받으면 파일을 다시 올리지 않고 같은 �
   submit()
   const failure = within(await screen.findByRole('dialog', { name: '자료를 추가하지 못했어요' }))
   expect(failure.getByText('선택한 자료와 입력 내용은 유지됩니다.')).toBeTruthy()
+  if (expired) vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 24 * 60 * 60 * 1000)
   fireEvent.click(failure.getByRole('button', { name: '다시 시도' }))
   expect(await screen.findByText('자료를 정리하고 있어요')).toBeTruthy()
   const registrations = calls('/materials/file')
