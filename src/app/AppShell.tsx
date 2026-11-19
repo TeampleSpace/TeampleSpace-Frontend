@@ -18,24 +18,42 @@ export default function AppShell() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const generation = useRef(0)
   const moreLock = useRef(false)
+  const loadedPages = useRef(1)
+  const refreshing = useRef(false)
   const current = match?.params.projectId === currentProject?.id ? currentProject : null
   const selected = match ? current : projects.find((project) => project.id === expanded) ?? projects[0]
   useEffect(() => {
     const controller = new AbortController()
     const request = ++generation.current
-    void projectsApi.list('', undefined, controller.signal).then((result) => {
+    refreshing.current = true
+    async function refreshPages() {
+      const items: Project[] = []
+      let nextCursor: string | null = null
+      for (let page = 0; page < loadedPages.current; page++) {
+        const result = await projectsApi.list('', nextCursor ?? undefined, controller.signal)
+        if (controller.signal.aborted) return null
+        items.push(...result.items.filter((item) => !items.some((existing) => existing.id === item.id)))
+        nextCursor = result.nextCursor
+        if (!nextCursor) break
+      }
+      return { items, nextCursor }
+    }
+    void refreshPages().then((result) => {
+      if (!result) return
       if (request !== generation.current) return
       setProjects(result.items); setCursor(result.nextCursor); setError(false)
-    }).catch(() => { if (!controller.signal.aborted) { setError(true); setProjects([]); setCursor(null) } })
+    }).catch(() => { if (!controller.signal.aborted && request === generation.current) { setError(true); setProjects([]); setCursor(null) } })
+      .finally(() => { if (request === generation.current) refreshing.current = false })
     return () => controller.abort()
   }, [location.pathname, revision, currentProject?.name])
   async function more() {
-    if (!cursor || moreLock.current) return
+    if (!cursor || moreLock.current || refreshing.current) return
     moreLock.current = true; setLoading(true)
     const request = generation.current
     try {
       const result = await projectsApi.list('', cursor)
       if (request !== generation.current) return
+      loadedPages.current++
       setProjects((items) => [...items, ...result.items.filter((item) => !items.some((existing) => existing.id === item.id))])
       setCursor(result.nextCursor); setError(false)
     } catch { if (request === generation.current) setError(true) }

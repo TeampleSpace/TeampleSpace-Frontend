@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import ProjectHome from './ProjectHome.tsx'
 import AppShell from '../../app/AppShell.tsx'
@@ -59,4 +59,24 @@ test('홈에서도 프로젝트 목록과 팀 관리 및 설정에 접근할 수
   expect(screen.queryByRole('link', { name: '자료' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: '팀 발표 메뉴' }))
   expect(screen.queryByRole('link', { name: '프로젝트 개요' })).toBeNull()
+})
+
+test('추가 페이지의 프로젝트를 열고 설정으로 이동해도 탐색 목록을 유지한다', async () => {
+  const first = Array.from({ length: 20 }, (_, index) => ({ ...project, id: `first-${index}`, name: `프로젝트 ${index}` }))
+  const extra = { ...project, id: 'extra', name: '추가 페이지 프로젝트' }
+  vi.mocked(projectsApi.list).mockImplementation(async (_query, cursor) => cursor
+    ? { items: [extra], nextCursor: null } : { items: first, nextCursor: 'second-page' })
+  const router = createMemoryRouter([{ element: <AppShell />, children: [
+    { path: '/', element: <p>홈</p> }, { path: '/projects/:id', element: <p>개요</p> },
+    { path: '/projects/:id/settings', element: <p>설정</p> },
+  ] }])
+  render(<RouterProvider router={router} />)
+  fireEvent.click(await screen.findByRole('button', { name: '프로젝트 더 보기' }))
+  fireEvent.click(await screen.findByRole('link', { name: extra.name }))
+  await screen.findByText('개요')
+  await waitFor(() => expect(projectsApi.list).toHaveBeenCalledTimes(4))
+  expect(screen.getByRole('link', { name: extra.name })).toBeTruthy()
+  await act(() => router.navigate('/projects/extra/settings'))
+  await waitFor(() => expect(projectsApi.list).toHaveBeenCalledTimes(6))
+  expect(screen.getByRole('link', { name: extra.name })).toBeTruthy()
 })
