@@ -5,6 +5,7 @@ import manifest from '../../../contracts/examples/manifest.json'
 import apiSchema from '../../../contracts/schemas/api.schema.json'
 import documentSchema from '../../../contracts/schemas/document.schema.json'
 import stageSchema from '../../../contracts/schemas/stage-1.schema.json'
+import materialStageSchema from '../../../contracts/schemas/stage-2.schema.json'
 import { authCapabilitiesSchema, userSchema, challengeSchema, loginSchema } from '../../features/auth/model.ts'
 import { projectSchema, projectListSchema, memberListSchema, invitationSchema, acceptSchema, removalSchema } from '../../features/projects/model.ts'
 import {
@@ -16,6 +17,12 @@ import {
   presentationSchema,
 } from '../../entities/presentation/schema.ts'
 import { createEditorSession } from '../../features/editor/session.ts'
+import { createMaterialsApi } from '../../features/materials/api.ts'
+import {
+  jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema, materialNoteSchema,
+  materialSchema, materialSourceSchema, materialSummarySchema, uploadTicketSchema,
+} from '../../features/materials/model.ts'
+import { createMaterialsMock } from '../../mocks/materials.ts'
 import { exampleSnapshot } from '../../mocks/example.ts'
 import { createMockServer } from '../../mocks/server.ts'
 import { createApiClient } from './client.ts'
@@ -28,7 +35,7 @@ import {
 
 // 백엔드에서 복사한 계약을 기준으로 프론트엔드 형식과 모킹이 어긋나지 않는지 확인한다
 
-const ajv = new Ajv2020({ schemas: [documentSchema, apiSchema, stageSchema] })
+const ajv = new Ajv2020({ schemas: [documentSchema, apiSchema, stageSchema, materialStageSchema] })
 const examples = import.meta.glob<unknown>('../../../contracts/examples/**/*.json', {
   eager: true,
   import: 'default',
@@ -41,6 +48,7 @@ function check(schema: string, value: unknown) {
   return validate(value) ? [] : (validate.errors ?? [])
 }
 const api = (name: string) => `api.schema.json#/$defs/${name}`
+const stage2 = (name: string) => `stage-2.schema.json#/$defs/${name}`
 
 test('계약의 예제 목록 전체가 기대한 통과 여부와 일치한다', () => {
   expect(manifest.length).toBeGreaterThan(0)
@@ -69,6 +77,16 @@ const frontendSchemas = [
   ['stage-1.schema.json#/$defs/InvitationAccepted', acceptSchema],
   ['stage-1.schema.json#/$defs/RemoveMemberResponse', removalSchema],
   [api('SyncSnapshot'), editorSnapshotSchema],
+  [api('Job'), jobSchema],
+  [api('MaterialNote'), materialNoteSchema],
+  [api('MaterialNoteSaveResponse'), materialNoteSavedSchema],
+  [stage2('MaterialSummary'), materialSummarySchema],
+  [stage2('MaterialList'), materialListSchema],
+  [stage2('Material'), materialSchema],
+  [stage2('MaterialCreated'), materialCreatedSchema],
+  [stage2('MaterialDeleted'), materialDeletedSchema],
+  [stage2('MaterialSource'), materialSourceSchema],
+  [stage2('UploadTicket'), uploadTicketSchema],
 ] as const
 
 test('프론트엔드 형식이 계약의 올바른 예제를 모두 받아들인다', () => {
@@ -197,4 +215,58 @@ test('모킹 서버의 응답과 이벤트, 편집 세션이 보내는 요청이
 
 test('인증 기능 지원 응답을 화면 계약으로 읽을 수 있다', () => {
   expect(authCapabilitiesSchema.safeParse(example('capabilities.json')).success).toBe(true)
+})
+
+test('자료 모킹 서버의 응답이 계약 스키마를 통과한다', async () => {
+  const server = createMaterialsMock()
+  const bodies: { method: string; path: string; status: number; body: unknown }[] = []
+  const inner = server.fetchAs(server.ownerId)
+  const recording: typeof fetch = async (input, init = {}) => {
+    const response = await inner(input, init)
+    const path = new URL(String(input), 'http://mock.local').pathname
+    if (response.status !== 204 && !path.startsWith('/v1/storage/')) {
+      bodies.push({ method: init.method ?? 'GET', path, status: response.status, body: await response.clone().json() })
+    }
+    return response
+  }
+  const materials = createMaterialsApi(createApiClient(recording))
+  const fileId = server.seed('file', '조사.pdf')
+  server.seed('link', '감축 사례', { status: 'processing' })
+  // 대기 중인 분석 작업은 다음 요청 때 이 오류로 끝난다
+  server.faults.failAnalysisCode = 'LINK_FETCH_FAILED'
+  const memoId = server.seed('memo', '인터뷰', { markdown: '## 요약' })
+  await materials.list(server.projectId, { q: '조사' })
+  const file = await materials.get(fileId)
+  await materials.update(fileId, file.version, { title: '조사 결과.pdf' })
+  await materials.update(fileId, file.version, { title: '오래된 요청' }).catch(() => undefined)
+  await materials.note(memoId)
+  await materials.saveNote(memoId, 0, '함께 확인할 내용')
+  await materials.saveNote(memoId, 0, '오래된 저장').catch(() => undefined)
+  await materials.note(memoId)
+  const failed = (await materials.list(server.projectId, { kind: 'link' })).items[0]
+  const retried = await materials.reprocess(failed.id, crypto.randomUUID())
+  await materials.job(retried.job!.id)
+  await materials.remove(fileId, file.version + 1)
+  await materials.get(fileId).catch(() => undefined)
+
+  const schemaOf = ({ method, path, status }: (typeof bodies)[number]) => {
+    if (status >= 400) return api('ErrorResponse')
+    if (path.endsWith('/auth/bootstrap')) return api('AuthBootstrap')
+    if (path.endsWith('/note')) return method === 'GET' ? api('MaterialNote') : api('MaterialNoteSaveResponse')
+    if (path.includes('/jobs/')) return api('Job')
+    if (path.endsWith('/reprocess')) return stage2('MaterialCreated')
+    if (path.endsWith('/materials')) return stage2('MaterialList')
+    return method === 'DELETE' ? stage2('MaterialDeleted') : stage2('Material')
+  }
+  const seenCodes: string[] = []
+  for (const entry of bodies) {
+    expect(check(schemaOf(entry), entry.body), `${entry.method} ${entry.path}`).toEqual([])
+    if (entry.status < 400) continue
+    const error = (entry.body as { error: { code: string; retryable: boolean } }).error
+    const listed = errorCodes.codes.find((candidate) => candidate.code === error.code)
+    expect(listed, error.code).toMatchObject({ httpStatus: entry.status, retryable: error.retryable })
+    seenCodes.push(error.code)
+  }
+  expect(bodies.length).toBeGreaterThanOrEqual(12)
+  expect(seenCodes).toEqual(expect.arrayContaining(['VERSION_CONFLICT', 'MATERIAL_DELETED']))
 })

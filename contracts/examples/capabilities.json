@@ -1,5 +1,5 @@
 {
-  "configVersion": "stage-1",
+  "configVersion": "stage-2",
   "policyRevision": "unconfigured",
   "authProviders": [
     { "provider": "email", "enabled": false, "reauthEnabled": false },
@@ -7,7 +7,9 @@
     { "provider": "naver", "enabled": false, "reauthEnabled": false },
     { "provider": "google", "enabled": false, "reauthEnabled": false }
   ],
-  "uploadTypes": [],
+  "uploadTypes": [
+    { "kind": "material_pdf", "mimeType": "application/pdf", "maxBytes": 20971520 }
+  ],
   "formats": [],
   "fonts": [],
   "featureFlags": {

@@ -1,0 +1,23 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000f8",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "material_analysis",
+  "status": "failed",
+  "progress": 0,
+  "targetType": "material",
+  "targetId": "0193a000-0000-7000-8000-0000000000b2",
+  "attempt": 3,
+  "inputVersions": {
+    "materialVersion": 1
+  },
+  "resultRef": null,
+  "error": {
+    "code": "LINK_FETCH_FAILED",
+    "message": "문서를 가져오지 못했어요.",
+    "retryable": true
+  },
+  "cancelRequestedAt": null,
+  "createdAt": "2026-11-19T05:20:00.000000Z",
+  "updatedAt": "2026-11-19T05:20:08.000000Z",
+  "finishedAt": "2026-11-19T05:20:08.000000Z"
+}

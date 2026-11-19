@@ -1,0 +1,42 @@
+{
+  "material": {
+    "id": "0193a000-0000-7000-8000-0000000000b3",
+    "projectId": "0193a000-0000-7000-8000-000000000001",
+    "kind": "memo",
+    "title": "다회용컵 사용 인터뷰",
+    "description": null,
+    "status": "ready",
+    "version": 1,
+    "pageCount": null,
+    "createdBy": {
+      "userId": "0193a000-0000-7000-8000-0000000000d2",
+      "name": "팀원 2"
+    },
+    "createdAt": "2026-11-19T05:20:00.000000Z",
+    "updatedAt": "2026-11-19T05:20:00.000000Z",
+    "source": {
+      "fileName": null,
+      "mimeType": null,
+      "sizeBytes": null,
+      "url": null
+    },
+    "currentRevision": {
+      "id": "0193a000-0000-7000-8000-0000000000e3",
+      "sourceVersion": 1,
+      "pageCount": null,
+      "summary": null,
+      "excerpt": {
+        "text": "반납함이 멀어서 쓰지 않는다는 답이 많았다",
+        "page": null
+      },
+      "createdBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d2",
+        "name": "팀원 2"
+      },
+      "createdAt": "2026-11-19T05:20:00.000000Z"
+    },
+    "job": null,
+    "canDelete": true
+  },
+  "job": null
+}

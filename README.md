@@ -37,6 +37,7 @@ npm run dev
 | `npm test` | Vitest 단위 테스트 |
 | `npm run contracts:check` | 계약 복사본이 백엔드 `main`에 커밋된 계약과 같은지 확인 |
 | `npm run preview` | 빌드 결과 미리보기 |
+| `npm run dev -- --mode mock` | 서버 없이 자료 화면을 메모리 모킹으로 확인하는 개발 전용 모드. 실제 서버 연동을 대신하지 않는다 |
 
 ## 환경변수
 

@@ -12,6 +12,7 @@ import AppShell from './AppShell.tsx'
 import ProjectHome from '../features/projects/ProjectHome.tsx'
 import ProjectPage from '../features/projects/ProjectPage.tsx'
 import Invitation from '../features/projects/Invitation.tsx'
+import MaterialsPage from '../features/materials/MaterialsPage.tsx'
 
 // 개발용 화면은 개발 서버에서만 등록하고 운영 빌드에는 포함하지 않는다
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
           { path: 'account', element: <Account /> },
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/settings', element: <ProjectPage /> },
+          { path: 'projects/:projectId/materials', element: <MaterialsPage /> },
         ] }] },
       ] },
       ...devRoutes,

@@ -56,7 +56,7 @@ test('홈에서도 프로젝트 목록과 팀 관리 및 설정에 접근할 수
   await screen.findByRole('navigation', { name: '내 프로젝트' })
   expect(screen.getByRole('navigation', { name: '프로젝트 관리' })).toBeTruthy()
   expect(screen.getAllByRole('link', { name: '팀원 관리' })[0]?.getAttribute('href')).toBe('/projects/project-1?team=1')
-  expect(screen.queryByRole('link', { name: '자료' })).toBeNull()
+  expect(screen.getByRole('link', { name: '자료' }).getAttribute('href')).toBe('/projects/project-1/materials')
   fireEvent.click(screen.getByRole('button', { name: '팀 발표 메뉴' }))
   expect(screen.queryByRole('link', { name: '프로젝트 개요' })).toBeNull()
 })
