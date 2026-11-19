@@ -9,9 +9,9 @@
 .notice { background: var(--color-accent-soft); border-radius: var(--radius-md); padding: var(--space-16); color: var(--color-accent); }
 .form, .stack { display: flex; flex-direction: column; gap: var(--space-20); }
 .actions { display: flex; gap: var(--space-12); flex-wrap: wrap; }
-.member { display: flex; gap: var(--space-16); align-items: center; min-height: 44px; }
+.member { display: flex; gap: var(--space-16); align-items: center; min-height: 26px; }
 .member > span:first-child { flex: 1; font: var(--text-lead); }
-.members { display: flex; flex-direction: column; gap: var(--space-20); list-style: none; padding: 0; margin: 0; }
+.members { display: flex; flex-direction: column; gap: var(--space-24); list-style: none; padding: 0; margin: 0; }
 .choice { padding: var(--space-12); border: 1px solid var(--color-border); border-radius: var(--radius-md); display: flex; gap: var(--space-12); align-items: center; }
 .choice:has(input:checked) { border-color: var(--color-primary); background: var(--color-primary-soft); }
 .choice input { accent-color: var(--color-primary); }
@@ -54,3 +54,16 @@
 .pending { min-height: 240px; }
 @media (max-width: 1000px) { .home { padding: 32px; } .projectTitle { flex-wrap: wrap; } }
 @media (max-width: 800px) { .home { padding: 20px; } .startOptions { grid-template-columns: 1fr; } .howItWorks { grid-template-columns: 1fr; } .intro { padding: 24px; } .projectCard { min-height: auto; } }
+.teamContent { display: flex; flex-direction: column; gap: 24px; }
+.member > span:first-child { min-width: 0; }
+.member > button { flex-shrink: 0; }
+.inviteHeading { font: 700 20px/28px var(--font-body); }
+.inviteLink { font: var(--text-lead); text-decoration: none; overflow-wrap: anywhere; word-break: break-all; }
+.inviteLink:hover { text-decoration: underline; }
+.copyStatus { min-height: 22px; color: var(--color-secondary); }
+.inviteExpiry { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.invitationBackground { min-height: 100dvh; background: var(--color-canvas); padding: 32px; }
+.invitationSummary { display: flex; flex-direction: column; gap: 8px; min-height: 110px; background: var(--color-subtle); padding: 24px; border-radius: 12px; }
+.invitationSummary h3 { font: 700 20px/28px var(--font-body); }
+.invitationForm { display: flex; flex-direction: column; gap: 20px; }
+.invitationForm input { font: var(--text-body); }
