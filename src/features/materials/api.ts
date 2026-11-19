@@ -58,6 +58,7 @@ export function createMaterialsApi(client: ApiClient, fetchImpl: typeof fetch = 
     createFile: (projectId: string, body: { uploadId: string; title?: string }, key: string) => created(`/projects/${segment(projectId)}/materials/file`, body, key),
     createLink: (projectId: string, body: { url: string; title?: string; description?: string }, key: string) => created(`/projects/${segment(projectId)}/materials/link`, body, key),
     createMemo: (projectId: string, body: { title: string; markdown: string }, key: string) => created(`/projects/${segment(projectId)}/materials/memo`, body, key),
+    cancelJob: (id: string) => client.request(`/jobs/${segment(id)}/cancel`, jobSchema, { method: 'POST', timeoutMs: 15000 }),
   }
 }
 export type MaterialsApi = ReturnType<typeof createMaterialsApi>

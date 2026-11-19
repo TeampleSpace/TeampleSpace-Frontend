@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api/client.ts'
 import { Button } from '../../shared/ui/Button.tsx'
-import { Field } from '../../shared/ui/Field.tsx'
 import { Modal } from '../../shared/ui/Modal.tsx'
 import { RequestError } from '../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../shared/ui/StatusPanel.tsx'
@@ -12,7 +11,8 @@ import type { Member, Project } from './model.ts'
 import styles from './Projects.module.css'
 
 export type TeamView = 'members' | 'invite' | 'remove' | 'transfer' | 'leave'
-export function TeamDialog({ project, initialView, onClose, onChange, onExit, onAccessError }: {
+export function TeamDialog({ project, initialView, open = true, onClose, onChange, onExit, onAccessError }: {
+  open?: boolean
   project: Project; initialView: TeamView; onClose: () => void; onChange: (project?: Project) => Promise<void>
   onExit: () => void; onAccessError: (error: unknown) => void
 }) {
@@ -33,13 +33,23 @@ export function TeamDialog({ project, initialView, onClose, onChange, onExit, on
   const target = members?.find((member) => member.userId === targetId)
   const self = members?.find((member) => member.userId === userId)
 
+  const [previous, setPrevious] = useState({ open, initialView })
+  if (previous.open !== open || previous.initialView !== initialView) {
+    setPrevious({ open, initialView })
+    if (open) {
+      setView(initialView); setMembers(null); setTargetId(''); setError(undefined)
+      setCopied(false); setCopyFailed(false); setLink(null); setPendingRemoval(null)
+    }
+  }
+
   useEffect(() => {
+    if (!open) return
     const controller = new AbortController()
     void allMembers(project.id, controller.signal).then((data) => {
       if (!controller.signal.aborted) { setMembers(data); setError(undefined) }
     }).catch((reason) => { if (!controller.signal.aborted) { setError(reason); onAccessError(reason) } })
     return () => controller.abort()
-  }, [project.id, revision, onAccessError])
+  }, [project.id, revision, onAccessError, open, initialView])
 
   async function act(work: () => Promise<void>) {
     if (lock.current) return
@@ -74,8 +84,8 @@ export function TeamDialog({ project, initialView, onClose, onChange, onExit, on
     finally { lock.current = false; setBusy(false) }
   }
   const title = view === 'members' ? '팀원 관리' : view === 'invite' ? '팀원 초대' : view === 'transfer' ? '새 소유자를 선택하세요' : view === 'leave' ? '프로젝트에서 나갈까요?' : `${target?.name ?? '팀원'}님을 내보낼까요?`
-  return <Modal open title={title} description={project.name} size={view === 'members' ? 'dialog' : 'confirm'} onClose={close}>
-    <div className={styles.stack}>
+  return <Modal open={open} title={title} description={project.name} size={view === 'members' ? 'team' : view === 'invite' ? 'invite' : 'confirm'} onClose={close}>
+    <div className={styles.teamContent}>
       {!members && !error && <StatusPanel kind="loading" title="팀원을 불러오고 있어요" />}
       {view === 'members' && members && <>
         <p>프로젝트 팀원 {members.length}명</p>
@@ -83,19 +93,20 @@ export function TeamDialog({ project, initialView, onClose, onChange, onExit, on
           <span>{member.name}{member.userId === userId ? ' (나)' : ''}</span><span className={styles.muted}>{member.isOwner ? '프로젝트 소유자' : '팀원'}</span>
           {memberPermissions(project, member, userId).canRemove && <Button variant="text" onClick={() => { setTargetId(member.userId); setView('remove'); setError(undefined) }}>내보내기</Button>}
         </li>)}</ul>
-        <div className={styles.actions}><Button onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id)); setView('invite') })}>팀원 초대</Button>
-          {isOwner && <Button variant="text" onClick={() => { setView('transfer'); setError(undefined) }}>소유자 변경</Button>}</div>
-        <p className={styles.small}>모든 팀원에게 프로젝트의 편집 권한이 있어요</p>
+        <div><Button loading={busy} onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id)); setView('invite') })}>팀원 초대</Button></div>
+        <p className={styles.small}>모든 팀원이 프로젝트에 참여할 수 있어요. 자료와 슬라이드 편집은 준비 중이에요</p>
+        {isOwner && <div><Button variant="text" onClick={() => { setView('transfer'); setError(undefined) }}>소유자 변경</Button></div>}
       </>}
       {view === 'invite' && <>
+        <h3 className={styles.inviteHeading}>초대 링크로 팀원을 초대하세요</h3>
         {!link ? <Button loading={busy} onClick={() => void act(async () => setLink(await projectsApi.invite(project.id)))}>초대 링크 만들기</Button> : <>
-          <Field label="초대 링크" value={link.url} readOnly onFocus={(event) => event.target.select()} />
-          <p className={styles.small}>유효 기간 {new Date(link.expiresAt).toLocaleString('ko-KR')}</p>
-          <div className={styles.actions}><Button loading={busy} onClick={() => void copy()}>링크 복사</Button>
-            <Button variant="secondary" loading={busy} onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id, true)); setCopied(false); setCopyFailed(false) })}>새 링크 발급</Button></div>
-          {copied && <p role="status">초대 링크를 복사했어요</p>}
-          {copyFailed && <p role="status">복사하지 못했어요. 위 링크를 선택해 직접 복사해 주세요</p>}
-          <p className={styles.small}>새 링크를 발급하면 기존 링크를 사용할 수 없어요</p>
+          <a className={styles.inviteLink} href={link.url} target="_blank" rel="noopener noreferrer">{link.url}</a>
+          <p className={styles.muted}>링크를 받은 사람은 프로젝트 참여 화면으로 이동합니다.</p>
+          <div><Button loading={busy} onClick={() => void copy()}>초대 링크 복사</Button></div>
+          <p className={styles.copyStatus} role="status">{copyFailed ? '복사하지 못했어요. 위 링크를 선택해 직접 복사해 주세요' : copied ? '초대 링크를 복사했어요' : '링크를 공유한 뒤에도 이 화면에서 팀원을 관리할 수 있어요'}</p>
+          <div className={styles.inviteExpiry}><p className={styles.small}>유효 기간 {new Date(link.expiresAt).toLocaleString('ko-KR')}</p>
+            <p className={styles.small}>새 링크를 발급하면 기존 링크를 사용할 수 없어요</p>
+            <div><Button variant="secondary" loading={busy} onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id, true)); setCopied(false); setCopyFailed(false) })}>새 링크 발급</Button></div></div>
         </>}
       </>}
       {view === 'transfer' && members && <>
