@@ -10,6 +10,7 @@ import type { AuthCapabilities, User } from '../auth/model.ts'
 import capabilitiesExample from '../../../contracts/examples/capabilities.json'
 import { createMaterialsMock } from '../../mocks/materials.ts'
 import type { MaterialsMock } from '../../mocks/materials.ts'
+import { sha256Hex } from './upload.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 파일 처리와 서버 연동 검증이 아니다
 vi.mock('../projects/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
@@ -52,6 +53,11 @@ beforeEach(() => {
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => mock.fetchAs(mock.ownerId)(input, init))
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+test('PDF 전송 전 파일 내용의 SHA-256 값을 계산한다', async () => {
+  expect(await sha256Hex(new File(['abc'], 'checksum.pdf', { type: 'application/pdf' })))
+    .toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+})
 
 test('PDF는 준비, 전송, 등록을 차례로 하고 전송에는 발급받은 헤더만 싣는다', async () => {
   mount()
