@@ -403,5 +403,35 @@
     "example": "invalid/material-memo-with-job.json",
     "schema": "stage-2.schema.json#/$defs/Material",
     "valid": false
+  },
+  {
+    "example": "invalid/material-created-file-without-job.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-created-memo-with-job.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialCreated",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-memo-processing.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-link-with-page-count.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-page-count-without-revision.json",
+    "schema": "stage-2.schema.json#/$defs/Material",
+    "valid": false
+  },
+  {
+    "example": "invalid/material-summary-memo-processing.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSummary",
+    "valid": false
   }
 ]
