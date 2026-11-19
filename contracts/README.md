@@ -13,6 +13,8 @@
 | --- | --- |
 | `schemas/document.schema.json` | 발표 문서, 슬라이드, 요소, 출처 연결 형식. schemaVersion 1 |
 | `schemas/api.schema.json` | 오류, 요소 수정 요청과 응답, 이벤트, 작업, 기능 지원 정보, 세션 초기 정보, 동기화 스냅샷 |
+| `schemas/stage-1.schema.json`, `stage-1.md` | 인증, 계정, 프로젝트, 팀원, 초대 |
+| `schemas/stage-2.schema.json`, `stage-2.md` | 자료, 업로드, 원문, 팀 메모와 작업의 경로, 권한, 상태 전이 |
 | `error-codes.json` | 오류 코드와 HTTP 상태, 근거 |
 | `examples/` | 형식별 예제 |
 | `examples/invalid/` | 스키마가 거절해야 하는 예제 |
@@ -60,6 +62,8 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | `projectVersion` | 이름, 주제, 소유권, 삭제 상태 | 해당 정보 변경 |
 | `membershipVersion` | 한 사용자와 프로젝트의 관계 | 참여, 퇴장, 소유권 변경 |
 | `materialVersion` | 자료 정보와 처리 상태 | 제목, 설명, 현재 원문, 분석 상태 변경 |
+| `sourceVersion` | 자료 안의 원문 개정 번호 | 마크다운 본문 변경, 분석 성공으로 새 개정이 생길 때 |
+| `noteVersion` | 자료 팀 메모 | 팀 메모 저장. 아직 쓰지 않은 메모는 0 |
 | `outlineVersion` | 발표 구성 전체 | 항목, 순서, 근거 변경 |
 | `designVersion` | 디자인 설정 | 디자인 저장 |
 | `generation` | 전체 생성 세대 | 전체 생성 결과 게시 |
@@ -177,7 +181,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 
 ## 형식을 정한 경로와 구현 상태
 
-형식은 0단계에서 정했고 HTTP 경로는 각 기능 단계에서 연다. 지금 열려 있는 `/v1` 경로는 없다.
+형식은 0단계에서 정했고 HTTP 경로는 각 기능 단계에서 연다. 인증과 프로젝트 경로는 `stage-1.md`, 자료와 작업 경로는 `stage-2.md`에 있다.
 
 | 기능 | 경로 | 형식 | 구현 상태 | HTTP 경로를 여는 단계 |
 | --- | --- | --- | --- | --- |
@@ -189,8 +193,19 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 형식만 | 3단계 |
 | 프로젝트 작업 목록 | `GET /v1/projects/{projectId}/jobs` | `JobList` | 형식만 | 2단계 |
 | 작업 조회 | `GET /v1/jobs/{jobId}` | `Job` | 형식만 | 2단계 |
+| 작업 취소 | `POST /v1/jobs/{jobId}/cancel` | `Job` | 형식만 | 2단계 |
+| 자료 목록 | `GET /v1/projects/{projectId}/materials` | `MaterialList` | 형식만 | 2단계 |
+| 자료 상세 | `GET /v1/materials/{materialId}` | `Material` | 형식만 | 2단계 |
+| 자료 이름과 본문 변경 | `PATCH /v1/materials/{materialId}` | `MaterialPatchRequest`, `Material` | 형식만 | 2단계 |
+| 자료 삭제 | `DELETE /v1/materials/{materialId}` | `MaterialDeleteRequest`, `MaterialDeleted` | 형식만 | 2단계 |
+| 마크다운 자료 등록 | `POST /v1/projects/{projectId}/materials/memo` | `MemoMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
 | 팀 메모 조회 | `GET /v1/materials/{materialId}/note` | `MaterialNote` | 형식만 | 2단계 |
 | 팀 메모 저장 | `PUT /v1/materials/{materialId}/note` | `MaterialNotePutRequest`, `MaterialNoteSaveResponse` | 형식만 | 2단계 |
+| 업로드 준비 | `POST /v1/projects/{projectId}/uploads` | `UploadRequest`, `UploadTicket` | 형식만 | 2단계 |
+| 파일 자료 등록 | `POST /v1/projects/{projectId}/materials/file` | `FileMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
+| 분석 다시 시도 | `POST /v1/materials/{materialId}/reprocess` | `MaterialCreated` | 형식만 | 2단계 |
+| 원문 조회 | `GET /v1/materials/{materialId}/source` | `MaterialSource` | 형식만 | 2단계 |
+| 링크 자료 등록 | `POST /v1/projects/{projectId}/materials/link` | `LinkMaterialRequest`, `MaterialCreated` | 형식만 | 2단계 |
 
 단계 번호는 개발 순서의 번호다. 1은 인증과 프로젝트, 2는 자료, 3은 구성과 디자인, 4는 편집과 공유 저장, 5는 최초 생성, 6은 이력과 검토, 7은 발표와 내보내기다.
 
@@ -234,7 +249,8 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 출처 연결을 파일에 표시하는 방식 | 출력 실험은 일반 글자인 출처 문구만 옮긴다 |
 | 내보내기 형식을 지원한다고 공개하는 기준 | 기능 지원 정보의 `formats`는 비워 두었다 |
 | 기본 캔버스 크기 | 예제는 1280x720이다. 문서마다 `canvas`를 가지므로 형식에는 영향이 없다 |
-| 업로드 허용 형식과 크기 | `uploadTypes`는 비워 두었다 |
+| 업로드 허용 형식과 크기 | PDF만 받고 20MB까지다. 크기는 검증용 기본값이며 서버 설정으로 바꾼다 |
+| 파일 저장소와 요약 모델 | 정해지지 않아 서버 폴더에 보관하고 요약은 비워 둔다. `stage-2.md`의 외부 설정과 남은 결정에 적었다 |
 | 목록 크기 | 예제의 기본 30과 상한 100은 설계서의 제안값이다 |
 | 약관 문서의 종류, 버전, 주소 | `legalDocuments`는 비워 두었다. 비어 있으면 가입 완료를 열지 않는다 |
 | 프로젝트에 참여한 적 없는 사용자의 응답 | 지금은 403이다. 대상이 있는지 숨기려면 404로 바꿔야 한다 |
@@ -247,8 +263,9 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 편집 세션을 식별하는 방법, 세션 쿠키, CSRF 검증 | 1단계 | 인증과 세션을 만들 때 정해진다. 지금은 호출자가 식별자를 넘긴다 |
 | 입력 내용 오류를 422와 `fieldErrors`로 응답 | 1단계 | 입력 검증을 쓰는 첫 기능에서 적용한다. 지금은 형식 오류만 400으로 응답한다 |
 | 동기화 스냅샷의 작업 공간 범위 | 1단계 | 프로젝트와 팀원 기능이 있어야 내용이 정해진다 |
-| 작업 종류 이름과 `inputVersions`의 항목 | 2단계 | 작업 처리 기반을 만들 때 정한다. 예제의 이름은 보기용이다 |
-| 출처 연결 저장과 수정 | 2단계 | 자료 개정 테이블이 있어야 한다. 지금 응답의 `sourceRefs`는 비어 있다 |
+| 생성과 내보내기 작업의 종류 이름과 `inputVersions`의 항목 | 5단계, 7단계 | 자료 분석은 `material_analysis`와 `materialVersion`으로 정했다. 나머지는 그 기능을 만들 때 정한다 |
+| 출처 연결 저장과 수정 | 3단계 | 근거를 연결하는 구성 기능에서 정한다. 지금 응답의 `sourceRefs`는 비어 있다 |
+| 생성 작업이 쓰는 자료의 삭제 충돌 응답 | 5단계 | 자료를 입력으로 고정하는 작업이 생길 때 추가한다 |
 | 동기화 스냅샷의 구성 범위 | 3단계 | 구성과 디자인 기능이 있어야 내용이 정해진다 |
 | 요소 삽입, 삭제, 슬라이드 추가와 순서 변경의 요청 본문 | 4단계 | 응답 형식은 `MutationResponse`로 같다. 요청은 편집 기능을 만들 때 정한다 |
 | 요소 종류별 내용과 스타일의 서버 검증 | 4단계 | 지금은 객체인지만 확인한다 |

@@ -14,8 +14,8 @@
 | 항목 | 값 |
 | --- | --- |
 | 복사한 저장소 | TeampleSpace/TeampleSpace-Backend |
-| 복사한 기준 | `d8b4d03bfe91bb7a6407b3f24ba6371b98159bba`. 인증과 프로젝트 기능의 검토 중인 계약을 고정한 기준이며 `contracts-source.json`에 같은 값을 기록한다 |
-| 복사한 날 | 2026-11-18 |
+| 복사한 기준 | `cf06b62e90d584acb07b5096da9965816ef58b90`. 자료와 작업 처리 계약을 정리한 백엔드 브랜치의 커밋이며 `contracts-source.json`에 같은 값을 기록한다 |
+| 복사한 날 | 2026-11-19 |
 
 계약이 바뀌면 폴더를 통째로 다시 복사하고 위 표를 고친 뒤 `npm test`를 돌린다. 어긋난 곳은 `src/shared/api/contracts.test.ts`가 알려 준다.
 
@@ -108,3 +108,15 @@ npm run contracts:check
 | 2026-11-18 | 앱 내장 브라우저, 1440x900 | `/dev/editor`에서 직접 조작 | `docs/editor-experiment.md` 참고 | 모킹 |
 
 실제 서버로 확인해야 하는 것은 요청과 응답 전부와 세션 쿠키 전달, CSRF 검증, 같은 사이트 프록시 구성이다.
+
+## 자료 계약 반영
+
+2026-11-19에 자료, 업로드, 원문, 팀 메모, 작업 계약을 복사했다. 형식은 `src/features/materials/model.ts`에 옮겼고 계약의 올바른 예제를 모두 받아들이는지 `src/shared/api/contracts.test.ts`가 확인한다.
+
+- 충돌 응답의 `noteVersion`을 `src/shared/api/contract.ts`에 더했다
+- 팀 메모 응답의 `updatedByName`을 형식 검사에 넣었다
+- 자료 모킹 서버 `src/mocks/materials.ts`의 응답이 계약 스키마를 통과하는지 같은 테스트가 확인한다. 오류의 상태와 재시도 여부는 계약의 오류 코드 목록에서 읽는다
+- 요약이 null이면 핵심 요약 영역을 숨긴다
+- 이벤트 구독이 없어 처리 중인 자료와 목록은 2초마다 다시 조회한다. 화면이 보이지 않을 때는 조회하지 않는다
+
+자료 모킹 서버로 통과한 시험은 프론트엔드 코드가 계약과 일치한다는 뜻이다. 실제 서버의 파일 처리와 분석, 권한 검사를 보증하지 않는다.

@@ -1,0 +1,14 @@
+{
+  "materialId": "0193a000-0000-7000-8000-0000000000b2",
+  "revisionId": "0193a000-0000-7000-8000-0000000000e1",
+  "sourceVersion": 1,
+  "kind": "link",
+  "title": "대학의 일회용품 감축 사례",
+  "file": null,
+  "markdown": null,
+  "link": {
+    "url": "https://example.com/reuse-cup",
+    "title": "대학의 일회용품 감축 사례",
+    "text": "여러 대학이 다회용컵 반납함을 늘렸다."
+  }
+}

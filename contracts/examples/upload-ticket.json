@@ -1,0 +1,9 @@
+{
+  "uploadId": "0193a000-0000-7000-8000-0000000000a1",
+  "uploadUrl": "/v1/storage/uploads/dTowMTkzYTAwMC4xNzk1MDYwMDAw.c2lnbmF0dXJl",
+  "uploadMethod": "PUT",
+  "uploadHeaders": {
+    "Content-Type": "application/pdf"
+  },
+  "expiresAt": "2026-11-19T05:30:00.000000Z"
+}

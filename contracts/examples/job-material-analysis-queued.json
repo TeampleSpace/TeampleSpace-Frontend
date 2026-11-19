@@ -1,0 +1,19 @@
+{
+  "id": "0193a000-0000-7000-8000-0000000000f8",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "material_analysis",
+  "status": "queued",
+  "progress": 0,
+  "targetType": "material",
+  "targetId": "0193a000-0000-7000-8000-0000000000b2",
+  "attempt": 0,
+  "inputVersions": {
+    "materialVersion": 1
+  },
+  "resultRef": null,
+  "error": null,
+  "cancelRequestedAt": null,
+  "createdAt": "2026-11-19T05:20:00.000000Z",
+  "updatedAt": "2026-11-19T05:20:00.000000Z",
+  "finishedAt": null
+}

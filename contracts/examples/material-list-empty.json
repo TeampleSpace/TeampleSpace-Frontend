@@ -1,0 +1,10 @@
+{
+  "items": [],
+  "nextCursor": null,
+  "counts": {
+    "all": 0,
+    "file": 0,
+    "link": 0,
+    "memo": 0
+  }
+}
