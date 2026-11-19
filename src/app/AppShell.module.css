@@ -1,13 +1,32 @@
 .shell { min-height: 100dvh; display: flex; }
-.sidebar { width: 264px; flex-shrink: 0; background: var(--color-subtle); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; }
+.sidebar { width: 264px; flex-shrink: 0; background: var(--color-subtle); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
 .brand { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); font: 600 18px/28px var(--font-body); text-decoration: none; }
 .brand span { color: white; background: var(--color-accent-bright); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font: 700 20px/28px var(--font-body); }
 .navigation { display: flex; flex-direction: column; gap: var(--space-20); }
-.navigation a, .account { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: var(--space-12); min-height: 48px; border-radius: var(--radius-md); font: var(--text-nav); }
+.navigation a, .account, .managementLinks a { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: 12px 16px; min-height: 48px; border-radius: var(--radius-md); font: var(--text-nav); }
 .navigation a:hover, .account:hover { background: var(--color-muted); }
 .navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-primary); background: var(--color-primary-soft); }
 .navigation .search { background: var(--color-surface); border: 1px solid var(--color-border-control); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
-.account { margin-top: auto; }
+.management { margin-top: auto; display: flex; flex-direction: column; gap: 20px; }
+.managementLinks { display: flex; flex-direction: column; gap: 4px; }
+.managementLinks a:hover, .projectChildren a:hover, .projectRow a:hover { background: var(--color-muted); }
+.managementLinks a[aria-current='page'] { color: var(--color-primary); background: var(--color-primary-soft); }
+.caption { font: var(--text-meta); color: var(--color-secondary); }
+.explorer { display: flex; flex-direction: column; gap: 12px; }
+.explorer ul { display: flex; flex-direction: column; gap: 12px; padding: 0; margin: 0; list-style: none; }
+.projectRow { display: flex; align-items: flex-start; }
+.projectRow button { width: 40px; min-height: 44px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; border-radius: 8px; cursor: pointer; }
+.projectRow button:hover { background: var(--color-muted); }
+.projectRow a { flex: 1; min-width: 0; padding: 11px 4px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
+.collapsed, .expanded { width: 18px; height: 18px; background: url('/assets/navigation/chevron-down.svg') center no-repeat; }
+.collapsed { transform: rotate(-90deg); }
+.projectChildren { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; }
+.projectChildren a, .projectChildren > span { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
+.projectChildren > span, .projectChildren small { color: var(--color-secondary); }
+.projectChildren small { font: var(--text-meta); }
+.managementLinks a, .projectChildren a, .projectRow a, .projectRow button { transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
+.navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-primary-soft); color: var(--color-primary); }
+.sidebar > * { flex-shrink: 0; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-16); }
 .content { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); }
@@ -16,5 +35,6 @@
 .navigation a, .account {
   transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
 }
-.header, .content { animation: var(--motion-page-enter); }
+.header, .content { animation: var(--motion-content-enter); }
 @media (max-width: 800px) { .shell { flex-direction: column; } .sidebar { width: 100%; height: auto; position: static; gap: var(--space-12); } .navigation { flex-direction: row; flex-wrap: wrap; gap: var(--space-8); } .account { margin-top: 0; } .workspace { padding: var(--space-20); } }
+@media (max-width: 800px) { .management, .managementLinks { flex-direction: row; flex-wrap: wrap; gap: 8px; } .explorer { max-height: 240px; overflow-y: auto; } .management { margin-top: 0; } }

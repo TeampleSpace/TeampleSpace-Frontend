@@ -22,7 +22,7 @@
   --color-danger: #b42332;
   --color-danger-soft: #fff0f0;
 
-  /* 글꼴. 웹폰트 파일은 사용 권한 확인 후 추가하며 그 전에는 설치된 글꼴이나 시스템 글꼴로 표시된다 */
+  /* 라이선스와 함께 배포하는 웹폰트 */
   --font-body:
     'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif;
@@ -75,4 +75,5 @@
   --motion-enter: 220ms;
   --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
   --motion-page-enter: teample-fade-in var(--motion-enter) var(--motion-ease-out);
+  --motion-content-enter: teample-content-in var(--motion-normal) var(--motion-ease-out);
 }
