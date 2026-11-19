@@ -80,7 +80,7 @@ test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, 발�
 
 test('자료가 없는 프로젝트와 검색 결과가 없는 경우를 구분한다', async () => {
   const view = mount()
-  expect(await screen.findByRole('heading', { name: '첫 자료를 모아볼까요?' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '아직 자료가 없어요' })).toBeTruthy()
   cleanup()
   mock.seed('memo', '회의록')
   view.dispose()
@@ -121,12 +121,12 @@ test('처리 중인 자료는 다시 조회해 상태를 바꾸고 화면을 다
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   mount()
   const title = await detailTitle('보고서.pdf')
-  expect(screen.getByText('자료를 정리하고 있어요')).toBeTruthy()
+  expect(screen.getByText('PDF 본문을 추출하고 있어요.')).toBeTruthy()
   expect(screen.getAllByText('처리 중').length).toBeGreaterThan(0)
   mock.faults.holdAnalysis = false
   await vi.advanceTimersByTimeAsync(2100)
   expect(await screen.findByText('분석 완료')).toBeTruthy()
-  expect(screen.queryByText('자료를 정리하고 있어요')).toBeNull()
+  expect(screen.queryByText('PDF 본문을 추출하고 있어요.')).toBeNull()
   // 같은 요소가 그대로 남아 진입 애니메이션이 다시 재생되지 않는다
   expect(screen.getByRole('heading', { level: 2, name: '보고서.pdf' })).toBe(title)
 })
@@ -143,7 +143,7 @@ test('분석 실패는 파일을 다시 올리지 않고 같은 키로 다시 �
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
   expect(await screen.findByText(/서버에 연결할 수 없습니다/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-  expect(await screen.findByText('자료를 정리하고 있어요')).toBeTruthy()
+  expect(await screen.findByText('PDF 본문을 추출하고 있어요.')).toBeTruthy()
   const retries = mock.calls.filter((call) => call.path.endsWith('/reprocess'))
   expect(retries).toHaveLength(2)
   expect(retries[0].key).toBe(retries[1].key)
@@ -161,7 +161,7 @@ test('분석 취소 응답을 잃어도 작업을 조회해 취소를 확인하�
   expect(mock.jobs()[0].status).toBe('canceled')
   expect(mock.calls.some((call) => call.method === 'GET' && call.path.includes('/jobs/'))).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-  expect(await screen.findByText('자료를 정리하고 있어요')).toBeTruthy()
+  expect(await screen.findByText('PDF 본문을 추출하고 있어요.')).toBeTruthy()
   expect(mock.jobs()).toHaveLength(2)
 })
 

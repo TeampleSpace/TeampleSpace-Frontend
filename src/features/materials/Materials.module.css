@@ -39,7 +39,7 @@
 .sectionHeader > span { font: var(--text-meta); color: var(--color-secondary); }
 .origin { display: flex; flex-direction: column; gap: 4px; color: var(--color-secondary); }
 .origin a { overflow-wrap: anywhere; }
-.state { display: flex; flex-direction: column; gap: var(--space-24); }
+.state { display: flex; flex-direction: column; gap: var(--space-16); }
 .state > p:first-child { font: 400 18px/26px var(--font-body); color: var(--color-secondary); }
 .info { padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-subtle); }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
@@ -117,6 +117,7 @@
 .editorTools[hidden] { display: none; }
 .editorInput { flex: 1; min-height: 172px; width: 100%; padding: var(--space-16); border: 0; background: transparent; color: var(--color-ink); font: var(--text-body); resize: vertical; }
 .editorInput:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.editorTools:not([hidden]), .editorInput:not([hidden]) { animation: var(--motion-feedback-enter); }
 .editorPreview { flex: 1; min-height: 212px; padding: var(--space-16); animation: var(--motion-page-enter); }
 .hintText { font: var(--text-meta); color: var(--color-tertiary); }
 

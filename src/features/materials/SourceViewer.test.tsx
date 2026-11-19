@@ -203,6 +203,6 @@ test('처리 중이거나 실패한 자료에는 원문 보기를 두지 않는�
   mock.faults.holdAnalysis = true
   mock.seed('file', '보고서.pdf', { status: 'processing' })
   mount()
-  await screen.findByText('자료를 정리하고 있어요')
+  await screen.findByText('PDF 본문을 추출하고 있어요.')
   expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
 })

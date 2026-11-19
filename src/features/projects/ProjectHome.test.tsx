@@ -22,12 +22,13 @@ function mount(path = '/', shell = false) {
   render(<SessionContext value={{ user: null, capabilities: null, loading: false, error: undefined, refresh: async () => null, setUser: () => {} }}><RouterProvider router={router} /></SessionContext>)
   return router
 }
-test('첫 방문에는 시작 카드와 준비 중 안내가 표시되고 생성 모달을 연다', async () => {
+test('첫 방문에는 사용할 수 있는 기능을 안내하고 생성 모달을 연다', async () => {
   vi.mocked(projectsApi.list).mockResolvedValue({ items: [], nextCursor: null })
   mount()
-  await screen.findByText('함께할 팀플, 여기서 시작해요.')
-  expect(screen.getByText('초대받은 프로젝트 참여하기')).toBeTruthy()
-  expect(screen.getAllByText('준비 중')).toHaveLength(3)
+  await screen.findByRole('heading', { name: '팀 프로젝트 시작하기' })
+  expect(screen.getByRole('heading', { name: '초대받은 프로젝트' })).toBeTruthy()
+  expect(screen.getByText('자료 추가')).toBeTruthy()
+  expect(screen.queryByText('준비 중')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: '프로젝트 만들기' }))
   expect(await screen.findByRole('dialog', { name: '새 프로젝트' })).toBeTruthy()
 })
@@ -57,8 +58,15 @@ test('홈에서도 프로젝트 목록과 팀 관리 및 설정에 접근할 수
   expect(screen.getByRole('navigation', { name: '프로젝트 관리' })).toBeTruthy()
   expect(screen.getAllByRole('link', { name: '팀원 관리' })[0]?.getAttribute('href')).toBe('/projects/project-1?team=1')
   expect(screen.getByRole('link', { name: '자료' }).getAttribute('href')).toBe('/projects/project-1/materials')
-  fireEvent.click(screen.getByRole('button', { name: '팀 발표 메뉴' }))
+  const toggle = screen.getByRole('button', { name: '팀 발표 메뉴' })
+  toggle.focus()
+  fireEvent.click(toggle)
   expect(screen.queryByRole('link', { name: '프로젝트 개요' })).toBeNull()
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(toggle)
+  fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+  expect(screen.getByRole('link', { name: '자료' })).toBeTruthy()
 })
 
 test('추가 페이지의 프로젝트를 열고 설정으로 이동해도 탐색 목록을 유지한다', async () => {
