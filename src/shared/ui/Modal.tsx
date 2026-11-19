@@ -7,9 +7,7 @@ type Props = {
   open: boolean
   title: string
   description?: string
-  // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
-  // form은 입력이 여러 개인 760px 모달이다
-  size?: 'dialog' | 'confirm' | 'form'
+  size?: 'dialog' | 'confirm' | 'form' | 'team' | 'invite'
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
@@ -38,8 +36,11 @@ export function Modal({
       // 기본 선택으로 표시한 요소가 있으면 그곳으로 포커스를 옮긴다
       dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus()
     }
+    if (open && !dialog.contains(document.activeElement)) {
+      dialog.querySelector<HTMLElement>('[data-autofocus], button, a[href], input, textarea')?.focus()
+    }
     if (!open && dialog.open) dialog.close()
-  }, [open])
+  }, [open, title])
 
   const descriptionText = description && (
     <p id={descriptionId} className={styles.description}>
@@ -69,13 +70,13 @@ export function Modal({
               {title}
             </h2>
             {/* 입력 모달은 설명을 제목 바로 아래에 둔다 */}
-            {size === 'form' && descriptionText}
+            {(size === 'form' || size === 'invite') && descriptionText}
           </div>
           <Button variant="text" onClick={onClose}>
             닫기
           </Button>
         </header>
-        {size !== 'form' && descriptionText}
+        {size !== 'form' && size !== 'invite' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}
         {footer && <footer className={styles.footer}>{footer}</footer>}
       </div>

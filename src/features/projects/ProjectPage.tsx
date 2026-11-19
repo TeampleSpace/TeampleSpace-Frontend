@@ -109,7 +109,7 @@ export default function ProjectPage() {
         <h2>프로젝트 정보</h2><dl className={styles.details}><dt>발표 주제</dt><dd>{project.topic || '아직 정하지 않았어요'}</dd><dt>발표 조건</dt><dd>{project.presentationConstraints || '아직 정하지 않았어요'}</dd><dt>팀원</dt><dd>{project.memberCount}명</dd></dl>
         <div className={styles.actions}><Button onClick={() => open('members')}>팀원 관리</Button><Button variant="secondary" onClick={() => open('invite')}>팀원 초대</Button><Link to={`/projects/${project.id}/settings`}>프로젝트 설정</Link></div>
       </section>}
-    {currentView && currentView !== 'delete' && <TeamDialog key={`${project.id}:${currentView}`} project={project} initialView={currentView} onClose={close} onChange={changeTeam} onExit={exit} onAccessError={onAccessError} />}
+    <TeamDialog key={`team:${project.id}`} open={!!currentView && currentView !== 'delete'} project={project} initialView={currentView && currentView !== 'delete' ? currentView : 'members'} onClose={close} onChange={changeTeam} onExit={exit} onAccessError={onAccessError} />
     <Modal open={currentView === 'delete'} title="프로젝트를 삭제할까요?" size="confirm" onClose={close}
       description="삭제한 프로젝트는 다시 열 수 없어요. 프로젝트 이름을 정확하게 입력해 주세요"
       footer={<><Button variant="secondary" disabled={busy} onClick={close}>취소</Button><Button variant="danger" loading={busy} disabled={confirmation !== project.name} onClick={() => void remove()}>프로젝트 삭제</Button></>}>
