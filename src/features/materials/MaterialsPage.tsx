@@ -18,6 +18,7 @@ import { MaterialCreateDialog } from './MaterialCreateDialog.tsx'
 import type { InputType } from './MaterialCreateDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
 import { MaterialNote } from './MaterialNote.tsx'
+import { MaterialJob } from './MaterialJob.tsx'
 import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from './model.ts'
 import type { Material, MaterialKind, MaterialList, MaterialSummary } from './model.ts'
 import styles from './Materials.module.css'
@@ -96,6 +97,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
   const retryKey = useRef<{ id: string; key: string } | null>(null)
   const generation = useRef(0)
+  const loadedPages = useRef({ key: '', count: 1 })
+  const moreLock = useRef(false)
   const selectedId = paramId ?? pinnedId
   const visibleList = list?.key === key ? list : null
   const visible = detail?.id === selectedId ? detail : null
@@ -119,17 +122,23 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   }
 
   const loadList = useCallback(async (signal?: AbortSignal, silent = false) => {
+    if (silent && moreLock.current) return
     const current = ++generation.current
     try {
       const data = await materialsApi.list(project.id, { q, kind }, signal)
+      const pagesToLoad = silent && loadedPages.current.key === key ? loadedPages.current.count : 1
+      let pages = 1
+      while (pages < pagesToLoad && data.nextCursor) {
+        if (signal?.aborted || current !== generation.current) return
+        const next = await materialsApi.list(project.id, { q, kind, cursor: data.nextCursor }, signal)
+        data.items.push(...next.items.filter((item) => !data.items.some((old) => old.id === item.id)))
+        data.nextCursor = next.nextCursor
+        pages++
+      }
       // 이전 검색의 응답이 새 결과를 덮지 않게 한다
-      if (current !== generation.current) return
-      setList((previous) => {
-        if (!silent || previous?.key !== key || previous.pages === 1) return { ...data, key, pages: 1 }
-        // 더 불러온 목록은 유지하고 받은 항목만 새 값으로 바꾼다
-        const fresh = new Map(data.items.map((item) => [item.id, item]))
-        return { ...previous, counts: data.counts, items: previous.items.map((item) => fresh.get(item.id) ?? item) }
-      })
+      if (signal?.aborted || current !== generation.current) return
+      loadedPages.current = { key, count: pages }
+      setList({ ...data, key, pages })
       setListError(undefined)
     } catch (reason) {
       if (signal?.aborted || current !== generation.current) return
@@ -153,34 +162,48 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     setDetail((previous) => previous?.id === next.id ? next : previous)
     setList((previous) => previous && { ...previous, items: previous.items.map((item) => item.id === next.id ? summaryOf(next) : item) })
   }, [])
+  const detailFailure = useCallback((id: string, reason: unknown) => {
+    setDetailError({ id, reason })
+    if (isGone(reason)) {
+      setDetail((previous) => previous?.id === id ? null : previous)
+    }
+    onError(reason)
+  }, [onError])
   useEffect(() => {
     if (!selectedId) return
     const controller = new AbortController()
     void materialsApi.get(selectedId, controller.signal).then((data) => {
       if (!controller.signal.aborted) { setDetail(data); setDetailError(null) }
     }).catch((reason) => {
-      if (!controller.signal.aborted) { setDetailError({ id: selectedId, reason }); onError(reason) }
+      if (!controller.signal.aborted) detailFailure(selectedId, reason)
     })
     return () => controller.abort()
-  }, [selectedId, detailRevision, onError])
+  }, [selectedId, detailRevision, detailFailure])
 
   // 이벤트 구독이 열리기 전까지는 처리 중인 자료를 다시 조회해 상태를 확인한다
   const processing = visible?.status === 'processing'
   const listProcessing = visibleList?.items.some((item) => item.status === 'processing') ?? false
   useEffect(() => {
+    const controller = new AbortController()
+    const refreshDetail = () => {
+      if (!selectedId) return
+      void materialsApi.get(selectedId, controller.signal).then((data) => {
+        if (!controller.signal.aborted) apply(data)
+      }).catch((reason) => { if (!controller.signal.aborted) detailFailure(selectedId, reason) })
+    }
     const refresh = () => {
       if (document.visibilityState !== 'visible') return
-      if (selectedId) void materialsApi.get(selectedId).then(apply).catch(onError)
+      refreshDetail()
       void loadList(undefined, true)
     }
     window.addEventListener('focus', refresh)
     const timer = processing || listProcessing ? setInterval(() => {
       if (document.visibilityState !== 'visible') return
-      if (processing && selectedId) void materialsApi.get(selectedId).then(apply).catch(onError)
+      if (processing) refreshDetail()
       if (listProcessing) void loadList(undefined, true)
     }, 2000) : undefined
-    return () => { window.removeEventListener('focus', refresh); clearInterval(timer) }
-  }, [processing, listProcessing, selectedId, apply, loadList, onError])
+    return () => { controller.abort(); window.removeEventListener('focus', refresh); clearInterval(timer) }
+  }, [processing, listProcessing, selectedId, apply, loadList, detailFailure])
 
   const searchWith = (change: (next: URLSearchParams) => void) => {
     const next = new URLSearchParams(params)
@@ -202,16 +225,20 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   }
 
   async function more() {
-    if (!visibleList?.nextCursor || moreBusy) return
+    if (!visibleList?.nextCursor || moreLock.current) return
+    moreLock.current = true
+    const request = ++generation.current
     setMoreBusy(true)
     try {
       const data = await materialsApi.list(project.id, { q, kind, cursor: visibleList.nextCursor })
+      if (request !== generation.current) return
+      loadedPages.current = { key, count: visibleList.pages + 1 }
       setList((previous) => previous?.key === key ? {
         ...previous, nextCursor: data.nextCursor, counts: data.counts, pages: previous.pages + 1,
         items: [...previous.items, ...data.items.filter((item) => !previous.items.some((old) => old.id === item.id))],
       } : previous)
     } catch (reason) { setListError(reason); onError(reason, 'project') }
-    finally { setMoreBusy(false) }
+    finally { moreLock.current = false; setMoreBusy(false) }
   }
 
   async function reprocess() {
@@ -315,7 +342,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
           onRetry={() => void reprocess()} onManage={setView}
-          extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
+          extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}
+          jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}>
           <RequestError error={manageError} />
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}

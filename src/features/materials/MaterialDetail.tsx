@@ -9,11 +9,11 @@ import styles from './Materials.module.css'
 export type ManageAction = 'rename' | 'delete'
 
 // 선택한 자료의 상세. 처리 상태에 따라 본문 자리를 바꾼다
-export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, children }: {
+export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, children }: {
   material: Material; retrying: boolean; retryError: unknown
   onRetry: () => void; onManage: (action: ManageAction) => void
   // 제목 옆에 두는 동작과 관리 메뉴에 더하는 항목
-  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; children?: ReactNode
+  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; children?: ReactNode
 }) {
   const revision = material.currentRevision
   const source = material.source
@@ -41,6 +41,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       <p>자료를 정리하고 있어요</p>
       <p className={styles.info}>{material.kind === 'file' ? '업로드 완료' : '링크 등록 완료'}</p>
       <p className={styles.info}>{material.kind === 'file' ? '텍스트를 추출하고 있어요.' : '문서를 가져와 본문을 추출하고 있어요.'} 다른 자료를 확인해도 괜찮아요.</p>
+      {jobControls}
     </div>}
 
     {material.status === 'failed' && <div className={styles.state}>
