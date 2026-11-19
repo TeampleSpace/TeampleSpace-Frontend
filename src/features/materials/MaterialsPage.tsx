@@ -14,6 +14,8 @@ import { materialsApi } from './api.ts'
 import { isAccessLoss, isGone, isUncertain } from './errors.ts'
 import { MaterialDetail } from './MaterialDetail.tsx'
 import type { ManageAction } from './MaterialDetail.tsx'
+import { MaterialCreateDialog } from './MaterialCreateDialog.tsx'
+import type { InputType } from './MaterialCreateDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
 import { MaterialNote } from './MaterialNote.tsx'
 import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from './model.ts'
@@ -87,6 +89,10 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const [detailRevision, setDetailRevision] = useState(0)
   const [noteDirty, setNoteDirty] = useState(false)
   const [view, setView] = useState<ManageAction | null>(null)
+  // 열려 있는 자료 추가 모달. edit이 있으면 마크다운 자료 수정이다
+  const [create, setCreate] = useState<{ type: InputType; edit?: { material: Material; markdown: string } } | null>(null)
+  const [createDirty, setCreateDirty] = useState(false)
+  const [manageError, setManageError] = useState<unknown>()
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
   const retryKey = useRef<{ id: string; key: string } | null>(null)
   const generation = useRef(0)
@@ -191,7 +197,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   }
   const blocks: BlockerFunction = ({ currentLocation, nextLocation }) => {
     if ((nextLocation.state as { skipGuard?: boolean } | null)?.skipGuard) return false
-    if (currentLocation.pathname !== nextLocation.pathname) return true
+    if (createDirty || currentLocation.pathname !== nextLocation.pathname) return true
     return (new URLSearchParams(nextLocation.search).get('material') ?? pinnedId) !== selectedId
   }
 
@@ -225,32 +231,60 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     }
   }
 
+  // 마크다운 자료는 현재 개정의 본문을 읽어 와서 고친다
+  async function editMemo(material: Material) {
+    setManageError(undefined)
+    try {
+      const source = await materialsApi.source(material.id)
+      setCreate({ type: 'memo', edit: { material, markdown: source.markdown ?? '' } })
+    } catch (reason) { setManageError(reason); onError(reason) }
+  }
+  function created(material: Material) {
+    const edited = !!create?.edit
+    setCreate(null); setCreateDirty(false)
+    setDetail((previous) => previous?.id === material.id || edited ? material : previous)
+    setListRevision((value) => value + 1)
+    setDetailRevision((value) => value + 1)
+    // 팀 메모를 쓰는 중이면 새 자료로 옮기지 않는다
+    if (edited || noteDirty) return
+    const next = new URLSearchParams(params)
+    next.set('material', material.id)
+    setParams(next, { state: { skipGuard: true } })
+  }
+
+  const add = (type: InputType) => setCreate({ type })
   const heading = <div className={styles.heading}>
     <div className={styles.headingTitle}><h1>자료</h1><p>자료를 확인한 뒤, 발표 구성에서 목차와 근거를 연결하세요.</p></div>
+    <Button variant="secondary" onClick={() => add('file')}>자료 추가</Button>
   </div>
-  const guard = <UnsavedGuard dirty={noteDirty} when={blocks} />
+  const overlays = <>
+    {create && <MaterialCreateDialog key={create.edit?.material.id ?? 'new'} project={project} initial={create.type} edit={create.edit}
+      onClose={() => { setCreate(null); setCreateDirty(false) }} onDone={created} onDirtyChange={setCreateDirty} onError={onError} />}
+    <UnsavedGuard dirty={noteDirty || createDirty} when={blocks} />
+  </>
 
   // 새 검색을 불러오는 동안에도 이전 목록과 입력란을 그대로 둔다
   const shown = visibleList ?? list
-  if (!shown && listError) return <div className={styles.page}><p className={styles.project}>{project.name}</p>{heading}
-    <RequestError error={listError} action={<Button onClick={() => setListRevision((value) => value + 1)}>다시 불러오기</Button>} /></div>
-  if (!shown) return <div className={styles.page}><p className={styles.project}>{project.name}</p>{heading}<StatusPanel kind="loading" title="자료를 불러오고 있어요" /></div>
+  // 어느 상태에서도 모달이 같은 자리에 있어야 열어 둔 입력을 잃지 않는다
+  if (!shown && listError) return <><div className={styles.page}><p className={styles.project}>{project.name}</p>{heading}
+    <RequestError error={listError} action={<Button onClick={() => setListRevision((value) => value + 1)}>다시 불러오기</Button>} /></div>{overlays}</>
+  if (!shown) return <><div className={styles.page}><p className={styles.project}>{project.name}</p>{heading}<StatusPanel kind="loading" title="자료를 불러오고 있어요" /></div>{overlays}</>
 
   // 자료가 하나도 없는 프로젝트
-  if (visibleList?.counts.all === 0 && !q && !paramId) return <div className={styles.empty}>
+  if (visibleList?.counts.all === 0 && !q && !paramId) return <><div className={styles.empty}>
     <p className={styles.project}>{project.name}</p>
     <h1>첫 자료를 모아볼까요?</h1>
     <p className={styles.emptyLead}>자료 한 개부터 시작해도 괜찮아요. 모은 자료로 발표 목차와 PPT 초안을 만들 수 있어요.</p>
     <div className={styles.types}>
-      <section className={styles.type}><h2>PDF 파일</h2><p>보고서나 논문을 올려 핵심 내용과 출처를 정리해요.</p></section>
-      <section className={styles.type}><h2>웹 링크</h2><p>참고할 기사나 웹페이지의 주소를 붙여 넣어요.</p></section>
-      <section className={styles.type}><h2>직접 쓴 메모</h2><p>아이디어나 회의 내용을 마크다운으로 기록해요.</p></section>
+      <section className={styles.type}><h2>PDF 파일</h2><p>보고서나 논문을 올려 핵심 내용과 출처를 정리해요.</p><Button onClick={() => add('file')}>PDF 추가</Button></section>
+      <section className={styles.type}><h2>웹 링크</h2><p>참고할 기사나 웹페이지의 주소를 붙여 넣어요.</p><Button variant="secondary" onClick={() => add('link')}>링크 추가</Button></section>
+      <section className={styles.type}><h2>직접 쓴 메모</h2><p>아이디어나 회의 내용을 마크다운으로 기록해요.</p><Button variant="secondary" onClick={() => add('memo')}>메모 작성</Button></section>
     </div>
     <p className={styles.hint}>다음 단계 · 자료 정리가 끝나면 ‘발표 구성’에서 목차를 만들어요.</p>
-  </div>
+  </div>{overlays}</>
 
   const gone = detailError?.id === selectedId && isGone(detailError.reason)
-  return <div className={styles.page}>
+  return <><div className={styles.page}>
     <p className={styles.project}>{project.name}</p>
     {heading}
     <div className={styles.workspace}>
@@ -280,7 +314,9 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
 
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
-          onRetry={() => void reprocess()} onManage={setView}>
+          onRetry={() => void reprocess()} onManage={setView}
+          extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
+          <RequestError error={manageError} />
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}
         {!visible && selectedId && gone && <div className={styles.guidance}>
@@ -295,13 +331,12 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
         {!selectedId && visibleList && (q && visibleList.counts.all === 0 ? <div className={styles.guidance}>
           <p>‘{q}’에 대한 자료가 없어요</p>
           <p>검색어를 바꾸거나 새로운 자료를 추가해 보세요.</p>
-          <div className={styles.actions}><Button onClick={() => setInput('')}>검색 지우기</Button></div>
+          <div className={styles.actions}><Button onClick={() => setInput('')}>검색 지우기</Button><Button variant="secondary" onClick={() => add('file')}>자료 추가</Button></div>
         </div> : <div className={styles.guidance}><p>이 유형의 자료가 없어요</p><p>다른 유형을 고르거나 전체 자료를 확인해 보세요.</p></div>)}
       </div>
     </div>
     {visible && view && <MaterialDialogs key={`${visible.id}:${view}`} material={visible} view={view} onClose={() => setView(null)}
       onChanged={apply} onDeleted={clearSelection} onError={onError}
       onRefresh={() => materialsApi.get(visible.id).then(apply)} />}
-    {guard}
-  </div>
+  </div>{overlays}</>
 }
