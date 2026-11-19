@@ -75,7 +75,7 @@ export default function AppShell() {
           const isExpanded = (expanded ?? selected?.id) === project.id
           return <li key={project.id}>
             <div className={styles.projectRow}>
-              <button type="button" aria-label={`${project.name} 메뉴`} aria-expanded={isExpanded} onClick={() => setExpanded(isExpanded ? '' : project.id)}><span className={isExpanded ? styles.expanded : styles.collapsed} aria-hidden="true" /></button>
+              <button type="button" aria-label={`${project.name} 메뉴`} aria-expanded={isExpanded} onClick={() => setExpanded(isExpanded ? '' : project.id)}><span className={styles.chevron} aria-hidden="true" /></button>
               <NavLink to={`/projects/${project.id}`} end>{project.id === current?.id ? current.name : project.name}</NavLink>
             </div>
             {isExpanded && <div className={styles.projectChildren}>

@@ -51,7 +51,7 @@ export function ProjectSettings({ project, onChange, onOpen, onError, leaving }:
         {owner && <Button variant="dangerOutline" disabled={busy} onClick={() => onOpen('delete')}>프로젝트 삭제</Button>}
       </div>
     </form>
-    {saved && <p role="status">프로젝트 정보를 저장했어요</p>}
+    {saved && <p className="motion-feedback" role="status">프로젝트 정보를 저장했어요</p>}
     <RequestError error={error} action={<Button variant="text" onClick={() => void onChange().catch(setError)}>최신 정보 확인</Button>} />
     <UnsavedGuard dirty={dirty && !leaving} />
   </div>

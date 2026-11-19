@@ -94,16 +94,18 @@ export function TeamDialog({ project, initialView, open = true, onClose, onChang
           {memberPermissions(project, member, userId).canRemove && <Button variant="text" onClick={() => { setTargetId(member.userId); setView('remove'); setError(undefined) }}>내보내기</Button>}
         </li>)}</ul>
         <div><Button loading={busy} onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id)); setView('invite') })}>팀원 초대</Button></div>
-        <p className={styles.small}>모든 팀원이 프로젝트에 참여할 수 있어요. 자료와 슬라이드 편집은 준비 중이에요</p>
+        <p className={styles.small}>팀원은 프로젝트 자료와 팀 메모를 볼 수 있어요.</p>
         {isOwner && <div><Button variant="text" onClick={() => { setView('transfer'); setError(undefined) }}>소유자 변경</Button></div>}
       </>}
       {view === 'invite' && <>
-        <h3 className={styles.inviteHeading}>초대 링크로 팀원을 초대하세요</h3>
+        <h3 className={styles.inviteHeading}>초대 링크</h3>
         {!link ? <Button loading={busy} onClick={() => void act(async () => setLink(await projectsApi.invite(project.id)))}>초대 링크 만들기</Button> : <>
           <a className={styles.inviteLink} href={link.url} target="_blank" rel="noopener noreferrer">{link.url}</a>
-          <p className={styles.muted}>링크를 받은 사람은 프로젝트 참여 화면으로 이동합니다.</p>
+          <p className={styles.muted}>팀원에게 이 링크를 보내세요.</p>
           <div><Button loading={busy} onClick={() => void copy()}>초대 링크 복사</Button></div>
-          <p className={styles.copyStatus} role="status">{copyFailed ? '복사하지 못했어요. 위 링크를 선택해 직접 복사해 주세요' : copied ? '초대 링크를 복사했어요' : '링크를 공유한 뒤에도 이 화면에서 팀원을 관리할 수 있어요'}</p>
+          <p className={styles.copyStatus} role="status">{copyFailed || copied
+            ? <span className="motion-feedback" key={copyFailed ? 'failed' : 'copied'}>{copyFailed ? '복사하지 못했어요. 위 링크를 직접 복사해 주세요.' : '초대 링크를 복사했어요'}</span>
+            : null}</p>
           <div className={styles.inviteExpiry}><p className={styles.small}>유효 기간 {new Date(link.expiresAt).toLocaleString('ko-KR')}</p>
             <p className={styles.small}>새 링크를 발급하면 기존 링크를 사용할 수 없어요</p>
             <div><Button variant="secondary" loading={busy} onClick={() => void act(async () => { setLink(await projectsApi.invite(project.id, true)); setCopied(false); setCopyFailed(false) })}>새 링크 발급</Button></div></div>

@@ -87,9 +87,9 @@ export default function Account() {
         <div className={account.actions}><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
           <Button variant="secondary" disabled={busy} onClick={() => { setError(undefined); setModal('logout') }}>로그아웃</Button></div>
       </form>
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p className="motion-feedback" role="status">{notice}</p>}
       {!modal && <RequestError error={error} action={<Button variant="text" onClick={() => void act(async () => { const next = await refresh(); if (next) setName(next.name) })}>최신 정보 다시 불러오기</Button>} />}
-      <section className={account.providers}><h2>로그인 수단</h2><p>현재 연결된 로그인 수단을 확인하세요. 추가 연결은 후속 출시 예정입니다</p>
+      <section className={account.providers}><h2>로그인 수단</h2>
         <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</li>)}</ul>
       </section>
       <section className={account.withdrawal}>

@@ -13,7 +13,7 @@ export function ProjectCard({ project }: { project: Project }) {
       </div>
       <Link className={`${buttons.button} ${buttons.primary}`} to={`/projects/${project.id}`}>프로젝트 열기</Link>
     </div>
-    <div className={styles.nextAction}><p>{project.topic || '팀원을 초대하고 프로젝트의 기본 정보를 정해보세요'}</p></div>
+    {project.topic && <div className={styles.nextAction}><p>{project.topic}</p></div>}
     <div className={styles.actions}>
       <Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}?team=1`}>팀원 관리</Link>
       <Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}/settings`}>프로젝트 설정</Link>

@@ -77,7 +77,7 @@ export function MaterialNote({ materialId, onDirtyChange, onError }: {
     </div>
     {!editing && (note.markdown.trim()
       ? <div className={styles.noteBody}><Suspense fallback={<p className={styles.plain}>{note.markdown}</p>}><Markdown>{note.markdown}</Markdown></Suspense></div>
-      : <p className={styles.noteBody}>아직 팀 메모가 없어요. 팀원과 나눌 내용을 남겨 보세요</p>)}
+      : <p className={styles.noteBody}>아직 팀 메모가 없어요.</p>)}
     {!editing && author && <p className={styles.noteAuthor}>{author}</p>}
     {editing && <>
       <Field id={fieldId} label="팀 메모 내용" multiline rows={4} maxLength={limits.note} value={draft} disabled={busy}

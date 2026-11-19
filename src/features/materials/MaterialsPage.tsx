@@ -287,7 +287,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
 
   const add = (type: InputType) => setCreate({ type })
   const heading = <div className={styles.heading}>
-    <div className={styles.headingTitle}><h1>자료</h1><p>자료를 확인한 뒤, 발표 구성에서 목차와 근거를 연결하세요.</p></div>
+    <div className={styles.headingTitle}><h1>자료</h1><p>팀 자료를 추가하고 원문을 확인하세요.</p></div>
     <Button variant="secondary" onClick={() => add('file')}>자료 추가</Button>
   </div>
   const overlays = <>
@@ -306,14 +306,14 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   // 자료가 하나도 없는 프로젝트
   if (visibleList?.counts.all === 0 && !q && !paramId) return <><div className={styles.empty}>
     <p className={styles.project}>{project.name}</p>
-    <h1>첫 자료를 모아볼까요?</h1>
-    <p className={styles.emptyLead}>자료 한 개부터 시작해도 괜찮아요. 모은 자료로 발표 목차와 PPT 초안을 만들 수 있어요.</p>
+    <h1>아직 자료가 없어요</h1>
+    <p className={styles.emptyLead}>PDF, 웹 링크 또는 메모를 추가하세요.</p>
     <div className={styles.types}>
-      <section className={styles.type}><h2>PDF 파일</h2><p>보고서나 논문을 올려 핵심 내용과 출처를 정리해요.</p><Button onClick={() => add('file')}>PDF 추가</Button></section>
-      <section className={styles.type}><h2>웹 링크</h2><p>참고할 기사나 웹페이지의 주소를 붙여 넣어요.</p><Button variant="secondary" onClick={() => add('link')}>링크 추가</Button></section>
-      <section className={styles.type}><h2>직접 쓴 메모</h2><p>아이디어나 회의 내용을 마크다운으로 기록해요.</p><Button variant="secondary" onClick={() => add('memo')}>메모 작성</Button></section>
+      <section className={styles.type}><h2>PDF 파일</h2><p>PDF를 올리면 본문을 추출해요.</p><Button onClick={() => add('file')}>PDF 추가</Button></section>
+      <section className={styles.type}><h2>웹 링크</h2><p>웹페이지 주소를 붙여 넣으세요.</p><Button variant="secondary" onClick={() => add('link')}>링크 추가</Button></section>
+      <section className={styles.type}><h2>직접 쓴 메모</h2><p>회의 내용이나 아이디어를 마크다운으로 적으세요.</p><Button variant="secondary" onClick={() => add('memo')}>메모 작성</Button></section>
     </div>
-    <p className={styles.hint}>다음 단계 · 자료 정리가 끝나면 ‘발표 구성’에서 목차를 만들어요.</p>
+    <p className={styles.hint}>추가한 자료는 프로젝트 팀원과 공유돼요.</p>
   </div>{overlays}</>
 
   const gone = detailError?.id === selectedId && isGone(detailError.reason)

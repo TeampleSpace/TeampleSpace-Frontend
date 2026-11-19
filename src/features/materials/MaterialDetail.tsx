@@ -21,7 +21,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
   return <>
     <header className={styles.detailHeader}>
       <div className={styles.titleRow}>
-        <h2>{material.title}</h2>
+        <h2 className="motion-feedback" key={material.id}>{material.title}</h2>
         {actions}
         <ManageMenu material={material} onManage={onManage} extra={extraMenu} />
       </div>
@@ -38,9 +38,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
     </div>}
 
     {material.status === 'processing' && <div className={styles.state} role="status">
-      <p>자료를 정리하고 있어요</p>
-      <p className={styles.info}>{material.kind === 'file' ? '업로드 완료' : '링크 등록 완료'}</p>
-      <p className={styles.info}>{material.kind === 'file' ? '텍스트를 추출하고 있어요.' : '문서를 가져와 본문을 추출하고 있어요.'} 다른 자료를 확인해도 괜찮아요.</p>
+      <p>{material.kind === 'file' ? 'PDF 본문을 추출하고 있어요.' : '웹페이지 본문을 가져오고 있어요.'}</p>
       {jobControls}
     </div>}
 
@@ -59,7 +57,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
     {revision?.summary && <section className={styles.summary}>
       <h3 className={styles.sectionTitle}>핵심 요약</h3>
       <p>{revision.summary}</p>
-      <p className={styles.provenance}>자료를 바탕으로 정리한 요약 · 원문과 함께 확인하세요.</p>
+      <p className={styles.provenance}>자세한 내용은 원문에서 확인하세요.</p>
     </section>}
 
     {revision?.excerpt && <section className={styles.section}>

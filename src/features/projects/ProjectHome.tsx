@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { useSession } from '../auth/sessionContext.ts'
 import { Button } from '../../shared/ui/Button.tsx'
 import { Field } from '../../shared/ui/Field.tsx'
 import { RequestError } from '../../shared/ui/RequestError.tsx'
@@ -16,7 +15,6 @@ import buttons from '../../shared/ui/Button.module.css'
 import styles from './Projects.module.css'
 
 export default function ProjectHome() {
-  const { user } = useSession()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
   const searching = params.has('search') || Boolean(query)
@@ -59,8 +57,7 @@ export default function ProjectHome() {
   const empty = visible?.items.length === 0
   return <div className={searching ? styles.searchPage : styles.home}>
     {searching ? <header className={shell.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text}`} to="/">돌아가기</Link></header>
-      : <header className={styles.header}><div className={styles.greeting}><p className={styles.muted}>{empty ? '팀 발표를 한곳에서' : '내 프로젝트'}</p>
-        <h1>{empty ? '함께할 팀플, 여기서 시작해요.' : `${user?.name}님, 하던 작업을 이어가세요.`}</h1></div>
+      : <header className={styles.header}><h1>내 프로젝트</h1>
         {visible && !empty && <Button onClick={() => setModal('create')}>새 프로젝트</Button>}</header>}
     <div className={searching ? styles.searchContent : styles.homeContent}>
     {searching && <>
