@@ -331,7 +331,7 @@ export function createMaterialsMock(options: {
     if (upload.state === 'rejected') return fail('UPLOAD_REJECTED', { fieldErrors: [{ field: 'file', code: 'NOT_PDF', message: '파일을 다시 선택해 주세요.' }] })
     if (upload.expiresAt <= now()) return fail('UPLOAD_EXPIRED')
     if (!upload.bytes) return fail('UPLOAD_INCOMPLETE')
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', upload.bytes.slice().buffer))
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', upload.bytes.slice()))
     const actual = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('')
     const reason = upload.bytes.length !== upload.sizeBytes ? 'SIZE_MISMATCH' : actual !== upload.checksum ? 'CHECKSUM_MISMATCH'
       : new TextDecoder().decode(upload.bytes.slice(0, 5)) !== '%PDF-' ? 'NOT_PDF' : ''
