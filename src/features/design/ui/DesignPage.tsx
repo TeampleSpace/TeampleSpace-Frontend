@@ -11,6 +11,8 @@ import { designApi, designColor } from '../api.ts'
 import { DesignFontField } from './DesignFontField.tsx'
 import type { CustomDesign, DesignCatalog, DesignInput, DesignSettings, DesignTemplate, TemplateSelection } from '../api.ts'
 import { DesignPreview } from './DesignPreview.tsx'
+import { TemplateCover } from './TemplateCover.tsx'
+import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import { TemplateGallery } from './TemplateGallery.tsx'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
 import styles from './DesignPage.module.css'
@@ -313,12 +315,17 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     <Button variant={mode === 'custom' ? 'secondary' : 'text'} aria-pressed={mode === 'custom'} disabled={modeLocked} onClick={() => chooseMode('custom')}>직접 입력</Button>
   </div>
 
+  // 템플릿 선택에서는 선택 막대 오른쪽에, 직접 입력에서는 머리글 오른쪽에 둔다
+  const saveButton = <Button type="submit" form={formId} loading={saving} disabled={uploadingFont || (!pending && !readyToSave) || conflict || !!waitingUntil}>
+    {pending ? '저장 다시 시도' : '디자인 저장'}
+  </Button>
+
   return <>
     <header className={styles.header}>
-      <div><h1 id="design-title">디자인 설정</h1><p>발표에 적용할 템플릿을 선택하거나 디자인을 직접 입력하세요.</p></div>
-      <Button type="submit" form={formId} loading={saving} disabled={uploadingFont || (!pending && !readyToSave) || conflict || !!waitingUntil}>
-        {pending ? '저장 다시 시도' : '디자인 저장'}
-      </Button>
+      <div><h1 id="design-title">디자인 설정</h1><p>{mode === 'template'
+        ? '발표에 어울리는 디자인을 고르세요. 템플릿을 누르면 자세히 볼 수 있어요.'
+        : '글꼴과 색상, 지침을 직접 입력해 발표 디자인을 정하세요.'}</p></div>
+      {mode === 'custom' && saveButton}
     </header>
     {saved && <p className={`${styles.notice} motion-feedback`} role="status">디자인을 저장했어요</p>}
     {conflict ? <div className={styles.notice} role="status">
@@ -342,7 +349,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
           {!items.length && <p className={styles.notice}>선택할 수 있는 템플릿이 없어요. 직접 입력으로 디자인을 설정할 수 있어요.</p>}
           <div id={`${formId}-template`} tabIndex={-1} role="group" aria-label="템플릿 선택">
             <TemplateGallery items={items} selected={template} disabled={inputLocked} projectName={projectName}
-              modes={modes} onSelect={chooseTemplate} onDetail={setDetail} />
+              modes={modes} action={saveButton} onDetail={setDetail} />
           </div>
           {inputErrors.template && <p className={styles.fieldError}>{inputErrors.template}</p>}
           <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
@@ -384,14 +391,26 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
         <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
       </section>}
     </div>
-    {detail && <Modal open title={detail.name} description={detail.preview.description} size="confirm" onClose={() => setDetail(null)}
-      footer={<><Button disabled={inputLocked} onClick={() => chooseTemplate(detail)}>이 템플릿 사용</Button><Button variant="secondary" onClick={() => setDetail(null)}>닫기</Button></>}>
-      <div className={styles.detailsGrid}>
-        <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />
-        <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" slide={secondExample} />
+    {detail && <Modal open title={detail.name} size="preview" onClose={() => setDetail(null)}
+      footer={<Button disabled={inputLocked} onClick={() => chooseTemplate(detail)}>이 템플릿 선택</Button>}>
+      <div className={styles.detailPreviews}>
+        {templateCovers[detail.key] ? <TemplateCover templateKey={detail.key} />
+          : <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />}
+        <div className={styles.detailsGrid}>
+          <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />
+          <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" slide={secondExample} />
+        </div>
       </div>
-      {!!detail.fonts.length && <p className={styles.notice}>{detail.fonts.join(', ')}</p>}
-      {!!detail.layouts.length && <p className={styles.notice}>{detail.layouts.map((layout) => layoutNames[layout] ?? layout).join(', ')}</p>}
+      <div className={styles.detailInfo}>
+        <div className={styles.detailAbout}>
+          <p>{purposes[detail.key] ? `${purposes[detail.key]} / ` : ''}프레젠테이션 16:9</p>
+          <p>{detail.preview.description}</p>
+        </div>
+        <div className={styles.detailIncluded}>
+          {!!detail.layouts.length && <h3>{detail.layouts.map((layout) => layoutNames[layout] ?? layout).join(', ')} 구성</h3>}
+          {!!detail.fonts.length && <p>기본 글꼴 {detail.fonts.join(', ')}</p>}
+        </div>
+      </div>
     </Modal>}
     <Modal open={invalid} title="디자인 설정을 확인해 주세요" size="confirm" onClose={() => setInvalid(false)}
       footer={<Button onClick={() => setInvalid(false)}>설정으로 돌아가기</Button>}>

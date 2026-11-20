@@ -9,7 +9,8 @@ type Props = {
   description?: string
   // dialog는 짧은 안내에 쓰는 560px, confirm은 확인과 진행에 쓰는 640px,
   // form은 입력이 여러 개인 760px 모달, viewer는 원문을 보는 960px 모달이다
-  size?: 'dialog' | 'confirm' | 'form' | 'viewer' | 'team' | 'invite'
+  // preview는 왼쪽에 큰 미리보기, 오른쪽에 제목과 설명, 동작을 두는 1120px 모달이다
+  size?: 'dialog' | 'confirm' | 'form' | 'viewer' | 'team' | 'invite' | 'preview'
   minHeight?: number
   onClose: () => void
   children?: ReactNode

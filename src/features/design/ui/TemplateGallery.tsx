@@ -3,30 +3,31 @@ import type { ReactNode } from 'react'
 import type { DesignTemplate } from '../api.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { DesignPreview } from './DesignPreview.tsx'
+import { TemplateCover } from './TemplateCover.tsx'
+import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import styles from './TemplateGallery.module.css'
 
-const purposes: Record<string, string> = {
-  'clean-report': '보고서', 'blue-focus': '수업 발표', editorial: '세미나',
-  'pitch-dark': '제안서', 'warm-story': '수업 발표', 'grid-analysis': '보고서', 'bold-cover': '제안서',
-  'orange-pitch': '제안서', 'green-insight': '보고서', 'mono-editorial': '세미나', 'lilac-studio': '제안서',
-  'data-briefing': '보고서', 'warm-seminar': '세미나', 'team-story': '수업 발표',
-}
 const categories = ['전체', '보고서', '제안서', '수업 발표', '세미나']
 
-export function TemplateGallery({ items, selected, disabled, projectName, modes, onSelect, onDetail }: {
+// 카드를 누르면 상세 모달을 열고 선택은 상세 모달에서 한다
+export function TemplateGallery({ items, selected, disabled, projectName, modes, action, onDetail }: {
   items: DesignTemplate[]
   selected?: DesignTemplate
   disabled: boolean
   projectName?: string
   modes: ReactNode
-  onSelect: (item: DesignTemplate) => void
+  action: ReactNode
   onDetail: (item: DesignTemplate) => void
 }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('전체')
   const term = query.trim().toLocaleLowerCase()
+  // 아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 서버가 준 순서로 뒤에 둔다
+  const order = Object.keys(purposes)
+  const rank = (item: DesignTemplate) => { const index = order.indexOf(item.key); return index < 0 ? order.length : index }
   const visible = items.filter((item) => (category === '전체' || purposes[item.key] === category)
     && `${item.name} ${purposes[item.key] ?? ''} ${item.preview.description}`.toLocaleLowerCase().includes(term))
+    .sort((left, right) => rank(left) - rank(right))
 
   return <section className={styles.gallery} aria-label="템플릿 갤러리">
     <div className={styles.toolbar}>
@@ -46,8 +47,9 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
       {visible.map((item) => {
         const active = selected?.id === item.id && selected.version === item.version
         return <button key={`${item.id}:${item.version}`} type="button" className={styles.card} aria-pressed={active}
-          aria-label={`${item.name} ${active ? '선택됨' : '선택'}`} disabled={disabled} onClick={() => onSelect(item)}>
-          <DesignPreview preview={{ ...item.preview, font: item.fonts[0], templateKey: item.key }} projectName={projectName} variant="thumbnail" />
+          aria-label={`${item.name} ${active ? '선택됨' : '선택'}`} disabled={disabled} onClick={() => onDetail(item)}>
+          {templateCovers[item.key] ? <TemplateCover templateKey={item.key} />
+            : <DesignPreview preview={{ ...item.preview, font: item.fonts[0], templateKey: item.key }} projectName={projectName} variant="thumbnail" />}
           <span className={styles.name}>{item.name}{active && <span className={styles.selected}>선택됨</span>}</span>
           <span className={styles.caption}>{purposes[item.key] ?? item.preview.description} / 16:9</span>
         </button>
@@ -59,7 +61,7 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
     </div>}
     <div className={styles.selection}>
       <p><span>선택한 템플릿</span> <strong key={selected?.id ?? 'none'}>{selected?.name ?? '템플릿을 선택해 주세요'}</strong></p>
-      {selected && <Button variant="secondary" onClick={() => onDetail(selected)}>템플릿 자세히 보기</Button>}
+      {action}
     </div>
   </section>
 }

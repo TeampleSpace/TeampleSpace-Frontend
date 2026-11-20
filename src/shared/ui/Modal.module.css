@@ -156,6 +156,26 @@
   padding-top: 0;
 }
 
+/* 미리보기 모달은 내용의 첫 묶음을 왼쪽에 크게 두고 제목, 나머지 내용, 동작을 오른쪽에 세로로 둔다 */
+.preview { width: min(1120px, calc(100vw - 32px)); border-radius: var(--radius-lg); }
+.preview .panel {
+  display: grid;
+  grid-template-columns: minmax(0, 672fr) minmax(0, 352fr);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: 'content header' 'content body' 'content footer';
+  gap: var(--space-12) var(--space-32);
+  padding: var(--space-32);
+}
+.preview .header { grid-area: header; flex-direction: column-reverse; align-items: stretch; gap: var(--space-24); }
+.preview .header > button { align-self: flex-end; }
+.preview .title { font: 600 28px/1.45 var(--font-body); letter-spacing: 0; }
+.preview .content { display: contents; }
+.preview .footer { grid-area: footer; padding-top: var(--space-12); }
+.preview .footer > button { width: 100%; }
+@media (max-width: 900px) {
+  .preview .panel { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: 'header' 'content' 'body' 'footer'; row-gap: var(--space-16); }
+}
+
 @media (max-width: 480px) {
   .panel,
   .confirm .panel,
