@@ -63,7 +63,14 @@ test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보�
   const picker = screen.getByLabelText<HTMLInputElement>('색상 선택')
   const preview = screen.getByRole('region', { name: '슬라이드 미리보기' }).querySelector<HTMLElement>('[style]')
 
+  const forest = screen.getByRole('button', { name: '포레스트' })
+  fireEvent.click(forest)
+  expect(forest.getAttribute('aria-pressed')).toBe('true')
+  expect(code.value).toBe('#34705C')
+  expect(picker.value).toBe('#34705c')
+
   fireEvent.change(code, { target: { value: '#7183a0' } })
+  expect(forest.getAttribute('aria-pressed')).toBe('false')
   expect(picker.value).toBe('#7183a0')
   expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#7183A0')
 

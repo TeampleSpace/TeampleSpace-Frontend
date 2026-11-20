@@ -26,6 +26,11 @@ const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표
 const layoutNames: Record<string, string> = { title: '제목', content: '본문', summary: '요약' }
 const defaultPreview: PreviewStyle = { backgroundColor: '#FFFFFF', headingColor: '#20242D' }
 const defaultCustomColor = '#2864E8'
+const palette = [
+  { name: '블루', color: defaultCustomColor }, { name: '네이비', color: '#2F4D8E' },
+  { name: '포레스트', color: '#34705C' }, { name: '테라코타', color: '#B35439' },
+  { name: '플럼', color: '#835379' }, { name: '차콜', color: '#363C46' },
+]
 const same = (left: object | null, right: object | null) => JSON.stringify(left) === JSON.stringify(right)
 const modeOf = ({ mode }: DesignSettings): Mode => mode === 'custom' ? mode : 'template'
 const selectionOf = ({ id, version }: DesignTemplate): TemplateSelection => ({ templateId: id, templateVersion: version })
@@ -354,15 +359,23 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
             fontAssetId={custom.fontAssetId} fieldId={`${formId}-font`} error={inputErrors.font} disabled={inputLocked}
             uploading={uploadingFont} onUploadingChange={setUploadingFont} onChange={changeFont}
             onPreviewChange={setPreviewFont} onError={reportFontError} />
-          <div className={styles.colorFields}>
-            <Field label={fields.primaryColor} id={`${formId}-primaryColor`} value={custom.primaryColor} maxLength={7} required
-              placeholder={defaultCustomColor} autoComplete="off" spellCheck={false} error={inputErrors.primaryColor}
-              onChange={(event) => changeCustom('primaryColor', event.target.value)} />
-            <div className={styles.pickerField}>
-              <label htmlFor={`${formId}-colorPicker`}>색상 선택</label>
-              <input id={`${formId}-colorPicker`} className={styles.colorPicker} type="color" value={customColor}
+          <div className={styles.colorField}>
+            <label htmlFor={`${formId}-primaryColor`}>{fields.primaryColor}</label>
+            <div className={styles.colorEntry}>
+              <input className={styles.colorPicker} type="color" value={customColor} aria-label="색상 선택" title="색상 선택"
                 onChange={(event) => changeCustom('primaryColor', event.target.value.toUpperCase())} />
+              <input id={`${formId}-primaryColor`} type="text" value={custom.primaryColor} maxLength={7} required
+                placeholder={defaultCustomColor} autoComplete="off" spellCheck={false}
+                aria-invalid={!!inputErrors.primaryColor} aria-describedby={inputErrors.primaryColor ? `${formId}-colorError` : undefined}
+                onChange={(event) => changeCustom('primaryColor', event.target.value)} />
+              <span aria-hidden="true">HEX</span>
             </div>
+            <div className={styles.palette} role="group" aria-label="추천 색상">
+              {palette.map(({ name, color }) => <button key={color} type="button" aria-label={name} title={name}
+                aria-pressed={configuredCustom.primaryColor === color} style={{ color }}
+                onClick={() => changeCustom('primaryColor', color)} />)}
+            </div>
+            {inputErrors.primaryColor && <p className={styles.fieldError} id={`${formId}-colorError`}>{inputErrors.primaryColor}</p>}
           </div>
           <Field label={fields.guidelines} id={`${formId}-guidelines`} multiline rows={3} maxLength={2000} value={custom.guidelines}
             error={inputErrors.guidelines} onChange={(event) => changeCustom('guidelines', event.target.value)} />

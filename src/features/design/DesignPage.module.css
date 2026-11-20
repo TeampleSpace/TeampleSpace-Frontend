@@ -43,7 +43,7 @@
   border: 0;
 }
 
-.modes, .detailsGrid {
+.detailsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-8);
@@ -73,24 +73,68 @@
 
 .fieldError { color: var(--color-danger); margin: 0; font: var(--text-meta); }
 
-.colorFields { display: grid; grid-template-columns: minmax(0, 1fr) 84px; align-items: start; gap: var(--space-12); }
-.colorFields > :first-child { min-width: 0; }
-.pickerField { display: grid; gap: var(--space-8); }
-.pickerField label { font: var(--text-nav); }
+.modes { gap: 20px; display: flex; border-bottom: 1px solid var(--color-border); margin-bottom: 4px; }
+.modes button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding-inline: 2px; background: transparent; color: var(--color-secondary); }
+.modes button[aria-pressed='true'] { border-bottom-color: var(--color-ink); color: var(--color-ink); font-weight: 650; }
+
+.custom { gap: var(--space-24); }
+.custom label { font: var(--text-nav); font-weight: 600; }
+.custom input:not([type]), .custom select, .custom textarea, .colorEntry {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  background-color: var(--color-subtle);
+  box-shadow: inset 0 -1px var(--color-border-control);
+}
+.custom :is(input:not([type]), select, textarea):not(:disabled):hover, .colorEntry:hover {
+  background-color: var(--color-muted);
+}
+.custom :is(input:not([type]), select, textarea)[aria-invalid='true'], .colorEntry:has([aria-invalid='true']) {
+  box-shadow: inset 0 -2px var(--color-danger);
+}
+.custom :is(input:not([type]), select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+.custom select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: linear-gradient(45deg, transparent 48%, var(--color-secondary) 50% 65%, transparent 67%),
+    linear-gradient(-45deg, transparent 48%, var(--color-secondary) 50% 65%, transparent 67%);
+  background-position: right 19px center, right 14px center;
+  background-repeat: no-repeat;
+  background-size: 5px 7px;
+}
+.custom textarea { min-height: 88px; }
+
+.colorField { display: grid; gap: 8px; }
+.colorEntry { display: flex; align-items: center; min-height: var(--control-height); padding: 0 14px 0 8px; gap: 8px; }
+.colorEntry input[type='text'] {
+  flex: 1; width: 0; min-height: 44px; padding: 0 3px; border: 0; border-radius: 3px;
+  background: transparent; font: 500 15px/1.5 ui-monospace, monospace; color: var(--color-ink);
+}
+.colorEntry:has(input[type='text']:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.colorEntry input[type='text']:focus-visible { outline: 0; }
+.colorEntry > span { font: var(--text-meta); color: var(--color-tertiary); }
 .colorPicker {
-  width: 100%;
-  height: var(--control-height);
-  padding: var(--space-8);
-  border: 1px solid var(--color-border-control);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
+  appearance: none; flex: none; width: 36px; height: 40px; padding: 6px 4px;
+  border: 0; border-radius: 4px; background: transparent; cursor: pointer;
 }
 .colorPicker::-webkit-color-swatch-wrapper { padding: 0; }
-.colorPicker::-webkit-color-swatch { border: 0; border-radius: 4px; }
-.colorPicker::-moz-color-swatch { border: 0; border-radius: 4px; }
-.colorPicker:focus-visible { border-color: transparent; outline-offset: -2px; }
-.colorPicker:disabled { cursor: default; }
+.colorPicker::-webkit-color-swatch { border: 1px solid rgb(0 0 0 / 14%); border-radius: 50%; }
+.colorPicker::-moz-color-swatch { border: 1px solid rgb(0 0 0 / 14%); border-radius: 50%; }
+.palette { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+.palette button { position: relative; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.palette button::before { content: ''; width: 23px; height: 23px; border-radius: 50%; background: currentColor; }
+.palette button[aria-pressed='true']::after { content: ''; position: absolute; width: 9px; height: 5px; border: solid white; border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+.palette button:not(:disabled):hover { background: var(--color-subtle); }
+.palette button:disabled, .colorPicker:disabled { cursor: default; }
+@media (forced-colors: active) {
+  .custom select { appearance: auto; }
+  .palette button::before { forced-color-adjust: none; }
+  .palette button[aria-pressed='true'] { outline: 1px solid Highlight; }
+  .colorEntry, .custom :is(input:not([type]), select, textarea) { border: 1px solid ButtonText; }
+}
 
 .preview h2 { margin: 0; font: var(--text-status-title); }
 .previewName { margin: 0; color: var(--color-primary); font: var(--text-nav); overflow-wrap: anywhere; }
