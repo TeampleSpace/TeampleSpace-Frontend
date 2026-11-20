@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { PointerEvent } from 'react'
 import type { Element, TextElement } from '../../entities/presentation/schema.ts'
-import { SlideRenderer } from '../../features/editor/SlideRenderer.tsx'
+import { SlideRenderer } from '../../features/editor/ui/SlideRenderer.tsx'
 import { deltaToDoc, fitScale } from '../../features/editor/coords.ts'
 import type { EditorSession, SaveStatus } from '../../features/editor/session.ts'
 import { textStyle } from '../../features/editor/textStyle.ts'
