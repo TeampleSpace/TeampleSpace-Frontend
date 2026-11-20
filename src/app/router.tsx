@@ -57,6 +57,9 @@ export const router = createBrowserRouter([
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/settings', element: <ProjectPage /> },
           { path: 'projects/:projectId/materials', element: <MaterialsRoute /> },
+          { path: 'projects/:projectId/outline', lazy: async () => ({
+            Component: (await import('../features/outline/OutlineRoute.tsx')).default,
+          }) },
         ] }] },
       ] },
       ...devRoutes,

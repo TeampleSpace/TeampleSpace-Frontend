@@ -1,0 +1,52 @@
+{
+  "items": [
+    {
+      "id": "ec85bac3-878f-4b5f-b4bc-5f0bc8c00001",
+      "key": "clean-report",
+      "version": 1,
+      "name": "클린 리포트",
+      "schemaVersion": 1,
+      "preview": {
+        "backgroundColor": "#FFFFFF",
+        "headingColor": "#212735",
+        "description": "흰 배경과 차분한 제목, 근거와 출처 중심"
+      },
+      "fonts": [
+        "Pretendard"
+      ],
+      "layouts": [
+        "title",
+        "content",
+        "summary"
+      ]
+    },
+    {
+      "id": "ec85bac3-878f-4b5f-b4bc-5f0bc8c00002",
+      "key": "blue-focus",
+      "version": 1,
+      "name": "블루 포커스",
+      "schemaVersion": 1,
+      "preview": {
+        "backgroundColor": "#EBF1FF",
+        "headingColor": "#2864E8",
+        "description": "옅은 파랑 배경과 파란 제목, 핵심 주장 강조"
+      },
+      "fonts": [
+        "Pretendard"
+      ],
+      "layouts": [
+        "title",
+        "content",
+        "summary"
+      ]
+    }
+  ],
+  "allowedFonts": [
+    "Pretendard"
+  ],
+  "allowedLayouts": [
+    "title",
+    "content",
+    "summary"
+  ]
+}
