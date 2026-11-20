@@ -34,6 +34,8 @@
   gap: var(--space-32);
 }
 
+.galleryLayout { min-width: 0; }
+
 .controls, .custom, .preview {
   display: grid;
   gap: var(--space-16);
@@ -77,17 +79,16 @@
 .modes button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding-inline: 2px; background: transparent; color: var(--color-secondary); }
 .modes button[aria-pressed='true'] { border-bottom-color: var(--color-ink); color: var(--color-ink); font-weight: 650; }
 
-.custom { gap: var(--space-24); }
-.custom label { font: var(--text-nav); font-weight: 600; }
+.custom { gap: var(--space-16); }
+.custom label { font: var(--text-nav); font-weight: 500; }
 .custom input:not([type]), .custom select, .custom textarea, .colorEntry {
   min-width: 0;
-  border: 0;
-  border-radius: 6px;
-  background-color: var(--color-subtle);
-  box-shadow: inset 0 -1px var(--color-border-control);
+  border: 1px solid var(--color-border-control);
+  border-radius: 8px;
+  background-color: var(--color-surface);
 }
 .custom :is(input:not([type]), select, textarea):not(:disabled):hover, .colorEntry:hover {
-  background-color: var(--color-muted);
+  border-color: var(--color-primary);
 }
 .custom :is(input:not([type]), select, textarea)[aria-invalid='true'], .colorEntry:has([aria-invalid='true']) {
   box-shadow: inset 0 -2px var(--color-danger);
@@ -105,7 +106,8 @@
   background-repeat: no-repeat;
   background-size: 5px 7px;
 }
-.custom textarea { min-height: 88px; }
+.custom textarea { min-height: 88px; border-color: transparent; background: var(--color-subtle); }
+.colorEntry { border-color: var(--color-border); }
 
 .colorField { display: grid; gap: 8px; }
 .colorEntry { display: flex; align-items: center; min-height: var(--control-height); padding: 0 14px 0 8px; gap: 8px; }
@@ -194,7 +196,7 @@
 
 .slide[data-template='editorial'] { align-content: center; padding-inline: 12cqw; }
 .slide[data-template='editorial'] .slideTitleBlock { padding-bottom: 2.5cqw; border-bottom: 1px solid var(--slide-heading); }
-.slide[data-template='editorial'] .slideTitle { font-family: Georgia, Batang, serif; font-size: 6cqw; font-weight: 500; }
+.slide[data-template='editorial'] .slideTitle { font-size: 6cqw; font-weight: 500; }
 .slide[data-template='editorial'] .slideBody { padding-left: 0; list-style: none; }
 
 .slide[data-template='pitch-dark'] {
@@ -234,6 +236,22 @@
 }
 .slide[data-template='bold-cover'] .slideTitle { max-width: 63cqw; font-size: 8cqw; font-weight: 900; line-height: 1.02; }
 .slide[data-template='bold-cover'] .slideBody { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-left: 0; list-style: none; }
+
+.slide[data-template='orange-pitch'] { padding-inline: 0; align-content: center; }
+.slide[data-template='orange-pitch'] .slideTitleBlock { background: #fc7c2c; padding: 7cqw 5cqw; }
+.slide[data-template='orange-pitch'] .slideBody { margin-inline: 5cqw; }
+.slide[data-template='green-insight'] { position: relative; align-content: center; padding-right: 34cqw; }
+.slide[data-template='green-insight']::after { content: ''; position: absolute; right: 7cqw; bottom: 7cqw; width: 25cqw; height: 33cqw; background: var(--slide-heading); clip-path: polygon(36% 0, 100% 0, 100% 64%, 64% 64%, 64% 100%, 0 100%, 0 55%, 36% 55%); }
+.slide[data-template='mono-editorial'], .slide[data-template='data-briefing'] { --slide-body: #e4e8ef; align-content: center; }
+.slide[data-template='mono-editorial'] .slideTitleBlock { padding-bottom: 5cqw; }
+.slide[data-template='mono-editorial'] .slideTitleBlock::after { content: ''; display: block; width: 17cqw; height: 1cqw; margin-top: 5cqw; background: #fc7c2c; }
+.slide[data-template='lilac-studio'] { border-left: .8cqw solid #8053bd; align-content: center; }
+.slide[data-template='data-briefing'] .slideBody { padding: 3cqw 5cqw; border-left: .8cqw solid #72b5fb; background: rgb(255 255 255 / 6%); }
+.slide[data-template='warm-seminar'] { align-content: center; text-align: center; }
+.slide[data-template='warm-seminar'] .slideTitleBlock { padding-bottom: 4cqw; border-bottom: 1px solid color-mix(in srgb, var(--slide-heading) 30%, transparent); }
+.slide[data-template='warm-seminar'] .slideBody { text-align: left; }
+.slide[data-template='team-story'] { align-content: center; border-top: 2cqw solid #fc7c2c; }
+.slide[data-template='team-story'] .slideTitle { text-decoration: underline; text-decoration-color: #fc7c2c; text-underline-offset: 1cqw; }
 
 .returnLink {
   display: inline-flex;

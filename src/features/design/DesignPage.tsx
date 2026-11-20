@@ -11,6 +11,7 @@ import { designApi, designColor } from './api.ts'
 import { DesignFontField } from './DesignFontField.tsx'
 import type { CustomDesign, DesignCatalog, DesignInput, DesignSettings, DesignTemplate, TemplateSelection } from './api.ts'
 import { DesignPreview } from './DesignPreview.tsx'
+import { TemplateGallery } from './TemplateGallery.tsx'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
 import styles from './DesignPage.module.css'
 
@@ -307,6 +308,10 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     ? items.find((item) => item.id === latest.templateId && item.version === latest.templateVersion)?.name ?? '저장된 템플릿'
     : latest?.mode === 'custom' ? `${latest.custom.name}, ${latest.custom.font}, ${latest.custom.primaryColor}` : '선택한 디자인 없음'
   const previewName = mode === 'template' ? template?.name : configuredCustom.name || '직접 입력'
+  const modes = <div className={styles.modes} role="group" aria-label="디자인 입력 방식">
+    <Button variant={mode === 'template' ? 'secondary' : 'text'} aria-pressed={mode === 'template'} disabled={modeLocked} onClick={() => chooseMode('template')}>템플릿 선택</Button>
+    <Button variant={mode === 'custom' ? 'secondary' : 'text'} aria-pressed={mode === 'custom'} disabled={modeLocked} onClick={() => chooseMode('custom')}>직접 입력</Button>
+  </div>
 
   return <>
     <header className={styles.header}>
@@ -329,28 +334,18 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     </div> : <RequestError error={error} action={error && !pending && readyToSave && !Object.values(inputErrors).some(Boolean)
       ? <Button variant="secondary" disabled={uploadingFont || !!waitingUntil} onClick={() => void save()}>저장 다시 시도</Button> : undefined} />}
     {pending && <p className={styles.notice} role="status">저장 결과를 확인하면 디자인을 다시 수정할 수 있어요.</p>}
-    <div className={styles.columns}>
+    <div className={mode === 'template' ? styles.galleryLayout : styles.columns}>
       <form id={formId} className={styles.controls} noValidate onSubmit={(event) => { event.preventDefault(); void save() }}>
-        <div className={styles.modes} role="group" aria-label="디자인 입력 방식">
-          <Button variant={mode === 'template' ? 'secondary' : 'text'} aria-pressed={mode === 'template'} disabled={modeLocked} onClick={() => chooseMode('template')}>템플릿 선택</Button>
-          <Button variant={mode === 'custom' ? 'secondary' : 'text'} aria-pressed={mode === 'custom'} disabled={modeLocked} onClick={() => chooseMode('custom')}>직접 입력</Button>
-        </div>
+        {mode === 'custom' && modes}
         {mode === 'template' ? <>
           {drafts.template && !template && <p className={styles.notice}>버전 {drafts.template.templateVersion} 템플릿이 저장되어 있어요. 현재 목록에서 해당 버전을 미리 볼 수 없어요.</p>}
           {!items.length && <p className={styles.notice}>선택할 수 있는 템플릿이 없어요. 직접 입력으로 디자인을 설정할 수 있어요.</p>}
-          {items.map((item) => {
-            const selected = item.id === template?.id && item.version === template.version
-            return <div key={item.id} className={`${styles.card} ${selected ? styles.selected : ''}`}>
-              <DesignPreview preview={previewOf(item)} projectName={projectName} variant="thumbnail" />
-              <div className={styles.cardContent}>
-                <p className={styles.cardTitle}>{item.name}</p><p>{item.preview.description}</p>
-                <Button variant="text" aria-pressed={selected} aria-label={`${item.name} ${selected ? '선택됨' : '선택'}`} disabled={inputLocked}
-                  onClick={() => chooseTemplate(item)}>{selected ? '선택됨' : '선택'}</Button>
-              </div>
-            </div>
-          })}
-          {template && <Button className={styles.details} variant="text" id={`${formId}-template`} onClick={() => setDetail(template)}>템플릿 자세히 보기</Button>}
+          <div id={`${formId}-template`} tabIndex={-1} role="group" aria-label="템플릿 선택">
+            <TemplateGallery items={items} selected={template} disabled={inputLocked} projectName={projectName}
+              modes={modes} onSelect={chooseTemplate} onDetail={setDetail} />
+          </div>
           {inputErrors.template && <p className={styles.fieldError}>{inputErrors.template}</p>}
+          <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
         </> : <fieldset className={styles.custom} disabled={inputLocked}>
           <legend className={styles.visuallyHidden}>직접 디자인 입력</legend>
           <Field label={fields.name} id={`${formId}-name`} value={custom.name} maxLength={80} required error={inputErrors.name}
@@ -381,13 +376,13 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
             error={inputErrors.guidelines} onChange={(event) => changeCustom('guidelines', event.target.value)} />
         </fieldset>}
       </form>
-      <section className={styles.preview} aria-labelledby={`${formId}-preview`}>
+      {mode === 'custom' && <section className={styles.preview} aria-labelledby={`${formId}-preview`}>
         <h2 id={`${formId}-preview`}>슬라이드 미리보기</h2>
         {previewName && <p className={styles.previewName}>{previewName}</p>}
         <DesignPreview projectName={projectName} preview={preview} />
         <p className={styles.previewCaption}>색상, 글꼴과 레이아웃 스타일을 미리 볼 수 있어요.</p>
         <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
-      </section>
+      </section>}
     </div>
     {detail && <Modal open title={detail.name} description={detail.preview.description} size="confirm" onClose={() => setDetail(null)}
       footer={<><Button disabled={inputLocked} onClick={() => chooseTemplate(detail)}>이 템플릿 사용</Button><Button variant="secondary" onClick={() => setDetail(null)}>닫기</Button></>}>
