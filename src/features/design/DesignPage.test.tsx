@@ -51,9 +51,31 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   const { container } = mount()
   fireEvent.click(await screen.findByRole('button', { name: '에디토리얼 선택' }))
 
-  const preview = screen.getByRole('region', { name: '슬라이드 미리보기' })
+  fireEvent.click(screen.getByRole('button', { name: '템플릿 자세히 보기' }))
+  const preview = screen.getByRole('dialog', { name: '에디토리얼' })
   expect(preview.querySelector('[data-template="editorial"]')).toBeTruthy()
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
+})
+
+test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 유지하고 검색을 초기화한다', async () => {
+  const editorial = { ...template, id: 'editorial', key: 'editorial', name: '에디토리얼' }
+  const unknown = { ...template, id: 'new-template', key: 'new-template', name: '새 템플릿' }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial, unknown], allowedFonts: ['Pretendard'] })
+  vi.mocked(designApi.save).mockResolvedValue(storedTemplate)
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  fireEvent.click(screen.getByRole('button', { name: '세미나' }))
+  expect(screen.queryByRole('button', { name: '클린 리포트 선택됨' })).toBeNull()
+  expect(screen.getByRole('button', { name: '에디토리얼 선택' })).toBeTruthy()
+  fireEvent.change(screen.getByRole('searchbox', { name: '템플릿 검색' }), { target: { value: '없는 디자인' } })
+  expect(screen.getByText('조건에 맞는 템플릿이 없어요.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
+  await waitFor(() => expect(designApi.save).toHaveBeenCalledWith('project', {
+    expectedVersion: 1, mode: 'template', templateId: template.id, templateVersion: template.version,
+  }, expect.any(String), expect.any(AbortSignal)))
+  fireEvent.click(screen.getByRole('button', { name: '검색과 분류 초기화' }))
+  expect(screen.getByRole('button', { name: '새 템플릿 선택' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '클린 리포트 선택됨' })).toBeTruthy()
 })
 
 test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보기에 반영한다', async () => {

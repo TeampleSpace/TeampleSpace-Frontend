@@ -94,7 +94,7 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
   const summary = material.currentRevision?.summary
   const failed = job?.status === 'failed' || job?.status === 'canceled'
   const close = () => { if (!busy) setOpen(false) }
-  return <section className={styles.section}>
+  return <section className={`${styles.section} ${styles.summary}`}>
     <div className={styles.sectionHeader}>
       <h3 className={styles.sectionTitle}>AI 요약</h3>
       {!summary && enabled && !activeId && <Button variant="secondary" onClick={() => { setError(undefined); setOpen(true) }}>

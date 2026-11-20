@@ -34,6 +34,8 @@
   gap: var(--space-32);
 }
 
+.galleryLayout { min-width: 0; }
+
 .controls, .custom, .preview {
   display: grid;
   gap: var(--space-16);
@@ -234,6 +236,22 @@
 }
 .slide[data-template='bold-cover'] .slideTitle { max-width: 63cqw; font-size: 8cqw; font-weight: 900; line-height: 1.02; }
 .slide[data-template='bold-cover'] .slideBody { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-left: 0; list-style: none; }
+
+.slide[data-template='orange-pitch'] { padding-inline: 0; align-content: center; }
+.slide[data-template='orange-pitch'] .slideTitleBlock { background: #fc7c2c; padding: 7cqw 5cqw; }
+.slide[data-template='orange-pitch'] .slideBody { margin-inline: 5cqw; }
+.slide[data-template='green-insight'] { position: relative; align-content: center; padding-right: 34cqw; }
+.slide[data-template='green-insight']::after { content: ''; position: absolute; right: 7cqw; bottom: 7cqw; width: 25cqw; height: 33cqw; background: var(--slide-heading); clip-path: polygon(36% 0, 100% 0, 100% 64%, 64% 64%, 64% 100%, 0 100%, 0 55%, 36% 55%); }
+.slide[data-template='mono-editorial'], .slide[data-template='data-briefing'] { --slide-body: #e4e8ef; align-content: center; }
+.slide[data-template='mono-editorial'] .slideTitleBlock { padding-bottom: 5cqw; }
+.slide[data-template='mono-editorial'] .slideTitleBlock::after { content: ''; display: block; width: 17cqw; height: 1cqw; margin-top: 5cqw; background: #fc7c2c; }
+.slide[data-template='lilac-studio'] { border-left: .8cqw solid #8053bd; align-content: center; }
+.slide[data-template='data-briefing'] .slideBody { padding: 3cqw 5cqw; border-left: .8cqw solid #72b5fb; background: rgb(255 255 255 / 6%); }
+.slide[data-template='warm-seminar'] { align-content: center; text-align: center; }
+.slide[data-template='warm-seminar'] .slideTitleBlock { padding-bottom: 4cqw; border-bottom: 1px solid color-mix(in srgb, var(--slide-heading) 30%, transparent); }
+.slide[data-template='warm-seminar'] .slideBody { text-align: left; }
+.slide[data-template='team-story'] { align-content: center; border-top: 2cqw solid #fc7c2c; }
+.slide[data-template='team-story'] .slideTitle { text-decoration: underline; text-decoration-color: #fc7c2c; text-underline-offset: 1cqw; }
 
 .returnLink {
   display: inline-flex;
