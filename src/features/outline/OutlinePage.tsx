@@ -370,7 +370,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
         {Ai && <Ai projectId={project.id} version={outline.version} outlineHasItems={!empty}
           dirty={dirty || Boolean(operation)} onGenerated={onGenerated} onAccessError={onAiAccessError} />}
         {empty ? <Button variant={noMaterials ? 'text' : 'secondary'} onClick={add}>직접 목차 추가</Button>
-          : slots.designReady && <Link className={styles.linkAction} to={`${projectPath}/design`}>디자인 선택</Link>}
+          : slots.designReady && <Link className={styles.linkAction} to={`${projectPath}/design`} state={{ fromOutline: true }}>디자인 선택</Link>}
       </div>
     </header>
     {selected && visibleSections && <>
