@@ -100,7 +100,7 @@ test('미리보기 주소로 방문하면 이메일 로그인 후 원래 화면�
   expect(new URLSearchParams(preview.state.location.search).get('returnTo')).toBe(path)
   fireEvent.click(screen.getByRole('button', { name: '인증 코드 받기' }))
   fireEvent.change(await screen.findByLabelText('인증 코드'), { target: { value: '123456' } })
-  fireEvent.click(screen.getByRole('button', { name: '로그인', exact: true }))
+  fireEvent.click(screen.getByRole('button', { name: '로그인' }))
   await screen.findByRole('heading', { name: '결제 중단', level: 1 })
   expect(preview.state.location.pathname).toBe(path)
 })
