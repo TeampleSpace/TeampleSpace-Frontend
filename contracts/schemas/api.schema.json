@@ -406,6 +406,17 @@
       "else": { "not": { "required": ["user"] } }
     },
 
+    "DesignCustom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "font", "primaryColor"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "\\S" },
+        "font": { "type": "string", "minLength": 1 },
+        "primaryColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "guidelines": { "type": "string", "maxLength": 2000 }
+      }
+    },
     "DesignSettings": {
       "type": "object",
       "additionalProperties": false,
@@ -414,10 +425,36 @@
         "version": { "$ref": "#/$defs/Version" },
         "mode": { "enum": ["unset", "template", "custom"] },
         "templateId": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
-        "templateVersion": { "type": ["integer", "null"], "minimum": 1 },
-        "custom": { "type": ["object", "null"] },
+        "templateVersion": { "anyOf": [{ "$ref": "#/$defs/Version" }, { "type": "null" }] },
+        "custom": { "anyOf": [{ "$ref": "#/$defs/DesignCustom" }, { "type": "null" }] },
         "updatedAt": { "$ref": "#/$defs/Timestamp" }
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "mode": { "const": "unset" },
+            "templateId": { "type": "null" },
+            "templateVersion": { "type": "null" },
+            "custom": { "type": "null" }
+          }
+        },
+        {
+          "properties": {
+            "mode": { "const": "template" },
+            "templateId": { "$ref": "#/$defs/Uuid" },
+            "templateVersion": { "$ref": "#/$defs/Version" },
+            "custom": { "type": "null" }
+          }
+        },
+        {
+          "properties": {
+            "mode": { "const": "custom" },
+            "templateId": { "type": "null" },
+            "templateVersion": { "type": "null" },
+            "custom": { "$ref": "#/$defs/DesignCustom", "required": ["guidelines"] }
+          }
+        }
+      ]
     },
 
     "MaterialNote": {

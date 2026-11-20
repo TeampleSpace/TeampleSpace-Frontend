@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage-3.schema.json",
+  "title": "TeampleSpace 발표 구성 계약",
+  "$defs": {
+    "Outline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectId",
+        "version",
+        "items"
+      ],
+      "properties": {
+        "projectId": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "version": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/OutlineItem"
+          }
+        }
+      }
+    },
+    "OutlineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "position",
+        "sourceRefs"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99
+        },
+        "sourceRefs": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "document.schema.json#/$defs/SourceRef"
+          }
+        }
+      }
+    },
+    "OutlinePutRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "items"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/OutlineItemInput"
+          }
+        }
+      }
+    },
+    "OutlineItemInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "sourceIds"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "api.schema.json#/$defs/Uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "pattern": "\\S"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "sourceIds": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "api.schema.json#/$defs/Uuid"
+          }
+        }
+      }
+    },
+    "OutlineSourcesPutRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "sourceIds"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "api.schema.json#/$defs/Version"
+        },
+        "sourceIds": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "api.schema.json#/$defs/Uuid"
+          }
+        }
+      }
+    }
+  }
+}

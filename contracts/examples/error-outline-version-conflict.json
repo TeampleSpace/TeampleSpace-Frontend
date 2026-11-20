@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VERSION_CONFLICT",
+    "message": "이후 수정이 있어요.",
+    "retryable": false,
+    "fieldErrors": [],
+    "currentVersions": {
+      "outlineVersion": 2
+    }
+  },
+  "requestId": "req_01JD3Z8K4Q"
+}
