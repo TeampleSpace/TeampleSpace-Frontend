@@ -523,5 +523,10 @@
     "example": "invalid/presentation-generation-unset-design.json",
     "schema": "stage-3-generation.schema.json#/$defs/PresentationGenerationSnapshot",
     "valid": false
+  },
+  {
+    "example": "material-summary-job-request.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSummaryJobRequest",
+    "valid": true
   }
 ]

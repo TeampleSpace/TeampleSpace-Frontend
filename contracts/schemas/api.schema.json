@@ -413,6 +413,7 @@
       "properties": {
         "name": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "\\S" },
         "font": { "type": "string", "minLength": 1 },
+        "fontAssetId": { "$ref": "#/$defs/Uuid" },
         "primaryColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
         "guidelines": { "type": "string", "maxLength": 2000 }
       }

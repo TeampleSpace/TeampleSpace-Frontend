@@ -23,6 +23,7 @@
 | DELETE /v1/materials/{materialId} | MaterialDeleteRequest | MaterialDeleted |
 | GET /v1/materials/{materialId}/source | revisionId 선택 | MaterialSource |
 | POST /v1/materials/{materialId}/reprocess | 없음 | 201 MaterialCreated |
+| POST /v1/materials/{materialId}/summary-jobs | MaterialSummaryJobRequest | 202 Job |
 
 - 목록은 최근에 추가한 자료부터 나온다. q는 제목 검색어, kind는 file, link, memo, status는 processing, ready, failed다
 - `counts`는 검색어에 맞는 자료의 유형별 개수다. 유형과 상태 필터는 반영하지 않는다
@@ -31,7 +32,7 @@
 - 이름과 설명 변경은 개정을 만들지 않고 `version`만 올린다. 이름과 설명은 활성 팀원 누구나 바꿀 수 있다
 - 마크다운 자료의 `markdown`을 바꾸면 새 개정이 생기고 `sourceVersion`이 1 오른다. 파일과 링크 자료에 `markdown`을 보내면 `VALIDATION_FAILED`다
 - 삭제는 소유자 또는 자료 작성자만 할 수 있다. 그 밖의 팀원은 `FORBIDDEN`이다
-- 삭제한 자료는 목록에서 사라지고 개정과 본문은 남는다. 진행 중인 분석 작업은 함께 취소한다. 문서의 출처 연결은 지우지 않고 `sourceDeleted`로 표시한다
+- 삭제한 자료는 목록에서 사라지고 개정과 본문은 남는다. 진행 중인 분석과 현재 개정의 요약 작업은 함께 취소한다. 문서의 출처 연결은 지우지 않고 `sourceDeleted`로 표시한다
 - 삭제 응답을 받지 못해 다시 보냈을 때 `MATERIAL_DELETED`가 오면 이미 삭제된 것으로 본다
 - 자료를 입력으로 고정하는 생성 작업은 이후 단계에서 만든다. 그때 진행 중인 생성 작업이 쓰는 자료의 삭제 충돌 응답을 추가한다
 
@@ -55,6 +56,16 @@
 - `file.pageCount`가 실제 쪽수다. 이전과 다음 이동은 이 값으로 정한다
 - 마크다운 자료는 `markdown`, 링크 자료는 `link`의 주소, 제목, 추출 본문을 돌려준다
 - `revisionId`를 주면 그 자료의 해당 개정을, 없으면 현재 개정을 돌려준다
+
+### AI 요약
+
+- `featureFlags.materialSummary`가 true일 때 활성 팀원이 직접 요청할 수 있다. 기본값은 비활성이며 이때 새 요청은 `SERVICE_UNAVAILABLE`이다
+- `Idempotency-Key`와 `expectedRevisionId`가 필요하다. 같은 키와 본문을 재전송하면 먼저 등록한 작업을 돌려준다. 같은 개정의 새 요청이 이미 처리 중이면 `REQUEST_IN_PROGRESS`다
+- 원문 개정이 바뀌었거나 자료가 준비되지 않았거나 현재 개정에 요약이 있으면 `MATERIAL_STATE_CONFLICT`다. 추출한 본문이 비어 있으면 `VALIDATION_FAILED`다
+- `type`과 `targetType`은 `material_summary`, `targetId`는 현재 원문 개정 식별자다. 자료 상세의 `summaryJob`에서 현재 개정의 최신 요약 작업을 확인한다. 작업 상세와 취소에는 기존 작업 API를 사용한다
+- 제공자에게 요청한 자료의 제목과 정리한 본문 최대 20000자를 보내고 저장 옵션을 끈다. 분석 작업과 원문 보기는 요약 제공자를 호출하지 않는다
+- 결과를 반영할 때 요청자의 접근 권한과 현재 개정을 다시 확인한다. 성공하면 그 개정의 `currentRevision.summary`를 채우고, 결과 참조에 `materialId`와 `revisionId`를 돌려준다. 원문, 발췌, 자료 버전은 그대로 유지한다
+- 요약을 실패하거나 취소해도 자료는 ready 상태로 남는다. 메모 본문이 바뀌면 새 개정은 기존 개정의 요약을 사용하지 않는다
 
 ## PDF 추가
 
@@ -160,6 +171,6 @@
 | 항목 | 지금 상태 |
 | --- | --- |
 | 파일 저장소 | 제공자가 정해지지 않아 서버의 지정 폴더에 보관하고 서버가 서명한 주소로 주고받는다. 저장 위치는 환경변수로 바꾼다 |
-| 요약 모델 | 제공자가 정해지지 않아 `summary`는 null이다. 쪽수, 추출 본문, 발췌는 실제 파일에서 만든다 |
+| 요약 모델 | `MATERIAL_SUMMARY_AI_ENABLED`, `MATERIAL_SUMMARY_AI_MODEL`, `OPENAI_API_KEY`를 구성한다. 요약 요청이 완료되기 전에는 `summary`가 null이다 |
 | PDF 크기 제한 | 20MB는 검증용 기본값이다. 환경변수로 바꾸고 기능 지원 정보로 알린다 |
 | 파일 검사 | 크기, 체크섬, PDF 형식만 검사한다. 악성 파일 검사와 파서 격리 실행은 운영 구성을 정할 때 추가한다 |
