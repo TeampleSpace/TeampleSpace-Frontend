@@ -29,9 +29,10 @@ afterEach(() => { cleanup(); vi.restoreAllMocks() })
 function mount(initial: Material, enabled: boolean) {
   const capabilities = authCapabilitiesSchema.parse({ ...sampleCapabilities, featureFlags: { materialSummary: enabled } })
   const reportError = vi.fn()
+  const reportGone = vi.fn()
   function Harness() {
     const [current, setCurrent] = useState(initial)
-    return <MaterialAiSummary material={current} onChanged={setCurrent} onError={reportError} />
+    return <MaterialAiSummary material={current} onChanged={setCurrent} onError={reportError} onGone={reportGone} />
   }
   render(<SessionContext value={{ user: null, setUser: vi.fn(), refresh: vi.fn(), capabilities, loading: false, error: undefined }}>
     <Harness />
