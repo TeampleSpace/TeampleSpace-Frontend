@@ -68,6 +68,9 @@
     { "code": "JOB_OUTLINE_PROVIDER_UNAVAILABLE", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "구성 생성 제공자 호출에 실패했다. 일시 오류만 내부 재시도한다" },
     { "code": "JOB_OUTLINE_INVALID_RESULT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "구성 생성 응답의 형식이나 자료 참조가 잘못되어 반영하지 않았다" },
     { "code": "JOB_OUTLINE_ACCESS_REVOKED", "httpStatus": null, "retryable": false, "basis": "권한", "meaning": "구성 생성 요청자의 프로젝트 접근이 회수되어 반영하지 않았다" },
+    { "code": "JOB_MATERIAL_SUMMARY_PROVIDER_UNAVAILABLE", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "자료 요약 제공자 호출에 실패했다. 일시 오류만 내부 재시도한다" },
+    { "code": "JOB_MATERIAL_SUMMARY_INVALID_RESULT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "자료 요약 응답이 비었거나 형식과 길이가 맞지 않아 반영하지 않았다" },
+    { "code": "JOB_MATERIAL_SUMMARY_ACCESS_REVOKED", "httpStatus": null, "retryable": false, "basis": "권한", "meaning": "자료 요약 요청자의 프로젝트 접근이 회수되어 반영하지 않았다" },
     { "code": "JOB_TARGET_GONE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "작업 대상이 삭제되어 결과를 반영하지 않았다. 작업의 error.code로 전달한다" }
   ]
 }
