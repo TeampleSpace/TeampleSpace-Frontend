@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { TransportError } from '../../shared/api/client.ts'
 import { materialsApi } from '../materials/api.ts'
 import type { MaterialSummary } from '../materials/model.ts'
@@ -22,8 +23,14 @@ const material = (id: string, title: string, status: MaterialSummary['status']):
 
 function mount() {
   const onSaved = vi.fn()
-  render(<OutlineEvidence projectId={outline.projectId} item={outline.items[0]} outline={outline} openRequest={0} disabled={false}
-    onSaved={onSaved} onReloadOutline={() => Promise.resolve(outline)} onAccessError={vi.fn()} onDirtyChange={vi.fn()} />)
+  const onAccessError = vi.fn()
+  const onDirtyChange = vi.fn()
+  function Harness() {
+    const [saved, setSaved] = useState(outline)
+    return <OutlineEvidence projectId={saved.projectId} item={saved.items[0]} outline={saved} openRequest={0} disabled={false}
+      onSaved={(next) => { setSaved(next); onSaved(next) }} onReloadOutline={() => Promise.resolve(saved)} onAccessError={onAccessError} onDirtyChange={onDirtyChange} />
+  }
+  render(<Harness />)
   return onSaved
 }
 
@@ -66,4 +73,41 @@ test('준비 완료 자료만 선택 가능하며 항목 전용 API에 정확한
   expect(requests[0]).toEqual(requests[1])
   expect(requests[0].slice(0, 2)).toEqual(['item-1', { expectedVersion: 3, sourceIds: ['material-1', 'material-2'] }])
   await waitFor(() => expect(onSaved).toHaveBeenCalledWith(updated))
+})
+
+test('응답을 잃은 뒤 처음 선택으로 돌아와도 이전 저장과 새 선택을 차례대로 보낸다', async () => {
+  const onSaved = mount()
+  const additionalSource = { materialId: 'material-2', revisionId: 'second-revision', sourceVersion: 1, sourceDeleted: false }
+  const first = { ...outline, version: 4, items: [{ ...outline.items[0], sourceRefs: [source, additionalSource] }] }
+  const second = { ...outline, version: 5 }
+  vi.mocked(outlineApi.saveSources).mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(first).mockResolvedValueOnce(second)
+  fireEvent.click(screen.getByRole('button', { name: '자료에서 찾기' }))
+  const extra = await screen.findByRole('checkbox', { name: /새 근거/ })
+  fireEvent.click(extra)
+  fireEvent.click(screen.getByRole('button', { name: '2개 연결' }))
+  await screen.findByText(/서버에 연결할 수 없습니다/)
+  fireEvent.click(extra)
+  fireEvent.click(screen.getByRole('button', { name: '1개 연결' }))
+  await screen.findByText('이전 저장 결과를 확인했어요. 새 선택을 저장하려면 다시 연결해 주세요.')
+  const requests = vi.mocked(outlineApi.saveSources).mock.calls
+  expect((screen.getByRole('checkbox', { name: /새 근거/ }) as HTMLInputElement).checked).toBe(false)
+  expect(requests[1]).toEqual(requests[0])
+  fireEvent.click(screen.getByRole('button', { name: '1개 연결' }))
+  await waitFor(() => expect(onSaved).toHaveBeenLastCalledWith(second))
+  expect(requests[2].slice(0, 2)).toEqual(['item-1', { expectedVersion: 4, sourceIds: ['material-1'] }])
+  expect(requests[2][2]).not.toBe(requests[0][2])
+})
+
+test('같은 자료를 다시 연결하면 최신 개정이 근거로 저장된다', async () => {
+  const onSaved = mount()
+  const latest = { ...source, revisionId: 'latest-revision', sourceVersion: 2 }
+  const saved = { ...outline, version: 4, items: [{ ...outline.items[0], sourceRefs: [latest] }] }
+  vi.mocked(outlineApi.saveSources).mockResolvedValue(saved)
+  fireEvent.click(screen.getByRole('button', { name: '자료에서 찾기' }))
+  expect((await screen.findByRole('checkbox', { name: /기존 근거/ }) as HTMLInputElement).checked).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '1개 연결' }))
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
+  expect(vi.mocked(outlineApi.saveSources).mock.calls[0].slice(0, 2)).toEqual(['item-1', { expectedVersion: 3, sourceIds: ['material-1'] }])
+  fireEvent.click(screen.getByRole('button', { name: '원문 보기' }))
+  expect(await screen.findByRole('button', { name: 'latest-revision 닫기' })).toBeTruthy()
 })
