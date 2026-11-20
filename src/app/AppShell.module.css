@@ -29,15 +29,8 @@
 .navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-primary-soft); color: var(--color-primary); }
 .sidebar > * { flex-shrink: 0; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
-.header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-16); min-height: 40px; }
-.header > a { color: var(--color-ink); text-decoration: none; min-height: 40px; padding: 8px 16px; border-radius: 8px; transition: background-color var(--motion-fast) ease-out; }
-.header > a:hover, .header > a:active { background: var(--color-subtle); }
-.content { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); }
-.section { border-top: 1px solid var(--color-border); padding-top: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
-.danger { color: var(--color-danger); }
 .navigation a, .account {
   transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
 }
-.header, .content { animation: var(--motion-content-enter); }
 @media (max-width: 800px) { .shell { flex-direction: column; } .sidebar { width: 100%; height: auto; position: static; gap: var(--space-12); } .navigation { flex-direction: row; flex-wrap: wrap; gap: var(--space-8); } .account { margin-top: 0; } .workspace { padding: var(--space-20); } }
 @media (max-width: 800px) { .management, .managementLinks { flex-direction: row; flex-wrap: wrap; gap: 8px; } .explorer { max-height: 240px; overflow-y: auto; } .management { margin-top: 0; } }

@@ -1,0 +1,7 @@
+/* 화면 본문의 공통 머리글과 본문 폭 */
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-16); min-height: 40px; }
+.header > a { color: var(--color-ink); text-decoration: none; min-height: 40px; padding: 8px 16px; border-radius: 8px; transition: background-color var(--motion-fast) ease-out; }
+.header > a:hover, .header > a:active { background: var(--color-subtle); }
+.content { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); }
+.section { border-top: 1px solid var(--color-border); padding-top: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+.header, .content { animation: var(--motion-content-enter); }

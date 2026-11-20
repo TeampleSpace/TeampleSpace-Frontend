@@ -8,7 +8,7 @@ import { projectsApi } from '../api.ts'
 import type { Project } from '../model.ts'
 import type { TeamView } from './TeamDialog.tsx'
 import styles from './Projects.module.css'
-import shell from '../../../app/AppShell.module.css'
+import page from '../../../shared/ui/PageLayout.module.css'
 
 export function ProjectSettings({ project, onChange, onOpen, onError, leaving }: {
   project: Project; onChange: (value?: Project) => Promise<void>; onOpen: (view: TeamView | 'delete') => void
@@ -35,7 +35,7 @@ export function ProjectSettings({ project, onChange, onOpen, onError, leaving }:
     } catch (reason) { setError(reason); onError(reason) }
     finally { lock.current = false; setBusy(false) }
   }
-  return <div className={`${shell.content} ${styles.settingsContent}`}>
+  return <div className={`${page.content} ${styles.settingsContent}`}>
     <p className={styles.muted}>프로젝트의 기본 정보를 관리합니다</p>
     {!owner && <p className={styles.notice}>기본 정보는 프로젝트 소유자가 변경할 수 있어요</p>}
     {project.version !== base.version && <div className={styles.notice}><p>프로젝트 정보가 변경되었어요. 최신 내용을 확인해 주세요</p>

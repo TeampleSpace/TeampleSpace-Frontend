@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Link, useParams } from 'react-router'
-import { useShell } from '../../../app/shellContext.ts'
+import { useShell } from '../../../shared/lib/shellContext.ts'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'

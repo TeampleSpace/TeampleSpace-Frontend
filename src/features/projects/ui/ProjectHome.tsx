@@ -10,7 +10,7 @@ import { projectsApi } from '../api.ts'
 import type { Project } from '../model.ts'
 import { ProjectCard } from './ProjectCard.tsx'
 import { GettingStarted, HowItWorks } from './GettingStarted.tsx'
-import shell from '../../../app/AppShell.module.css'
+import page from '../../../shared/ui/PageLayout.module.css'
 import buttons from '../../../shared/ui/Button.module.css'
 import styles from './Projects.module.css'
 
@@ -56,7 +56,7 @@ export default function ProjectHome() {
   }
   const empty = visible?.items.length === 0
   return <div className={searching ? styles.searchPage : styles.home}>
-    {searching ? <header className={shell.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text}`} to="/">돌아가기</Link></header>
+    {searching ? <header className={page.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text}`} to="/">돌아가기</Link></header>
       : <header className={styles.header}><h1>내 프로젝트</h1>
         {visible && !empty && <Button onClick={() => setModal('create')}>새 프로젝트</Button>}</header>}
     <div className={searching ? styles.searchContent : styles.homeContent}>

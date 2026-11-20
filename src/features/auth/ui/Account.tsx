@@ -9,7 +9,7 @@ import { Field } from '../../../shared/ui/Field.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { UnsavedGuard } from '../../../shared/ui/UnsavedGuard.tsx'
-import styles from '../../../app/AppShell.module.css'
+import page from '../../../shared/ui/PageLayout.module.css'
 import buttonStyles from '../../../shared/ui/Button.module.css'
 import authStyles from './Auth.module.css'
 import account from './Account.module.css'
@@ -77,8 +77,8 @@ export default function Account() {
   }
 
   return <>
-    <header className={styles.header}><h1>내 계정</h1><Link to="/">돌아가기</Link></header>
-    <div className={styles.content}>
+    <header className={page.header}><h1>내 계정</h1><Link to="/">돌아가기</Link></header>
+    <div className={page.content}>
       <form className={account.form} onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const next = await authApi.update(name.trim(), activeUser.version); setUser(next); setName(next.name); setNotice('이름을 저장했어요')
       }) }}>
@@ -93,7 +93,7 @@ export default function Account() {
       <section className={account.providers}><h2>로그인 수단</h2>
         <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</li>)}</ul>
       </section>
-      {import.meta.env.DEV && <section className={styles.section} aria-labelledby="account-subscription">
+      {import.meta.env.DEV && <section className={page.section} aria-labelledby="account-subscription">
         <h2 id="account-subscription">구독 및 결제</h2>
         <p>개인 월 구독 요금 안내를 준비 중이에요.</p>
         <div><Link className={`${buttonStyles.button} ${buttonStyles.secondary}`} to="/account/subscription">요금제 보기</Link></div>
