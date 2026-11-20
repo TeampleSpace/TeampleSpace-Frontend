@@ -1,7 +1,8 @@
+import type { CSSProperties } from 'react'
 import styles from './DesignPage.module.css'
 
 export type SlideExample = { title: string; lines: string[] }
-export type PreviewStyle = { backgroundColor: string; headingColor: string; font?: string }
+export type PreviewStyle = { backgroundColor: string; headingColor: string; font?: string; templateKey?: string }
 
 const sample: SlideExample = {
   title: '발표 제목과 핵심 메시지',
@@ -14,10 +15,17 @@ export function DesignPreview({ projectName, slide = sample, preview, variant = 
   preview: PreviewStyle
   variant?: 'full' | 'thumbnail' | 'detail'
 }) {
+  const palette: CSSProperties & { '--slide-heading': string } = {
+    backgroundColor: preview.backgroundColor,
+    fontFamily: preview.font,
+    '--slide-heading': preview.headingColor,
+  }
   return <div className={`${styles.slideFrame} ${styles[variant]}`} aria-hidden={variant === 'thumbnail' || undefined}>
-    <div className={styles.slide} style={{ backgroundColor: preview.backgroundColor, fontFamily: preview.font }}>
-      {projectName && <p className={styles.slideContext}>{projectName}</p>}
-      <p className={styles.slideTitle} style={{ color: preview.headingColor }}>{slide.title}</p>
+    <div className={styles.slide} data-template={preview.templateKey} style={palette}>
+      <div className={styles.slideTitleBlock}>
+        {projectName && <p className={styles.slideContext}>{projectName}</p>}
+        <p className={styles.slideTitle}>{slide.title}</p>
+      </div>
       {!!slide.lines.length && <ul className={styles.slideBody}>{slide.lines.slice(0, 3).map((line, index) => <li key={index}>{line}</li>)}</ul>}
     </div>
   </div>

@@ -7,6 +7,7 @@ const hexColor = z.string().regex(designColor)
 
 const templateSchema = z.object({
   id: z.string().min(1),
+  key: z.string().min(1).max(64),
   version,
   name: z.string().min(1),
   preview: z.object({ backgroundColor: hexColor, headingColor: hexColor, description: z.string() }),

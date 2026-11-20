@@ -27,7 +27,9 @@ const defaultPreview: PreviewStyle = { backgroundColor: '#FFFFFF', headingColor:
 const same = (left: object | null, right: object | null) => JSON.stringify(left) === JSON.stringify(right)
 const modeOf = ({ mode }: DesignSettings): Mode => mode === 'custom' ? mode : 'template'
 const selectionOf = ({ id, version }: DesignTemplate): TemplateSelection => ({ templateId: id, templateVersion: version })
-const previewOf = (template: DesignTemplate): PreviewStyle => ({ ...template.preview, font: template.fonts[0] })
+const previewOf = (template: DesignTemplate): PreviewStyle => ({
+  ...template.preview, font: template.fonts[0], templateKey: template.key,
+})
 
 function makeDrafts(settings: DesignSettings, catalog: DesignCatalog): Drafts {
   return {
@@ -350,7 +352,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
         <h2 id={`${formId}-preview`}>슬라이드 미리보기</h2>
         {previewName && <p className={styles.previewName}>{previewName}</p>}
         <DesignPreview projectName={projectName} preview={preview} />
-        <p className={styles.previewCaption}>디자인에 적용되는 배경색과 제목 색상을 볼 수 있어요.</p>
+        <p className={styles.previewCaption}>색상, 글꼴과 레이아웃 스타일을 미리 볼 수 있어요.</p>
         <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
       </section>
     </div>
