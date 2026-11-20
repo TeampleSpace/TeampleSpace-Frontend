@@ -37,15 +37,14 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       {material.description && <p>{material.description}</p>}
     </div>}
 
-    {material.status === 'processing' && <div className={styles.state} role="status">
-      <p>{material.kind === 'file' ? 'PDF 본문을 추출하고 있어요.' : '웹페이지 본문을 가져오고 있어요.'}</p>
-      {jobControls}
-    </div>}
+    {material.status === 'processing' && (material.job && jobControls
+      ? jobControls
+      : <p className={styles.jobFallback} role="status">분석 상태를 확인하고 있어요.</p>)}
 
     {material.status === 'failed' && <div className={styles.state}>
       <p>자료를 분석하지 못했어요</p>
-      <p className={styles.info} role="alert">{material.job?.status === 'canceled' ? '분석을 취소했어요' : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
-      <p className={styles.info}>{material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 올리지 않고 분석만 다시 시도해요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
+      <p className={styles.stateMessage} role="alert">{material.job?.status === 'canceled' ? '분석을 취소했어요' : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
+      <p className={styles.stateMessage}>{material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 분석할 수 있어요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
       <RequestError error={retryError} />
       <div className={styles.actions}>
         {error?.retryable === false && material.job?.status !== 'canceled'
