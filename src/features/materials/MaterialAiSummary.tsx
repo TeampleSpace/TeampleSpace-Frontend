@@ -13,8 +13,9 @@ function inProgress(job?: Job | null) {
   return job?.status === 'queued' || job?.status === 'running'
 }
 
-export function MaterialAiSummary({ material, onChanged, onError }: {
+export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
   material: Material; onChanged: (material: Material) => void; onError: (reason: unknown) => void
+  onGone: (id: string, revisionId: string, reason: unknown) => void
 }) {
   const { capabilities } = useSession()
   const enabled = capabilities?.featureFlags.materialSummary === true
@@ -32,7 +33,7 @@ export function MaterialAiSummary({ material, onChanged, onError }: {
   const pollId = accepted?.id ?? activeId
 
   useEffect(() => {
-    if (!pollId) return
+    if (!pollId || !revisionId) return
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
     async function check() {
@@ -49,16 +50,20 @@ export function MaterialAiSummary({ material, onChanged, onError }: {
         if (latest.currentRevision?.id !== revisionId || latest.summaryJob?.id !== pollId || !inProgress(latest.summaryJob)) return
       } catch (reason) {
         if (controller.signal.aborted) return
+        if (isGone(reason)) {
+          onGone(material.id, revisionId, reason)
+          return
+        }
         onError(reason)
         setPollError(reason)
-        if (isAccessLoss(reason) || isGone(reason)) return
+        if (isAccessLoss(reason)) return
         delay = 4000
       }
       timer = setTimeout(() => void check(), delay)
     }
     void check()
     return () => { controller.abort(); clearTimeout(timer) }
-  }, [pollId, attempt, material.id, onChanged, onError, revisionId])
+  }, [pollId, attempt, material.id, onChanged, onError, onGone, revisionId])
 
   async function submit() {
     if (lock.current || !revisionId || !enabled || activeId) return

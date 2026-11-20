@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import type { BlockerFunction } from 'react-router'
 import { useShell } from '../../app/shellContext.ts'
@@ -107,6 +107,12 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const selectedId = paramId ?? pinnedId
   const visibleList = list?.key === key ? list : null
   const visible = detail?.id === selectedId ? detail : null
+  const summaryTarget = visible?.status === 'ready' && visible.currentRevision ? `${visible.id}:${visible.currentRevision.id}` : null
+  const currentSummaryTarget = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    currentSummaryTarget.current = summaryTarget
+    return () => { currentSummaryTarget.current = null }
+  }, [summaryTarget])
 
   // 검색어는 입력이 멈춘 뒤 주소에 반영한다. 기록은 쌓지 않는다
   useEffect(() => {
@@ -174,6 +180,9 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     }
     onError(reason)
   }, [onError])
+  const summaryGone = useCallback((id: string, revisionId: string, reason: unknown) => {
+    if (currentSummaryTarget.current === `${id}:${revisionId}`) detailFailure(id, reason)
+  }, [detailFailure])
   useEffect(() => {
     if (!selectedId) return
     const controller = new AbortController()
@@ -352,7 +361,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
           actions={visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
           jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}
           summary={visible.status === 'ready' && visible.currentRevision && <MaterialAiSummary key={visible.currentRevision.id}
-            material={visible} onChanged={apply} onError={onError} />}
+            material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />}
           extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
           <RequestError error={manageError} />
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
