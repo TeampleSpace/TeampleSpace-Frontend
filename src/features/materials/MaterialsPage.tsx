@@ -20,6 +20,7 @@ import type { InputType } from './MaterialCreateDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
 import { MaterialNote } from './MaterialNote.tsx'
 import { MaterialJob } from './MaterialJob.tsx'
+import { MaterialAiSummary } from './MaterialAiSummary.tsx'
 import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from './model.ts'
 import type { Material, MaterialKind, MaterialList, MaterialSummary } from './model.ts'
 import styles from './Materials.module.css'
@@ -350,6 +351,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
           onRetry={() => void reprocess()} onManage={setView}
           actions={visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
           jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}
+          summary={visible.status === 'ready' && visible.currentRevision && <MaterialAiSummary key={visible.currentRevision.id}
+            material={visible} onChanged={apply} onError={onError} />}
           extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
           <RequestError error={manageError} />
           <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />

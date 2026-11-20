@@ -31,6 +31,10 @@ export function createMaterialsApi(client: ApiClient, fetchImpl: typeof fetch = 
     // 보관한 원본으로 분석만 다시 한다. 재시도할 때 같은 키를 다시 보낸다
     reprocess: (id: string, key: string) =>
       client.request(`/materials/${segment(id)}/reprocess`, materialCreatedSchema, { method: 'POST', idempotencyKey: key, timeoutMs: 15000 }),
+    summarize: (id: string, expectedRevisionId: string, key: string) =>
+      client.request(`/materials/${segment(id)}/summary-jobs`, jobSchema, {
+        method: 'POST', body: { expectedRevisionId }, idempotencyKey: key, timeoutMs: 15000,
+      }),
     note: (id: string, signal?: AbortSignal) => client.request(`/materials/${segment(id)}/note`, materialNoteSchema, { timeoutMs: 10000, signal }),
     saveNote: (id: string, expectedVersion: number, markdown: string) =>
       client.request(`/materials/${segment(id)}/note`, materialNoteSavedSchema, { method: 'PUT', body: { expectedVersion, markdown }, timeoutMs: 15000 }),

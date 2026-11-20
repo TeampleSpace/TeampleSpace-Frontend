@@ -9,11 +9,11 @@ import styles from './Materials.module.css'
 export type ManageAction = 'rename' | 'delete'
 
 // 선택한 자료의 상세. 처리 상태에 따라 본문 자리를 바꾼다
-export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, children }: {
+export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, summary, children }: {
   material: Material; retrying: boolean; retryError: unknown
   onRetry: () => void; onManage: (action: ManageAction) => void
   // 제목 옆에 두는 동작과 관리 메뉴에 더하는 항목
-  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; children?: ReactNode
+  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; summary?: ReactNode; children?: ReactNode
 }) {
   const revision = material.currentRevision
   const source = material.source
@@ -53,21 +53,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       </div>
     </div>}
 
-    {revision?.summary && <section className={styles.summary}>
-      <h3 className={styles.sectionTitle}>핵심 요약</h3>
-      <p>{revision.summary}</p>
-      <p className={styles.provenance}>자세한 내용은 원문에서 확인하세요.</p>
-    </section>}
-
-    {revision?.excerpt && <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h3 className={styles.sectionTitle}>원문 발췌</h3>
-        {revision.excerpt.page && <span>{revision.excerpt.page}쪽</span>}
-      </div>
-      <p className={styles.plain}>{revision.excerpt.text}</p>
-    </section>}
-
-    {material.status === 'ready' && !revision?.excerpt && <p className={styles.listNote}>원문에서 추출한 글이 없어요</p>}
+    {summary}
     {children}
   </>
 }
