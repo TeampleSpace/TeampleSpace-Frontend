@@ -65,6 +65,9 @@
     { "code": "LINK_UNSUPPORTED_CONTENT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "글로 읽을 수 없는 형식의 링크다. 작업의 error.code로 전달한다" },
     { "code": "LINK_TOO_LARGE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "링크 문서가 허용 크기를 넘었다. 작업의 error.code로 전달한다" },
     { "code": "JOB_ATTEMPTS_EXHAUSTED", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "내부 재시도 횟수를 다 써서 작업을 끝냈다. 작업의 error.code로 전달하며 사용자가 다시 시도할 수 있다" },
+    { "code": "JOB_OUTLINE_PROVIDER_UNAVAILABLE", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "구성 생성 제공자 호출에 실패했다. 일시 오류만 내부 재시도한다" },
+    { "code": "JOB_OUTLINE_INVALID_RESULT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "구성 생성 응답의 형식이나 자료 참조가 잘못되어 반영하지 않았다" },
+    { "code": "JOB_OUTLINE_ACCESS_REVOKED", "httpStatus": null, "retryable": false, "basis": "권한", "meaning": "구성 생성 요청자의 프로젝트 접근이 회수되어 반영하지 않았다" },
     { "code": "JOB_TARGET_GONE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "작업 대상이 삭제되어 결과를 반영하지 않았다. 작업의 error.code로 전달한다" }
   ]
 }
