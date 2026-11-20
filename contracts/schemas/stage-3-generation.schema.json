@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage-3-generation.schema.json",
+  "title": "TeampleSpace 발표 생성 입력 계약",
+  "$defs": {
+    "MaterialSelection": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "api.schema.json#/$defs/Uuid" }
+    },
+    "PinnedMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "materialVersion", "revisionId", "sourceVersion"],
+      "properties": {
+        "materialId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "materialVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "revisionId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "sourceVersion": { "$ref": "api.schema.json#/$defs/Version" }
+      }
+    },
+    "OutlineJobRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedVersion", "sourceIds"],
+      "properties": {
+        "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "sourceIds": { "$ref": "#/$defs/MaterialSelection" },
+        "instructions": { "type": "string", "maxLength": 1000 }
+      }
+    },
+    "OutlineJobInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outlineVersion", "sources", "instructions", "model", "schemaVersion", "promptVersion"],
+      "properties": {
+        "outlineVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/PinnedMaterial" }
+        },
+        "instructions": { "type": "string", "maxLength": 1000 },
+        "model": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "const": 1 },
+        "promptVersion": { "const": "outline-v1" }
+      }
+    },
+    "OutlineJobResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "projectId", "outlineVersion"],
+      "properties": {
+        "type": { "const": "outline" },
+        "projectId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "outlineVersion": { "$ref": "api.schema.json#/$defs/Version" }
+      }
+    },
+    "PresentationGenerationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outlineVersion", "designVersion", "sourceIds"],
+      "properties": {
+        "outlineVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "designVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "sourceIds": { "$ref": "#/$defs/MaterialSelection" }
+      }
+    },
+    "PresentationGenerationSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "outline", "designSettings", "sources"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "outline": {
+          "$ref": "stage-3.schema.json#/$defs/Outline",
+          "properties": { "items": { "minItems": 1 } }
+        },
+        "designSettings": {
+          "$ref": "api.schema.json#/$defs/DesignSettings",
+          "properties": { "mode": { "enum": ["template", "custom"] } }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/PinnedMaterial" }
+        }
+      }
+    }
+  }
+}
