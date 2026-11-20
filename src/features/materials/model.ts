@@ -49,6 +49,7 @@ export const materialSchema = z.object({
   }),
   currentRevision: materialRevisionSchema.nullable(),
   job: jobSchema.nullable(),
+  summaryJob: jobSchema.nullable().optional(),
   canDelete: z.boolean(),
 })
 export type Material = z.infer<typeof materialSchema>
