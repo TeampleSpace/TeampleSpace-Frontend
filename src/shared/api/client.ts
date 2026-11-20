@@ -14,13 +14,12 @@ import type {
 
 export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  body?: unknown
   // 문서 변경 요청에 필수인 멱등 키
   idempotencyKey?: string
   headers?: Record<string, string>
   timeoutMs?: number
   signal?: AbortSignal
-}
+} & ({ body?: unknown; binaryBody?: never } | { body?: never; binaryBody: Blob })
 
 // 서버가 공통 오류 구조로 응답한 경우
 export class ApiError extends Error {
@@ -109,6 +108,7 @@ export function createApiClient(
       ...options.headers,
     }
     if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+    if (options.binaryBody) headers['Content-Type'] = 'application/octet-stream'
     if (options.idempotencyKey) {
       headers['Idempotency-Key'] = options.idempotencyKey
     }
@@ -131,7 +131,7 @@ export function createApiClient(
         method,
         headers,
         credentials: 'same-origin',
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body: options.binaryBody ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
         signal,
       })
     } catch (cause) {

@@ -18,6 +18,7 @@ const templateSchema = z.object({
 const catalogSchema = z.object({
   items: z.array(templateSchema),
   allowedFonts: z.array(z.string()),
+  projectFontsEnabled: z.boolean().optional(),
 })
 
 const customSchema = z.object({
@@ -25,6 +26,7 @@ const customSchema = z.object({
   font: z.string().min(1),
   primaryColor: hexColor,
   guidelines: z.string().max(2000),
+  fontAssetId: z.uuid().optional(),
 })
 
 const settingsBase = z.object({ version, updatedAt: z.string() })
