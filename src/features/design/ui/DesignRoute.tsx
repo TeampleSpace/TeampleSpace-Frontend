@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { useShell } from '../../../app/shellContext.ts'
+import { useShell } from '../../../shared/lib/shellContext.ts'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'

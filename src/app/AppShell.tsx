@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router'
 import { projectsApi } from '../features/projects/api.ts'
 import type { Project } from '../features/projects/model.ts'
 import { Button } from '../shared/ui/Button.tsx'
-import type { CurrentProject } from './shellContext.ts'
+import type { CurrentProject } from '../shared/lib/shellContext.ts'
 import styles from './AppShell.module.css'
 
 export default function AppShell() {

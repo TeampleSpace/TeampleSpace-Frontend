@@ -2,13 +2,13 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import ProjectHome from './ProjectHome.tsx'
-import AppShell from '../../../app/AppShell.tsx'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import { projectsApi } from '../api.ts'
-import type { Project } from '../model.ts'
+import ProjectHome from '../features/projects/ui/ProjectHome.tsx'
+import AppShell from './AppShell.tsx'
+import { SessionContext } from '../features/auth/sessionContext.ts'
+import { projectsApi } from '../features/projects/api.ts'
+import type { Project } from '../features/projects/model.ts'
 
-vi.mock('../api.ts', () => ({ projectsApi: { list: vi.fn() } }))
+vi.mock('../features/projects/api.ts', () => ({ projectsApi: { list: vi.fn() } }))
 const project: Project = { id: 'project-1', name: '팀 발표', topic: null, presentationConstraints: null,
   ownerId: 'owner', version: 1, memberCount: 2, createdAt: '2026-11-19T00:00:00Z', updatedAt: '2026-11-19T00:00:00Z' }
 beforeAll(() => {
