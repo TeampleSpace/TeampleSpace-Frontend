@@ -81,7 +81,7 @@ export default function AppShell() {
             {isExpanded && <div className={styles.projectChildren}>
               <NavLink to={`/projects/${project.id}`} end>프로젝트 개요</NavLink>
               <NavLink to={`/projects/${project.id}/materials`}>자료</NavLink>
-              <span>발표 구성 <small>준비 중</small></span>
+              <NavLink to={`/projects/${project.id}/outline`}>발표 구성</NavLink>
               <span>슬라이드 <small>준비 중</small></span>
             </div>}
           </li>

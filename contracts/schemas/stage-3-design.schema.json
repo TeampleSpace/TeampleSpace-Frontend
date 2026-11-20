@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stage-3-design.schema.json",
+  "title": "TeampleSpace 디자인 설정 계약",
+  "$defs": {
+    "TemplateCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "allowedFonts", "allowedLayouts"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/Template" } },
+        "allowedFonts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "allowedLayouts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "Template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "key", "version", "name", "schemaVersion", "preview", "fonts", "layouts"],
+      "properties": {
+        "id": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "key": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "version": { "$ref": "api.schema.json#/$defs/Version" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "preview": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["backgroundColor", "headingColor", "description"],
+          "properties": {
+            "backgroundColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "headingColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "description": { "type": "string" }
+          }
+        },
+        "fonts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "layouts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "DesignSettingsPutRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expectedVersion", "mode", "templateId", "templateVersion"],
+          "properties": {
+            "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" },
+            "mode": { "const": "template" },
+            "templateId": { "$ref": "api.schema.json#/$defs/Uuid" },
+            "templateVersion": { "$ref": "api.schema.json#/$defs/Version" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expectedVersion", "mode", "custom"],
+          "properties": {
+            "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" },
+            "mode": { "const": "custom" },
+            "custom": { "$ref": "api.schema.json#/$defs/DesignCustom" }
+          }
+        }
+      ]
+    }
+  }
+}
