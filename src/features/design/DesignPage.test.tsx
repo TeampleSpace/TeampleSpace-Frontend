@@ -1,15 +1,22 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import { designApi } from './api.ts'
 import type { DesignSettings } from './api.ts'
 import DesignPage from './DesignPage.tsx'
+import { fontsApi } from './fontsApi.ts'
+import type { ProjectFont } from './fontsApi.ts'
 
 vi.mock('./api.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('./api.ts')>(),
   designApi: { catalog: vi.fn(), get: vi.fn(), save: vi.fn() },
+}))
+
+vi.mock('./fontsApi.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./fontsApi.ts')>(),
+  fontsApi: { list: vi.fn(), upload: vi.fn(), content: vi.fn() },
 }))
 
 const initial: DesignSettings = { version: 1, mode: 'unset', templateId: null, templateVersion: null, custom: null, updatedAt: '2026-11-20T00:00:00Z' }
@@ -47,6 +54,59 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   const preview = screen.getByRole('region', { name: '슬라이드 미리보기' })
   expect(preview.querySelector('[data-template="editorial"]')).toBeTruthy()
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
+})
+
+test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보기에 반영한다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
+  const code = screen.getByLabelText<HTMLInputElement>('대표 색상')
+  const picker = screen.getByLabelText<HTMLInputElement>('색상 선택')
+  const preview = screen.getByRole('region', { name: '슬라이드 미리보기' }).querySelector<HTMLElement>('[style]')
+
+  fireEvent.change(code, { target: { value: '#7183a0' } })
+  expect(picker.value).toBe('#7183a0')
+  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#7183A0')
+
+  fireEvent.change(picker, { target: { value: '#aabbcc' } })
+  expect(code.value).toBe('#AABBCC')
+  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#AABBCC')
+})
+
+test('글꼴 업로드가 끝난 뒤 저장하고 기본 글꼴로 바꾸면 업로드 글꼴 ID를 지운다', async () => {
+  const id = 'd0429274-32ac-4c66-9447-186e94406e0d'
+  const font: ProjectFont = { id, fileName: '팀 폰트.ttf', format: 'ttf', sizeBytes: 4, contentUrl: `/v1/projects/project/design-fonts/${id}/content` }
+  const custom = { name: '팀 디자인', font: 'Pretendard', primaryColor: '#2864E8', guidelines: '' }
+  const saved: DesignSettings = { ...initial, mode: 'custom', version: 2, custom: { ...custom, fontAssetId: id } }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template], allowedFonts: ['Pretendard'], projectFontsEnabled: true })
+  vi.mocked(fontsApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(fontsApi.content).mockRejectedValue(new TransportError('network'))
+  let finishUpload!: (font: ProjectFont) => void
+  vi.mocked(fontsApi.upload).mockReturnValue(new Promise((resolve) => { finishUpload = resolve }))
+  vi.mocked(designApi.save).mockResolvedValueOnce(saved).mockResolvedValueOnce({ ...saved, custom, version: 3 })
+  const { container } = mount()
+  fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
+  fireEvent.change(screen.getByLabelText('템플릿 이름'), { target: { value: custom.name } })
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '글꼴 업로드' }).disabled).toBe(false))
+  const save = screen.getByRole<HTMLButtonElement>('button', { name: '디자인 저장' })
+  expect(save.disabled).toBe(false)
+  fireEvent.change(screen.getByLabelText('글꼴 파일 선택'), { target: { files: [new File([new Uint8Array(4)], font.fileName)] } })
+  expect(save.disabled).toBe(true)
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: '템플릿 선택' }).disabled).toBe(true)
+  fireEvent.submit(container.querySelector('form')!)
+  expect(designApi.save).not.toHaveBeenCalled()
+
+  finishUpload(font)
+  await waitFor(() => expect(save.disabled).toBe(false))
+  fireEvent.click(save)
+  await screen.findByText('디자인을 저장했어요')
+  expect(vi.mocked(designApi.save).mock.calls[0][1]).toEqual({ expectedVersion: 1, mode: 'custom', custom: saved.custom })
+  const selection = screen.getByRole<HTMLSelectElement>('combobox', { name: '폰트' })
+  fireEvent.change(selection, { target: { value: 'Pretendard' } })
+  expect(selection.value).toBe('Pretendard')
+  fireEvent.click(save)
+  await screen.findByText('디자인을 저장했어요')
+  const submitted = vi.mocked(designApi.save).mock.calls[1][1]
+  expect(JSON.parse(JSON.stringify(submitted))).toEqual({ expectedVersion: 2, mode: 'custom', custom })
 })
 
 test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식만 저장한다', async () => {
