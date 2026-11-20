@@ -116,10 +116,10 @@ test('소셜 로그인은 서버에 계정 경로를 전달하고 복귀한 탭�
   expect(takeBillingPreviewReturn()).toBeUndefined()
 })
 
-test('신규 소셜 사용자는 가입을 마친 뒤 돌아갈 미리보기 주소를 유지한다', async () => {
+test.each(['/onboarding', '/onboarding?returnTo=%2Faccount'])('%s 소셜 가입 완료 뒤 돌아갈 미리보기 주소를 유지한다', async (entry) => {
   const path = '/account/subscription/preview/complete'
   setBillingPreviewReturn(path)
-  const { preview } = open('/onboarding?returnTo=%2Faccount', true, { ...user, onboardingStatus: 'pending' })
+  const { preview } = open(entry, true, { ...user, onboardingStatus: 'pending' })
   await screen.findByRole('heading', { name: '어떻게 불러드릴까요?' })
   await waitFor(() => expect(new URLSearchParams(preview.state.location.search).get('returnTo')).toBe(path))
   expect(takeBillingPreviewReturn()).toBeUndefined()
