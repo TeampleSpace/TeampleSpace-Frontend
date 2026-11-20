@@ -143,7 +143,8 @@ test('분석 실패는 파일을 다시 올리지 않고 같은 키로 다시 �
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
   expect(await screen.findByText(/서버에 연결할 수 없습니다/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-  expect(await screen.findByText('PDF 본문을 추출하고 있어요.')).toBeTruthy()
+  expect(await screen.findByText('분석 대기 중')).toBeTruthy()
+  expect(screen.queryByText('PDF 본문을 추출하고 있어요.')).toBeNull()
   const retries = mock.calls.filter((call) => call.path.endsWith('/reprocess'))
   expect(retries).toHaveLength(2)
   expect(retries[0].key).toBe(retries[1].key)
@@ -161,7 +162,7 @@ test('분석 취소 응답을 잃어도 작업을 조회해 취소를 확인하�
   expect(mock.jobs()[0].status).toBe('canceled')
   expect(mock.calls.some((call) => call.method === 'GET' && call.path.includes('/jobs/'))).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
-  expect(await screen.findByText('PDF 본문을 추출하고 있어요.')).toBeTruthy()
+  expect(await screen.findByText('분석 대기 중')).toBeTruthy()
   expect(mock.jobs()).toHaveLength(2)
 })
 

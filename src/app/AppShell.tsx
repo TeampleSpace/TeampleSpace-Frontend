@@ -9,8 +9,10 @@ import styles from './AppShell.module.css'
 export default function AppShell() {
   const [currentProject, setCurrentProject] = useState<CurrentProject>(null)
   const match = useMatch('/projects/:projectId/*')
+  const account = useMatch('/account/*')
+  const billingReturn = useMatch('/billing/return')
   const location = useLocation()
-  const showingProjects = location.pathname !== '/account'
+  const showingProjects = !account && !billingReturn
   const [projects, setProjects] = useState<Project[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [error, setError] = useState(false)
@@ -83,6 +85,7 @@ export default function AppShell() {
               <NavLink to={`/projects/${project.id}/materials`}>자료</NavLink>
               <NavLink to={`/projects/${project.id}/outline`}>발표 구성</NavLink>
               <span>슬라이드 <small>준비 중</small></span>
+              <NavLink to={`/projects/${project.id}/design`}>디자인 설정</NavLink>
             </div>}
           </li>
         })}</ul>
