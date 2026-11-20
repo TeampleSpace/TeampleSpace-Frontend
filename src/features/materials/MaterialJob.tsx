@@ -15,6 +15,10 @@ export function MaterialJob({ material, onChanged, onError }: {
   const job = material.job
   if (!job || material.status !== 'processing') return null
   const canceling = requested || Boolean(job.cancelRequestedAt)
+  const queued = job.status === 'queued'
+  const activity = material.kind === 'file' ? 'PDF 본문을 추출하고 있어요.' : '웹페이지 본문을 가져오고 있어요.'
+  const status = canceling ? '취소 요청을 확인하고 있어요' : queued ? '분석 대기 중' : activity
+
   async function check() {
     onChanged(await materialsApi.get(material.id))
   }
@@ -36,10 +40,14 @@ export function MaterialJob({ material, onChanged, onError }: {
       } catch (latest) { onError(latest) }
     } finally { lock.current = false; setBusy(false) }
   }
-  return <div>
-    <p className={styles.info}>{canceling ? '취소 요청을 확인하고 있어요' : `${job.status === 'queued' ? '분석 대기 중' : '분석 중'} ${job.progress}%`}</p>
-    <p className={styles.info}>분석 요청자와 프로젝트 소유자가 취소할 수 있어요</p>
+  return <div className={styles.job}>
+    <div className={styles.jobBar}>
+      <div className={styles.jobStatus} role="status">
+        <p>{status}</p>
+        {!queued && !canceling && job.progress > 0 && <span>{job.progress}%</span>}
+      </div>
+      <Button variant="secondary" loading={busy} disabled={canceling} onClick={() => void cancel()}>분석 취소</Button>
+    </div>
     <RequestError error={error} />
-    <div className={styles.actions}><Button variant="secondary" loading={busy} disabled={canceling} onClick={() => void cancel()}>분석 취소</Button></div>
   </div>
 }
