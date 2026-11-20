@@ -56,3 +56,7 @@
   color: var(--color-secondary);
   font: var(--text-body);
 }
+
+/* 움직임 */
+.details { animation: var(--motion-feedback-enter); }
+.choices label { transition: border-color var(--motion-fast) var(--motion-ease-out); }

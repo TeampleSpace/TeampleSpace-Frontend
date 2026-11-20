@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import type { OutlineItem } from '../model.ts'
 import styles from './Outline.module.css'
@@ -43,11 +43,30 @@ export function OutlineFlowList({ items, selectedId, disabled, onSelect, onMove 
   const [movingId, setMovingId] = useState('')
   const [marker, setMarker] = useState<MoveDestination>()
 
+  const tops = useRef(new Map<string, number>())
+
   function clear() {
     drag.current = null
     setMovingId('')
     setMarker(undefined)
   }
+
+  // 순서가 바뀌면 각 항목이 이전 자리에서 새 자리로 미끄러진다
+  useLayoutEffect(() => {
+    const node = list.current
+    if (!node) return
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    const next = new Map<string, number>()
+    for (const row of Array.from(node.children) as HTMLElement[]) {
+      const top = row.offsetTop
+      const before = tops.current.get(row.dataset.id!)
+      next.set(row.dataset.id!, top)
+      if (before !== undefined && before !== top && !reduced && typeof row.animate === 'function') {
+        row.animate([{ transform: `translateY(${before - top}px)` }, { transform: 'none' }], { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' })
+      }
+    }
+    tops.current = next
+  }, [items])
 
   useEffect(() => {
     if (!movingId || disabled) return

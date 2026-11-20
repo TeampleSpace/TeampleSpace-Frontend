@@ -58,7 +58,7 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
       <Button variant="text" onClick={() => { setQuery(''); setCategory('전체') }}>검색과 분류 초기화</Button>
     </div>}
     <div className={styles.selection}>
-      <p><span>선택한 템플릿</span> <strong>{selected?.name ?? '템플릿을 선택해 주세요'}</strong></p>
+      <p><span>선택한 템플릿</span> <strong key={selected?.id ?? 'none'}>{selected?.name ?? '템플릿을 선택해 주세요'}</strong></p>
       {selected && <Button variant="secondary" onClick={() => onDetail(selected)}>템플릿 자세히 보기</Button>}
     </div>
   </section>

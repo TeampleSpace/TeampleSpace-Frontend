@@ -78,4 +78,5 @@
   --motion-page-enter: teample-fade-in var(--motion-enter) var(--motion-ease-out);
   --motion-content-enter: teample-content-in var(--motion-normal) var(--motion-ease-out);
   --motion-feedback-enter: teample-content-in var(--motion-fast) var(--motion-ease-out);
+  --motion-fade-enter: teample-fade-in var(--motion-fast) var(--motion-ease-out);
 }
