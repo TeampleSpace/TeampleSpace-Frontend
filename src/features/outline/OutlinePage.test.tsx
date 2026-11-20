@@ -105,6 +105,29 @@ test('확인된 버전 충돌은 최신 내용을 비교한 다음에도 내 입
   expect(vi.mocked(outlineApi.save).mock.calls[1][2]).not.toBe(vi.mocked(outlineApi.save).mock.calls[0][2])
 })
 
+test('응답을 잃은 저장 뒤 원래 제목으로 되돌려도 이전 요청을 확인하고 다시 저장할 수 있다', async () => {
+  const first = { ...initial, version: 2, items: [{ ...old, title: '처음 저장한 목차' }] }
+  vi.mocked(outlineApi.save).mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(first)
+    .mockResolvedValueOnce({ ...initial, version: 3 })
+  mount(initial)
+  fireEvent.click(await screen.findByRole('button', { name: '내용 편집' }))
+  update('슬라이드 제목', first.items[0].title)
+  save()
+  await screen.findByText(/서버에 연결할 수 없습니다/)
+  update('슬라이드 제목', old.title)
+  save()
+  await screen.findByText('이전 저장 결과를 확인했어요. 새 입력을 저장하려면 다시 저장해 주세요.')
+  expect((screen.getByRole('textbox', { name: '슬라이드 제목' }) as HTMLInputElement).value).toBe(old.title)
+  const requests = vi.mocked(outlineApi.save).mock.calls
+  expect(requests).toHaveLength(2)
+  expect(requests[1]).toEqual(requests[0])
+  save()
+  await screen.findByRole('heading', { name: /첫 번째 목차/ })
+  expect(requests).toHaveLength(3)
+  expect(requests[2][1]).toEqual({ expectedVersion: 2, items: [{ id: old.id, title: old.title, summary: old.summary, sourceIds: [] }] })
+  expect(requests[2][2]).not.toBe(requests[0][2])
+})
+
 test('근거를 다시 고정하거나 삭제 연결을 제거할 때 본문 저장 전에 확인한다', async () => {
   const withRefs = { ...initial, items: [{ ...old, sourceRefs: [
     { materialId: 'active', revisionId: 'old-revision', sourceVersion: 1, sourceDeleted: false },

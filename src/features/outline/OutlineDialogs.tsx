@@ -12,6 +12,7 @@ type Props = {
   editing: boolean
   busy: boolean
   blocked: boolean
+  recovering: boolean
   error: unknown
   titleError?: string
   summaryError?: string
@@ -23,7 +24,7 @@ type Props = {
   onClose: () => void
 }
 
-export function OutlineEditDialog({ fields, editing, busy, blocked, error, titleError, summaryError, feedback,
+export function OutlineEditDialog({ fields, editing, busy, blocked, recovering, error, titleError, summaryError, feedback,
   evidence, onChange, onSave, onDelete, onClose }: Props) {
   const formId = useId()
   return <Modal open size="confirm" title={editing ? '발표 내용 수정' : '목차 추가'} onClose={onClose}>
@@ -35,6 +36,7 @@ export function OutlineEditDialog({ fields, editing, busy, blocked, error, title
       <Field label="발표 내용" multiline rows={2} value={fields.content} error={summaryError}
         maxLength={outlineLimits.summary} disabled={busy} onChange={(event) => onChange('content', event.target.value)} />
       {!feedback && <RequestError error={error} />}
+      {recovering && <p>다시 저장하면 이전 요청의 결과를 먼저 확인해요.</p>}
       {feedback}
       <div className={styles.actions}>
         <Button type="submit" loading={busy} disabled={blocked}>{editing ? '저장' : '목차 추가'}</Button>
@@ -42,7 +44,7 @@ export function OutlineEditDialog({ fields, editing, busy, blocked, error, title
       </div>
       {editing && <div className={styles.actions}>
         {evidence && <Button variant="text" onClick={evidence} disabled={busy || blocked}>근거 자료</Button>}
-        <Button variant="text" onClick={onDelete} disabled={busy || blocked}>목차 삭제</Button>
+        <Button variant="text" onClick={onDelete} disabled={busy || blocked || recovering}>목차 삭제</Button>
       </div>}
     </form>
   </Modal>

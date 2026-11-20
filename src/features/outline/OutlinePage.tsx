@@ -15,7 +15,7 @@ import { projectsApi } from '../projects/api.ts'
 import type { Project } from '../projects/model.ts'
 import { outlineApi } from './api.ts'
 import { fieldsOf, outlineItemInput, outlineLimits, readOutlineSummary, validateOutlineFields } from './model.ts'
-import type { Outline, OutlineInput, OutlineItem } from './model.ts'
+import type { Outline, OutlineFields, OutlineInput, OutlineItem } from './model.ts'
 import { OutlineEditDialog } from './OutlineDialogs.tsx'
 import styles from './Outline.module.css'
 
@@ -48,7 +48,9 @@ type Slots = {
 
 type Operation = { kind: 'edit'; id?: string } | { kind: 'delete'; id: string } | { kind: 'move'; id: string; by: -1 | 1 }
 type ModalName = 'discard' | 'pin' | 'delete'
+type SaveCommand = { operation: Operation; fields: OutlineFields; body: OutlineInput; key: string; index: number }
 const indexLabel = (position: number) => String(position + 1).padStart(2, '0')
+const sameFields = (left: OutlineFields, right: OutlineFields) => left.title === right.title && left.claim === right.claim && left.content === right.content
 
 export default function OutlinePage(slots: Slots) {
   const { projectId = '' } = useParams()
@@ -115,15 +117,17 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   const [serverConflict, setServerConflict] = useState(false)
   const [notice, setNotice] = useState('')
   const [retryUntil, setRetryUntil] = useState(0)
-  const retry = useRef<{ key: string; body: string } | null>(null)
+  const retry = useRef<SaveCommand | null>(null)
+  const [uncertain, setUncertain] = useState(false)
+  const [recovered, setRecovered] = useState(false)
   const [evidenceRequest, setEvidenceRequest] = useState(0)
   const [evidenceDirty, setEvidenceDirty] = useState(false)
   const [readyCount, setReadyCount] = useState<{ count: number; more: boolean }>()
   const [materialsError, setMaterialsError] = useState<unknown>()
   const [materialsReload, setMaterialsReload] = useState(0)
-  const editDirty = operation?.kind === 'edit' && (fields.title !== originalFields.title || fields.claim !== originalFields.claim || fields.content !== originalFields.content)
-  const dirty = Boolean(editDirty) || evidenceDirty || busy
-  const conflict = Boolean(operation && (baseVersion !== outline.version || serverConflict))
+  const editDirty = operation?.kind === 'edit' && !sameFields(fields, originalFields)
+  const dirty = Boolean(editDirty) || evidenceDirty || busy || uncertain
+  const conflict = !uncertain && Boolean(operation && (baseVersion !== outline.version || serverConflict))
   const target = operation?.id ? outline.items.find((item) => item.id === operation.id) : undefined
   const values = validateOutlineFields(fields)
   const blockers = busy || retryUntil > 0
@@ -179,6 +183,8 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   function open(next: Operation, item?: OutlineItem) {
     const initialFields = fieldsOf(item)
     retry.current = null
+    setUncertain(false)
+    setRecovered(false)
     setOperation(next)
     setBaseVersion(outline.version)
     setFields(initialFields)
@@ -200,11 +206,13 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
     setServerConflict(false)
     setPinOperation(undefined)
     retry.current = null
+    setUncertain(false)
+    setRecovered(false)
   }
 
   function requestClose() {
     if (busy) return
-    if (editDirty) setModal('discard')
+    if (editDirty || uncertain) setModal('discard')
     else close()
   }
 
@@ -231,7 +239,12 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   }
 
   async function run(next: Operation, pinConfirmed = false) {
-    if (lock.current || retryUntil || baseVersion !== outlineRef.current.version || conflict) return
+    if (lock.current || retryUntil) return
+    if (retry.current) {
+      await submit(retry.current, true)
+      return
+    }
+    if (baseVersion !== outlineRef.current.version || conflict) return
     if (next.kind === 'edit') {
       setValidation(true)
       if (values.titleError || values.summaryError) return
@@ -261,23 +274,39 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
       return
     }
     const body: OutlineInput = { expectedVersion: outline.version, items }
-    const serialized = JSON.stringify(body)
-    if (retry.current?.body !== serialized) retry.current = { key: crypto.randomUUID(), body: serialized }
-    const key = retry.current.key
+    await submit({ operation: next, body, key: crypto.randomUUID(), fields, index })
+  }
+
+  async function submit(command: SaveCommand, resolving = false) {
+    const { operation: next, body, key, index } = command
+    retry.current = command
     lock.current = true
     setBusy(true)
     setError(undefined)
+    setRecovered(false)
     setModal(next.kind === 'delete' ? 'delete' : undefined)
     try {
       const saved = await outlineApi.save(project.id, body, key)
+      const savedTarget = next.kind === 'edit' && !next.id ? saved.items.at(-1) : saved.items.find((item) => item.id === next.id)
       if (saved.version >= outlineRef.current.version) {
         setLatest(saved)
-        setSelection(next.kind === 'edit' && !next.id ? saved.items.at(-1)?.id : saved.items.find((item) => item.id === next.id)?.id ?? saved.items[Math.min(index, saved.items.length - 1)]?.id)
+        setSelection(savedTarget?.id ?? saved.items[Math.min(index, saved.items.length - 1)]?.id)
+      }
+      if (resolving && next.kind === 'edit' && savedTarget && !sameFields(fields, command.fields)) {
+        retry.current = null
+        setUncertain(false)
+        setRecovered(true)
+        setOperation({ kind: 'edit', id: savedTarget.id })
+        setBaseVersion(saved.version)
+        setOriginalFields(fieldsOf(savedTarget))
+        return
       }
       setNotice(next.kind === 'delete' ? '목차를 삭제했어요' : next.kind === 'move' ? '목차 순서를 저장했어요' : '발표 구성을 저장했어요')
       close()
     } catch (reason) {
-      if (!isUncertain(reason)) retry.current = null
+      const unknownResult = isUncertain(reason)
+      if (!unknownResult) retry.current = null
+      setUncertain(unknownResult)
       if (reason instanceof ApiError && reason.retryAfterSeconds) setRetryUntil(Date.now() + reason.retryAfterSeconds * 1000)
       if (reason instanceof ApiError && reason.code === 'VERSION_CONFLICT') setServerConflict(true)
       setError(reason)
@@ -364,7 +393,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
           {visibleSections.claim && <section className={styles.claim}><h3>핵심 주장</h3><p>{visibleSections.claim}</p></section>}
           <section className={styles.content}><h3>발표 내용</h3><p>{visibleSections.content || '입력한 발표 내용이 없어요'}</p></section>
           {Evidence && <Evidence projectId={project.id} outline={outline} item={selected} openRequest={evidenceRequest}
-            disabled={busy || conflict || Boolean(modal)} onSaved={onEvidenceSaved} onReloadOutline={reloadOutline}
+            disabled={busy || conflict || uncertain || Boolean(modal)} onSaved={onEvidenceSaved} onReloadOutline={reloadOutline}
             onAccessError={onAccessError} onDirtyChange={setEvidenceDirty} />}
           {outline.items.length > 1 && <div className={styles.orderActions} aria-label="목차 순서 변경">
             <Button variant="text" disabled={selected.position === 0 || evidenceDirty} onClick={() => move(selected, -1)}>위로 이동</Button>
@@ -374,13 +403,13 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
       </div>
     </>}
     {notice && <p role="status" className={styles.notice}>{notice}</p>}
-    {operation?.kind === 'edit' && <OutlineEditDialog fields={fields} editing={Boolean(operation.id)} busy={busy}
-      blocked={Boolean(conflictFeedback) || blockers} error={error} feedback={conflictFeedback}
+    {operation?.kind === 'edit' && <OutlineEditDialog fields={fields} editing={Boolean(operation.id)} busy={busy} recovering={uncertain}
+      blocked={Boolean(conflictFeedback) || blockers} error={error} feedback={conflictFeedback ?? (recovered && <p role="status">이전 저장 결과를 확인했어요. 새 입력을 저장하려면 다시 저장해 주세요.</p>)}
       titleError={validation ? values.titleError : undefined} summaryError={validation ? values.summaryError : undefined}
-      evidence={slots.renderEvidence ? () => setEvidenceRequest((value) => value + 1) : undefined}
+      evidence={slots.renderEvidence && !uncertain ? () => setEvidenceRequest((value) => value + 1) : undefined}
       onChange={(key, value) => setFields((previous) => ({ ...previous, [key]: value }))}
       onSave={() => void run(operation)} onDelete={() => setModal('delete')} onClose={requestClose} />}
-    {modal === 'discard' && <Modal open size="confirm" title="저장하지 않은 변경이 있어요" description="닫으면 입력한 내용이 사라져요" onClose={() => setModal(undefined)}
+    {modal === 'discard' && <Modal open size="confirm" title={uncertain ? '이전 저장 결과를 확인하지 못했어요' : '저장하지 않은 변경이 있어요'} description="닫으면 입력한 내용이 사라져요" onClose={() => setModal(undefined)}
       footer={<><Button variant="secondary" onClick={() => setModal(undefined)}>계속 작성</Button><Button onClick={close}>닫기</Button></>} />}
     {modal === 'delete' && operation?.id && <Modal open size="confirm" title="목차 항목을 삭제할까요?"
       description={`${target?.title ? `${target.title} 항목을 삭제합니다. ` : ''}자료 원문은 남아요.${editDirty ? ' 저장하지 않은 입력도 지워져요.' : ''}`} onClose={() => { if (!busy) setModal(undefined) }}
