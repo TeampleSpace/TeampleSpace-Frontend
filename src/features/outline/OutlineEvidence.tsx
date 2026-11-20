@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api/client.ts'
 import { Button } from '../../shared/ui/Button.tsx'
 import { Field } from '../../shared/ui/Field.tsx'
@@ -106,7 +106,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
   const dirty = !equalIds(selected, original)
   const conflict = !uncertain && (serverConflict || version !== outline.version)
 
-  useEffect(() => { onDirtyChange(dirty || busy || uncertain); return () => onDirtyChange(false) }, [dirty, busy, uncertain, onDirtyChange])
+  useLayoutEffect(() => { onDirtyChange(dirty || busy || uncertain); return () => onDirtyChange(false) }, [dirty, busy, uncertain, onDirtyChange])
 
   const load = useCallback(async (request: number, signal?: AbortSignal, cursor?: string) => {
     try {

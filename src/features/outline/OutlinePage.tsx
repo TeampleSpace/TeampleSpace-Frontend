@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Link, useParams } from 'react-router'
 import { useShell } from '../../app/shellContext.ts'
@@ -36,7 +36,7 @@ export type OutlineAiSlotProps = {
   version: number
   outlineHasItems: boolean
   dirty: boolean
-  onGenerated: () => Promise<void>
+  onGenerated: () => Promise<boolean>
   onAccessError: (reason: unknown) => void
 }
 
@@ -127,6 +127,8 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   const [materialsReload, setMaterialsReload] = useState(0)
   const editDirty = operation?.kind === 'edit' && !sameFields(fields, originalFields)
   const dirty = Boolean(editDirty) || evidenceDirty || busy || uncertain
+  const generatedBlocked = dirty || Boolean(operation)
+  const generatedBlockedRef = useRef(generatedBlocked)
   const conflict = !uncertain && Boolean(operation && (baseVersion !== outline.version || serverConflict))
   const target = operation?.id ? outline.items.find((item) => item.id === operation.id) : undefined
   const values = validateOutlineFields(fields)
@@ -136,6 +138,8 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   const noMaterials = empty && readyCount?.count === 0
   const Evidence = slots.renderEvidence
   const Ai = slots.renderAi
+
+  useLayoutEffect(() => { generatedBlockedRef.current = generatedBlocked }, [generatedBlocked])
 
   useEffect(() => {
     if (outline.items.length) return
@@ -162,19 +166,29 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
     return outlineRef.current
   }, [])
 
-  const reloadOutline = useCallback(async (keepItemId?: string) => {
+  const readOutline = useCallback(async () => {
     try {
-      const next = await outlineApi.get(project.id)
-      // 근거를 선택하던 항목이 사라져도 사용자가 닫을 때까지 선택을 유지한다
-      return keepItemId && !next.items.some((item) => item.id === keepItemId) ? next : setLatest(next)
+      return await outlineApi.get(project.id)
     } catch (reason) {
       if (isGone(reason)) onProjectError(reason)
       else onAccessError(reason)
       throw reason
     }
-  }, [project.id, onAccessError, onProjectError, setLatest])
+  }, [project.id, onAccessError, onProjectError])
 
-  const onGenerated = useCallback(async () => { await reloadOutline() }, [reloadOutline])
+  const reloadOutline = useCallback(async (keepItemId?: string) => {
+    const next = await readOutline()
+    // 근거를 선택하던 항목이 사라져도 사용자가 닫을 때까지 선택을 유지한다
+    return keepItemId && !next.items.some((item) => item.id === keepItemId) ? next : setLatest(next)
+  }, [readOutline, setLatest])
+
+  const onGenerated = useCallback(async () => {
+    if (generatedBlockedRef.current) return false
+    const next = await readOutline()
+    if (generatedBlockedRef.current) return false
+    setLatest(next)
+    return true
+  }, [readOutline, setLatest])
   const onAiAccessError = useCallback((reason: unknown) => {
     if (isGone(reason)) onProjectError(reason)
     else onAccessError(reason)
@@ -368,7 +382,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
       </div>}
       <div className={`${styles.actions} ${styles.headerActions}`}>
         {Ai && <Ai projectId={project.id} version={outline.version} outlineHasItems={!empty}
-          dirty={dirty || Boolean(operation)} onGenerated={onGenerated} onAccessError={onAiAccessError} />}
+          dirty={generatedBlocked} onGenerated={onGenerated} onAccessError={onAiAccessError} />}
         {empty ? <Button variant={noMaterials ? 'text' : 'secondary'} onClick={add}>직접 목차 추가</Button>
           : slots.designReady && <Link className={styles.linkAction} to={`${projectPath}/design`} state={{ fromOutline: true }}>디자인 선택</Link>}
       </div>

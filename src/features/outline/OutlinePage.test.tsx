@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { useEffect } from 'react'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
@@ -11,7 +11,7 @@ import { outlineApi } from './api.ts'
 import { readOutlineSummary, writeOutlineSummary } from './model.ts'
 import type { Outline, OutlineItem } from './model.ts'
 import OutlinePage from './OutlinePage.tsx'
-import type { OutlineAiSlotProps } from './OutlinePage.tsx'
+import type { OutlineAiSlotProps, OutlineEvidenceProps } from './OutlinePage.tsx'
 
 vi.mock('../materials/api.ts', () => ({ materialsApi: { list: vi.fn() } }))
 vi.mock('../projects/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
@@ -23,13 +23,13 @@ const old: OutlineItem = { id: 'item-1', title: '첫 번째 목차', summary: '�
 const empty: Outline = { projectId: project.id, version: 1, items: [] }
 const initial: Outline = { ...empty, items: [old] }
 
-function mount(outline: Outline, ai?: React.ComponentType<OutlineAiSlotProps>) {
+function mount(outline: Outline, ai?: React.ComponentType<OutlineAiSlotProps>, evidence?: React.ComponentType<OutlineEvidenceProps>) {
   vi.mocked(outlineApi.get).mockResolvedValue(outline)
   const session = { user: null, setUser: vi.fn(), refresh: vi.fn(), capabilities: null, loading: false, error: undefined }
   const setCurrentProject = vi.fn()
   const router = createMemoryRouter([{ element: <SessionContext value={session}><Outlet context={{ setCurrentProject }} /></SessionContext>, children: [
     { path: '/', element: <p>프로젝트 목록</p> },
-    { path: '/projects/:projectId/outline', element: <OutlinePage renderAi={ai} /> },
+    { path: '/projects/:projectId/outline', element: <OutlinePage renderAi={ai} renderEvidence={evidence} /> },
   ] }], { initialEntries: [`/projects/${project.id}/outline`] })
   render(<RouterProvider router={router} />)
 }
@@ -158,4 +158,35 @@ test('AI 결과로 처음 구성 항목을 불러와도 작업 상태 컴포넌�
   await screen.findByRole('heading', { name: /첫 번째 목차/ })
   await waitFor(() => expect(screen.getByRole('button', { name: 'AI 작업 결과 반영' })).toBe(trigger))
   expect(mounted).toHaveBeenCalledTimes(1)
+})
+
+test('생성 결과를 읽는 도중 근거 선택이 시작되면 기존 목차를 유지한다', async () => {
+  const applied = vi.fn()
+  const generated = { ...initial, version: 2, items: [{ ...old, id: 'generated', title: '생성한 목차' }] }
+  function Ai({ onGenerated }: OutlineAiSlotProps) {
+    return <button type="button" onClick={() => void onGenerated().then(applied)}>생성 결과 확인</button>
+  }
+  function Evidence({ onDirtyChange }: OutlineEvidenceProps) {
+    return <>
+      <button type="button" onClick={() => onDirtyChange(true)}>근거 선택 변경</button>
+      <button type="button" onClick={() => onDirtyChange(false)}>근거 선택 닫기</button>
+    </>
+  }
+  mount(initial, Ai, Evidence)
+  const trigger = await screen.findByRole('button', { name: '생성 결과 확인' })
+  let respond: (value: Outline) => void = () => {}
+  vi.mocked(outlineApi.get).mockImplementationOnce(() => new Promise((resolve) => { respond = resolve }))
+  fireEvent.click(trigger)
+  fireEvent.click(screen.getByRole('button', { name: '근거 선택 변경' }))
+  await act(async () => respond(generated))
+
+  expect(applied).toHaveBeenLastCalledWith(false)
+  expect(screen.getByRole('heading', { name: /첫 번째 목차/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '근거 선택 닫기' })).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: '근거 선택 닫기' }))
+  vi.mocked(outlineApi.get).mockResolvedValueOnce(generated)
+  fireEvent.click(trigger)
+  await screen.findByRole('heading', { name: /생성한 목차/ })
+  expect(applied).toHaveBeenLastCalledWith(true)
 })
