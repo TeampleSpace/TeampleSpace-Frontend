@@ -16,6 +16,8 @@ import type { Project } from '../projects/model.ts'
 import { outlineApi } from './api.ts'
 import { fieldsOf, outlineItemInput, outlineLimits, readOutlineSummary, validateOutlineFields } from './model.ts'
 import type { Outline, OutlineFields, OutlineInput, OutlineItem } from './model.ts'
+import { OutlineFlowList } from './OutlineFlowList.tsx'
+import type { MoveDestination } from './OutlineFlowList.tsx'
 import { OutlineEditDialog } from './OutlineDialogs.tsx'
 import styles from './Outline.module.css'
 
@@ -46,7 +48,7 @@ type Slots = {
   designReady?: boolean
 }
 
-type Operation = { kind: 'edit'; id?: string } | { kind: 'delete'; id: string } | { kind: 'move'; id: string; by: -1 | 1 }
+type Operation = { kind: 'edit'; id?: string } | { kind: 'delete'; id: string } | ({ kind: 'move'; id: string } & MoveDestination)
 type ModalName = 'discard' | 'pin' | 'delete'
 type SaveCommand = { operation: Operation; fields: OutlineFields; body: OutlineInput; key: string; index: number }
 const indexLabel = (position: number) => String(position + 1).padStart(2, '0')
@@ -241,6 +243,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
   }
 
   function acceptComparison() {
+    if (operation?.kind === 'move' && !outline.items.some((item) => item.id === operation.anchor)) { close(); return }
     if (operation?.id && !target) {
       if (operation.kind === 'edit') setOperation({ kind: 'edit' })
       else { close(); return }
@@ -277,9 +280,12 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
     } else if (next.kind === 'delete') {
       items.splice(index, 1)
     } else {
-      const newIndex = index + next.by
-      if (newIndex < 0 || newIndex >= items.length) return
-      items.splice(newIndex, 0, ...items.splice(index, 1))
+      const [moved] = items.splice(index, 1)
+      const anchor = items.findIndex((item) => item.id === next.anchor)
+      if (anchor < 0) return
+      const destination = anchor + (next.side === 'after' ? 1 : 0)
+      if (destination === index) { close(); return }
+      items.splice(destination, 0, moved)
     }
     const kept = outline.items.filter((item) => next.kind !== 'delete' || item.id !== next.id)
     if (!pinConfirmed && kept.some((item) => item.sourceRefs.length > 0)) {
@@ -334,8 +340,8 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
 
   // 순서 변경은 화면의 선택을 유지하고 같은 버전으로 저장한다
   function move(item: OutlineItem, by: -1 | 1) {
-    const next = { kind: 'move', id: item.id, by } as const
-    open(next)
+    const neighbor = outline.items[outline.items.findIndex((entry) => entry.id === item.id) + by]
+    if (neighbor) open({ kind: 'move', id: item.id, anchor: neighbor.id, side: by < 0 ? 'before' : 'after' })
   }
 
   function onEvidenceSaved(next: Outline) {
@@ -360,6 +366,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
     {Boolean(error) && !(error instanceof ApiError && error.code === 'VERSION_CONFLICT') && <RequestError error={error} />}
   </div> : undefined
 
+  const anchorItem = operation?.kind === 'move' ? outline.items.find((item) => item.id === operation.anchor) : undefined
   const add = () => open({ kind: 'edit' })
 
   return <section className={styles.page}>
@@ -392,11 +399,9 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
         <nav className={styles.flow} aria-label="발표 흐름">
           <h2>발표 흐름</h2>
           <p>{outline.items.length}장</p>
-          <ol>{outline.items.map((item, index) => <li key={item.id}>
-            <button type="button" aria-current={selected.id === item.id ? 'true' : undefined} onClick={() => { setSelection(item.id); setEvidenceRequest(0) }}>
-              <span>{indexLabel(index)}</span>{item.title}
-            </button>
-          </li>)}</ol>
+          <OutlineFlowList items={outline.items} selectedId={selected.id} disabled={evidenceDirty || blockers || !!operation}
+            onSelect={(id) => { setSelection(id); setEvidenceRequest(0) }}
+            onMove={(id, destination) => open({ kind: 'move', id, ...destination })} />
           <Button variant="text" disabled={outline.items.length >= outlineLimits.items || evidenceDirty} onClick={add}>+ 목차 추가</Button>
         </nav>
         <article key={selected.id} className={styles.detail}>
@@ -433,6 +438,8 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
     </Modal>}
     {operation?.kind === 'move' && modal !== 'pin' && <Modal open size="confirm" title="목차 순서를 바꿀까요?" onClose={() => { if (!busy) close() }}
       footer={<><Button loading={busy} disabled={Boolean(conflictFeedback) || blockers} onClick={() => void run(operation)}>순서 저장</Button><Button variant="secondary" disabled={busy} onClick={close}>취소</Button></>}>
+      {target && anchorItem && <p>{target.title} 항목을 {anchorItem.title} {operation.side === 'before' ? '앞으로' : '뒤로'} 옮겨요.</p>}
+      {!anchorItem && <p>이동할 위치의 목차가 삭제되었어요. 새 위치를 선택해 주세요.</p>}
       {conflictFeedback ?? <RequestError error={error} />}
     </Modal>}
     {modal === 'pin' && pinOperation && <Modal open size="confirm" title="연결된 근거를 다시 저장할까요?"
