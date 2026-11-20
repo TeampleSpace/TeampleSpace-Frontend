@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router'
 import exampleImage from '../../../contracts/examples/assets/0193a000-0000-7000-8000-0000000000c1.png'
 import type { Element, Presentation } from '../../entities/presentation/schema.ts'
-import { SlideRenderer } from '../../features/editor/SlideRenderer.tsx'
+import { SlideRenderer } from '../../features/editor/ui/SlideRenderer.tsx'
 import { exampleImageFileId, exampleSnapshot } from '../../mocks/example.ts'
 import { StatusPanel } from '../../shared/ui/StatusPanel.tsx'
 import styles from './RenderReference.module.css'
