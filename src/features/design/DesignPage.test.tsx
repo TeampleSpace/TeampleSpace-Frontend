@@ -14,7 +14,7 @@ vi.mock('./api.ts', async (importOriginal) => ({
 
 const initial: DesignSettings = { version: 1, mode: 'unset', templateId: null, templateVersion: null, custom: null, updatedAt: '2026-11-20T00:00:00Z' }
 const template = {
-  id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00001', version: 1, name: '클린 리포트',
+  id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00001', key: 'clean-report', version: 1, name: '클린 리포트',
   preview: { backgroundColor: '#FFFFFF', headingColor: '#212735', description: '흰 배경과 차분한 제목' },
   fonts: ['Pretendard'], layouts: ['title'],
 }
@@ -22,7 +22,7 @@ const storedTemplate: DesignSettings = { ...initial, mode: 'template', version: 
 
 function mount() {
   const router = createMemoryRouter([{ path: '/', element: <DesignPage projectId="project" projectName="팀 과제" /> }])
-  render(<RouterProvider router={router} />)
+  return render(<RouterProvider router={router} />)
 }
 
 beforeAll(() => {
@@ -37,6 +37,17 @@ beforeEach(() => {
 })
 
 afterEach(cleanup)
+
+test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에 적용한다', async () => {
+  const editorial = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00003', key: 'editorial', name: '에디토리얼' }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial], allowedFonts: ['Pretendard'] })
+  const { container } = mount()
+  fireEvent.click(await screen.findByRole('button', { name: '에디토리얼 선택' }))
+
+  const preview = screen.getByRole('region', { name: '슬라이드 미리보기' })
+  expect(preview.querySelector('[data-template="editorial"]')).toBeTruthy()
+  expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
+})
 
 test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식만 저장한다', async () => {
   mount()
@@ -86,7 +97,7 @@ test('응답이 끊기면 같은 저장 요청을 재시도하고 충돌은 확�
 })
 
 test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으로 바꾸기 전에 결과를 확인한다', async () => {
-  const blue = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00002', name: '블루 포커스' }
+  const blue = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00002', key: 'blue-focus', name: '블루 포커스' }
   const save = vi.mocked(designApi.save)
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, blue], allowedFonts: ['Pretendard'] })
   vi.mocked(designApi.get).mockResolvedValue(storedTemplate)
