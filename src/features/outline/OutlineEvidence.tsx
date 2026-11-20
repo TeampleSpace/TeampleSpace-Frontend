@@ -81,7 +81,7 @@ export default function OutlineEvidence(props: OutlineEvidenceProps) {
 type PickerProps = Omit<OutlineEvidenceProps, 'onSaved'> & { initial: PickerState; onClose: () => void; onSaved: (outline: Outline, keepOpen?: boolean) => void }
 type SaveCommand = { body: { expectedVersion: number; sourceIds: string[] }; key: string }
 
-function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, onReloadOutline, onAccessError, onDirtyChange }: PickerProps) {
+function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, onCompared, onReloadOutline, onAccessError, onDirtyChange }: PickerProps) {
   const [version, setVersion] = useState(initial.version)
   const [original, setOriginal] = useState(initial.original)
   const [selected, setSelected] = useState(initial.original)
@@ -96,7 +96,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
   const [retryUntil, setRetryUntil] = useState(0)
   const [serverConflict, setServerConflict] = useState(false)
   const [compare, setCompare] = useState<OutlineItem>()
-  const [deleted, setDeleted] = useState(false)
+  const [deletedOutline, setDeletedOutline] = useState<Outline>()
   const [discard, setDiscard] = useState(false)
   const latestRequest = useRef(0)
   const pending = useRef<SaveCommand | null>(null)
@@ -140,10 +140,15 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
     setSelected((previous) => previous.includes(id) ? previous.filter((value) => value !== id) : previous.length < outlineLimits.sources ? [...previous, id] : previous)
   }
 
+  function closePicker() {
+    onClose()
+    if (deletedOutline) onCompared(deletedOutline)
+  }
+
   function requestClose() {
     if (busy) return
     if (dirty || uncertain) setDiscard(true)
-    else onClose()
+    else closePicker()
   }
 
   async function compareLatest() {
@@ -155,7 +160,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
       const next = await onReloadOutline(item.id)
       const actual = next.items.find((entry) => entry.id === item.id)
       if (actual) setCompare(actual)
-      else setDeleted(true)
+      else setDeletedOutline(next)
     } catch (reason) { setError(reason) }
     finally { lock.current = false; setBusy(false) }
   }
@@ -236,7 +241,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
         {recovered && <p role="status">이전 저장 결과를 확인했어요. 새 선택을 저장하려면 다시 연결해 주세요.</p>}
         {conflict && <div className={styles.conflict} role="alert">
           <strong>다른 곳에서 발표 구성이 바뀌었어요</strong>
-          {deleted ? <p>목차가 삭제되었어요. 이 항목에 근거 자료를 연결할 수 없어요.</p>
+          {deletedOutline ? <p>목차가 삭제되었어요. 이 항목에 근거 자료를 연결할 수 없어요.</p>
             : compare ? <><p>최신 구성의 근거 자료는 {compare.sourceRefs.length}개예요.</p><Button variant="secondary" onClick={acceptLatest}>내 선택을 유지하고 계속</Button></>
             : <Button variant="secondary" loading={busy} onClick={() => void compareLatest()}>최신 근거 확인</Button>}
         </div>}
@@ -244,6 +249,6 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
       </div>
     </Modal>
     {discard && <Modal open size="confirm" title={uncertain ? '이전 저장 결과를 확인하지 못했어요' : '저장하지 않은 선택이 있어요'} description="닫으면 새로 선택한 자료가 저장되지 않아요" onClose={() => setDiscard(false)}
-      footer={<><Button variant="secondary" onClick={() => setDiscard(false)}>계속 선택</Button><Button onClick={onClose}>닫기</Button></>} />}
+      footer={<><Button variant="secondary" onClick={() => setDiscard(false)}>계속 선택</Button><Button onClick={closePicker}>닫기</Button></>} />}
   </>
 }

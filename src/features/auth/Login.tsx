@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { authApi } from './api.ts'
 import { oauthUrl, providerNames, safeReturnTo } from './model.ts'
+import { setBillingPreviewReturn } from './billingPreviewReturn.ts'
 import type { Challenge, Provider } from './model.ts'
 import { SessionStatus } from './Session.tsx'
 import { useSession } from './sessionContext.ts'
@@ -31,6 +32,7 @@ export default function Login() {
 
   async function sendCode() {
     if (lock.current || !enabled('email') || seconds > 0) return
+    setBillingPreviewReturn()
     lock.current = true; setBusy(true); setError(undefined)
     try {
       const next = await authApi.challenge(email.trim(), 'login')
@@ -58,7 +60,10 @@ export default function Login() {
       <div className={styles.socials}>
         {(['kakao', 'naver', 'google'] as const).map((provider) => <button key={provider}
           className={`${styles.social} ${styles[provider]}`} disabled={!enabled(provider)}
-          onClick={() => { window.location.assign(oauthUrl(provider, 'login', returnTo)) }}>
+          onClick={() => {
+            setBillingPreviewReturn(returnTo)
+            window.location.assign(oauthUrl(provider, 'login', returnTo))
+          }}>
           <img src={`/assets/auth/${provider}.${provider === 'kakao' ? 'svg' : 'png'}`} alt="" />
           {providerNames[provider]}로 시작하기
         </button>)}
