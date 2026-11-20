@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "mode": "custom",
+  "templateId": null,
+  "templateVersion": null,
+  "custom": {
+    "name": "우리 팀 발표 스타일",
+    "font": "Pretendard",
+    "primaryColor": "#2864E8",
+    "guidelines": "핵심 주장을 크게 쓰고 출처를 표기"
+  },
+  "updatedAt": "2026-11-20T00:01:00Z"
+}

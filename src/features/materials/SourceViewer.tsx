@@ -15,8 +15,11 @@ const Markdown = lazy(() => import('./Markdown.tsx'))
 const returnNote = '닫으면 이전 화면의 작업을 그대로 이어갑니다.'
 
 // 자료의 원문 팝업. PDF는 실제 파일을 그리고 전체 보기를 한 단계 위에 연다
-export function SourceViewer({ material, onClose, onError }: {
-  material: Material; onClose: () => void; onError: (reason: unknown) => void
+export function SourceViewer({ material, revisionId, onClose, onError }: {
+  material: Pick<Material, 'id' | 'title'> & Partial<Pick<Material, 'currentRevision' | 'createdBy'>>
+  revisionId?: string
+  onClose: () => void
+  onError: (reason: unknown) => void
 }) {
   const [source, setSource] = useState<MaterialSource | null>(null)
   const [error, setError] = useState<unknown>()
@@ -25,18 +28,18 @@ export function SourceViewer({ material, onClose, onError }: {
   const [request, setRequest] = useState(0)
   const [pdf, setPdf] = useState<{ url: string; document: PdfDocument } | null>(null)
   const [fileError, setFileError] = useState<unknown>()
-  const [page, setPage] = useState(material.currentRevision?.excerpt?.page ?? 1)
+  const [page, setPage] = useState(revisionId ? 1 : (material.currentRevision?.excerpt?.page ?? 1))
   const [full, setFull] = useState(false)
   // 보던 개정을 계속 본다. 그사이 새 개정이 생겨도 바꾸지 않는다
-  const revisionId = useRef<string | undefined>(undefined)
+  const openedRevisionId = useRef<string | undefined>(undefined)
   // 주소를 다시 받은 뒤에도 실패하면 더 반복하지 않는다
   const reissued = useRef(false)
 
   useEffect(() => {
     const controller = new AbortController()
-    void materialsApi.source(material.id, revisionId.current, controller.signal).then((data) => {
+    void materialsApi.source(material.id, revisionId ?? openedRevisionId.current, controller.signal).then((data) => {
       if (controller.signal.aborted) return
-      revisionId.current = data.revisionId
+      openedRevisionId.current = data.revisionId
       setSource(data); setError(undefined)
     }).catch((reason) => {
       if (controller.signal.aborted) return
@@ -46,7 +49,7 @@ export function SourceViewer({ material, onClose, onError }: {
       setError(reason); onError(reason)
     })
     return () => controller.abort()
-  }, [material.id, request, onError])
+  }, [material.id, revisionId, request, onError])
 
   // 파일을 읽지 못하면 원문 주소를 한 번 다시 받는다. 보던 쪽은 그대로 둔다
   const onFileError = useCallback((reason: unknown) => {
@@ -107,7 +110,7 @@ export function SourceViewer({ material, onClose, onError }: {
             {!full && pdfPage}
           </>}
           {source.markdown !== null && <>
-            <p className={styles.documentMeta}>{kindLabels.memo} · {material.createdBy.name} 님 작성 · 개정 {source.sourceVersion}</p>
+            <p className={styles.documentMeta}>{kindLabels.memo}{material.createdBy ? ` · ${material.createdBy.name} 님 작성` : ''} · 개정 {source.sourceVersion}</p>
             <div className={styles.documentBody}><Suspense fallback={<p className={styles.plain}>{source.markdown}</p>}><Markdown>{source.markdown}</Markdown></Suspense></div>
           </>}
           {source.link && <>

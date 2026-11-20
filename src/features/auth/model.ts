@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { billingPreviewPath } from './billingPreviewReturn.ts'
 import { capabilitiesSchema } from '../../shared/api/contract.ts'
 
 export const providerSchema = z.enum(['email', 'kakao', 'naver', 'google'])
@@ -35,6 +36,8 @@ export function safeReturnTo(value: string | null | undefined): string {
   try {
     const url = new URL(value, 'https://teamplespace.invalid')
     if (url.origin !== 'https://teamplespace.invalid') return '/'
+    const preview = billingPreviewPath(url.pathname)
+    if (preview) return preview
     if (!/^\/(?:$|projects(?:\/|$)|invite\/|account$)/.test(url.pathname)) return '/'
     return url.pathname + url.search + url.hash
   } catch { return '/' }
@@ -47,7 +50,9 @@ export function requiredDocuments(capabilities: AuthCapabilities | null) {
 }
 
 export function oauthUrl(provider: Provider, purpose: 'login' | 'reauth', returnTo: string) {
-  return `/v1/auth/oauth/${provider}/authorize?${new URLSearchParams({ purpose, returnTo: safeReturnTo(returnTo) })}`
+  const destination = safeReturnTo(returnTo)
+  const providerReturnTo = billingPreviewPath(destination) ? '/account' : destination
+  return `/v1/auth/oauth/${provider}/authorize?${new URLSearchParams({ purpose, returnTo: providerReturnTo })}`
 }
 
 export function authDestination(needsOnboarding: boolean, returnTo: string | null) {
