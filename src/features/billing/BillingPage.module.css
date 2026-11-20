@@ -14,14 +14,6 @@
 
 .page a { text-decoration: none; }
 
-.heading {
-  display: grid;
-  gap: var(--space-8);
-  color: var(--color-secondary);
-}
-
-.heading h1 { color: var(--color-ink); }
-
 .banner {
   display: grid;
   gap: var(--space-8);
@@ -77,6 +69,8 @@
 .conditions { display: grid; gap: var(--space-8); }
 .conditions h3 { font: var(--text-status-title); }
 .price, .resultTitle { font: var(--text-title); }
+.resultSuccess { color: var(--color-primary); }
+.previewLabel { align-self: center; color: var(--color-secondary); font: var(--text-meta); }
 
 .actions {
   display: flex;
@@ -84,7 +78,7 @@
   gap: var(--space-12);
 }
 
-.summaryActions { display: grid; gap: var(--space-12); }
+.panel .purchase { min-height: 48px; }
 
 @media (max-width: 1050px) {
   .columns { grid-template-columns: 1fr; }

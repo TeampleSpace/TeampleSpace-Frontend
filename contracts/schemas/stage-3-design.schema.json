@@ -10,7 +10,8 @@
       "properties": {
         "items": { "type": "array", "items": { "$ref": "#/$defs/Template" } },
         "allowedFonts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "allowedLayouts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "allowedLayouts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "projectFontsEnabled": { "type": "boolean" }
       }
     },
     "Template": {
@@ -35,6 +36,26 @@
         },
         "fonts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "layouts": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "ProjectFontList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/ProjectFont" } }
+      }
+    },
+    "ProjectFont": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "fileName", "format", "sizeBytes", "contentUrl"],
+      "properties": {
+        "id": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "fileName": { "type": "string", "minLength": 5, "maxLength": 255 },
+        "format": { "enum": ["ttf", "otf"] },
+        "sizeBytes": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+        "contentUrl": { "type": "string", "pattern": "^/v1/projects/[a-f0-9-]+/design-fonts/[a-f0-9-]+/content$" }
       }
     },
     "DesignSettingsPutRequest": {

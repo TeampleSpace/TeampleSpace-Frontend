@@ -48,6 +48,14 @@ const billingPreviewRoutes: RouteObject[] = import.meta.env.DEV ? [
     lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingManagePage }),
   },
   {
+    path: 'account/subscription/preview/complete',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingCompletePreviewPage }),
+  },
+  {
+    path: 'account/subscription/preview/interrupted',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingInterruptedPreviewPage }),
+  },
+  {
     path: 'billing/return',
     lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingReturnPage }),
   },
