@@ -9,7 +9,7 @@
 .detailHeader h2, .emptyHeader h1 { flex: 1; min-width: 0; }
 .emptyLead { margin-top: var(--space-8); color: var(--color-secondary); }
 .workspace { display: grid; grid-template-columns: minmax(200px, 248px) minmax(0, 1fr); gap: var(--space-32); }
-.flow { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; min-height: 640px; padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-subtle); }
+.flow { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; min-height: 640px; padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-subtle); }
 .flow h2 { font-size: 18px; font-weight: 500; }
 .flow p { font: var(--text-meta); color: var(--color-secondary); }
 .flow ol { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
@@ -21,7 +21,7 @@
 .flow .grip { flex: 0 0 28px; height: 32px; margin-left: auto; align-self: center; display: grid; place-items: center; color: var(--color-tertiary); cursor: grab; touch-action: none; }
 .grip::before { content: ''; width: 10px; height: 15px; background: radial-gradient(circle, currentColor 1.3px, transparent 1.5px) 0 0 / 5px 5px; }
 .flow li[data-moving] .grip { cursor: grabbing; }
-.flow li button { display: flex; align-items: center; user-select: none; gap: var(--space-12); width: 100%; min-height: 46px; padding: 4px 4px 4px var(--space-12); border: 0; border-radius: var(--radius-md); background: transparent; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.flow li button { display: flex; align-items: center; user-select: none; gap: var(--space-12); width: 100%; min-height: 48px; padding: 4px 4px 4px var(--space-12); border: 0; border-radius: var(--radius-md); background: transparent; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .flow li button:hover { background: var(--color-muted); }
 .flow li button[aria-current='true'] { background: var(--color-primary-soft); color: var(--color-primary); }
 .flow li button span { font: var(--text-meta); color: var(--color-secondary); }
