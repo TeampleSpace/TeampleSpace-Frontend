@@ -56,6 +56,9 @@ export const router = createBrowserRouter([
           { path: 'account', element: <Account /> },
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/settings', element: <ProjectPage /> },
+          { path: 'projects/:projectId/design', lazy: async () => ({
+            Component: (await import('../features/design/DesignRoute.tsx')).default,
+          }) },
           { path: 'projects/:projectId/materials', element: <MaterialsRoute /> },
         ] }] },
       ] },
