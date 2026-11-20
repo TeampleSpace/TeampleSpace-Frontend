@@ -27,6 +27,12 @@ const template = {
 }
 const storedTemplate: DesignSettings = { ...initial, mode: 'template', version: 2, templateId: template.id, templateVersion: template.version }
 
+// 카드를 눌러 상세를 열고 상세에서 템플릿을 고른다
+async function choose(name: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `${name} 선택` }))
+  fireEvent.click(screen.getByRole('button', { name: '이 템플릿 선택' }))
+}
+
 function mount() {
   const router = createMemoryRouter([{ path: '/', element: <DesignPage projectId="project" projectName="팀 과제" /> }])
   return render(<RouterProvider router={router} />)
@@ -50,11 +56,19 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial], allowedFonts: ['Pretendard'] })
   const { container } = mount()
   fireEvent.click(await screen.findByRole('button', { name: '에디토리얼 선택' }))
-
-  fireEvent.click(screen.getByRole('button', { name: '템플릿 자세히 보기' }))
   const preview = screen.getByRole('dialog', { name: '에디토리얼' })
   expect(preview.querySelector('[data-template="editorial"]')).toBeTruthy()
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
+})
+
+test('아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 그 뒤에 보여 준다', async () => {
+  const editorial = { ...template, id: 'editorial', key: 'editorial', name: '에디토리얼' }
+  const unknown = { ...template, id: 'new-template', key: 'new-template', name: '새 템플릿' }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [unknown, editorial, template], allowedFonts: ['Pretendard'] })
+  mount()
+  await screen.findByRole('button', { name: '클린 리포트 선택' })
+  const cards = screen.getAllByRole('button', { name: /선택$/ }).filter((button) => button.hasAttribute('aria-label'))
+  expect(cards.map((button) => button.getAttribute('aria-label'))).toEqual(['클린 리포트 선택', '에디토리얼 선택', '새 템플릿 선택'])
 })
 
 test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 유지하고 검색을 초기화한다', async () => {
@@ -63,7 +77,7 @@ test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 �
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial, unknown], allowedFonts: ['Pretendard'] })
   vi.mocked(designApi.save).mockResolvedValue(storedTemplate)
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  await choose('클린 리포트')
   fireEvent.click(screen.getByRole('button', { name: '세미나' }))
   expect(screen.queryByRole('button', { name: '클린 리포트 선택됨' })).toBeNull()
   expect(screen.getByRole('button', { name: '에디토리얼 선택' })).toBeTruthy()
@@ -87,7 +101,7 @@ test('템플릿 저장 오류 안내를 닫으면 갤러리로 포커스가 돌�
     requestId: 'request',
   }))
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  await choose('클린 리포트')
   const gallery = screen.getByRole('region', { name: '템플릿 갤러리' })
   const save = screen.getByRole('button', { name: '디자인 저장' })
   save.focus()
@@ -161,7 +175,7 @@ test('글꼴 업로드가 끝난 뒤 저장하고 기본 글꼴로 바꾸면 업
 
 test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식만 저장한다', async () => {
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  await choose('클린 리포트')
   fireEvent.click(screen.getByRole('button', { name: '직접 입력' }))
   fireEvent.change(screen.getByLabelText('템플릿 이름'), { target: { value: '팀 디자인' } })
   fireEvent.change(screen.getByLabelText('대표 색상'), { target: { value: '#xzzzzz' } })
@@ -191,7 +205,7 @@ test('응답이 끊기면 같은 저장 요청을 재시도하고 충돌은 확�
   save.mockResolvedValueOnce({ ...storedTemplate, version: 3 })
   vi.mocked(designApi.get).mockResolvedValueOnce(initial).mockResolvedValueOnce({ ...initial, version: 2 })
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  await choose('클린 리포트')
   fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   fireEvent.click(await screen.findByRole('button', { name: '저장 다시 시도' }))
   fireEvent.click(await screen.findByRole('button', { name: '최신 디자인 확인' }))
@@ -214,7 +228,7 @@ test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으�
   save.mockRejectedValueOnce(new TransportError('timeout'))
   save.mockResolvedValueOnce({ ...storedTemplate, version: 3, templateId: blue.id })
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '블루 포커스 선택' }))
+  await choose('블루 포커스')
   fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   const retry = await screen.findByRole('button', { name: '저장 다시 시도' })
   const previous = screen.getByRole<HTMLButtonElement>('button', { name: '클린 리포트 선택' })
