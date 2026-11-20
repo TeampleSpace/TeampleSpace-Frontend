@@ -53,6 +53,16 @@ API_PROXY_TARGET=http://localhost:8080
 
 API 경로는 `/v1`로 시작한다. 프론트엔드와 API를 같은 사이트 경로로 제공하는 구성을 기준으로 하므로 개발 중에는 프록시로 같은 출처처럼 요청한다. 인증 키 같은 비밀값은 프론트엔드 환경변수에 넣지 않는다.
 
+## Vercel 배포
+
+Vercel에서의 경로 처리는 `vercel.json`이 정한다.
+
+- `/v1` 아래 요청은 공개 API 주소로 넘긴다. 브라우저에는 화면과 API가 같은 출처로 보여 로그인 쿠키가 그대로 쓰인다
+- API 응답은 Vercel CDN에 저장하지 않는다
+- 그 밖의 경로는 `index.html`로 보내 화면 경로로 바로 들어오거나 새로고침해도 열린다
+
+API 주소가 바뀌면 `vercel.json`의 `destination`을 고친다. 백엔드의 `FRONTEND_ORIGIN`과 `BACKEND_ORIGIN`에는 둘 다 Vercel 운영 주소를 넣는다. 미리보기 배포는 주소가 달라 로그인과 저장이 되지 않는다.
+
 ## CI
 
 PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를 실행한다. 설정은 `.github/workflows/ci.yml`에 있다.
