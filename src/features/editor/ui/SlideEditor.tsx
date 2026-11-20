@@ -333,26 +333,15 @@ function Workspace({
             <h3>위치</h3>
             <div className={styles.position}>
               {(['x', 'y'] as const).map((axis) => (
-                <label key={axis}>
-                  {axis.toUpperCase()}
-                  {/* 다른 사람의 변경으로 값이 바뀌면 입력란을 새 값으로 다시 만든다 */}
-                  <input
-                    key={`${selected.id}-${selected.geometry[axis]}`}
-                    type="number"
-                    step={1}
-                    defaultValue={selected.geometry[axis]}
-                    disabled={locked(selected.id)}
-                    onBlur={(event) => {
-                      const value = event.target.valueAsNumber
-                      if (!Number.isFinite(value) || value === selected.geometry[axis]) return
-                      session.edit(selected.id, { geometry: { ...selected.geometry, [axis]: value } })
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') event.currentTarget.blur()
-                    }}
-                  />
-                  px
-                </label>
+                <PositionField
+                  key={`${selected.id}-${axis}`}
+                  label={axis.toUpperCase()}
+                  value={selected.geometry[axis]}
+                  disabled={locked(selected.id)}
+                  onCommit={(value) =>
+                    session.edit(selected.id, { geometry: { ...selected.geometry, [axis]: value } })
+                  }
+                />
               ))}
             </div>
             <h3>크기</h3>
@@ -384,6 +373,55 @@ function Workspace({
         <p className={styles.compare}>내가 입력한 내용: {summarize(conflict, latest)}</p>
       </Modal>
     </>
+  )
+}
+
+// 요소 위치 한 칸. 입력란을 벗어나거나 Enter를 누를 때 반영한다
+// 다른 요소를 골라 입력란이 사라질 때도 입력하던 값을 먼저 반영한다
+function PositionField({
+  label,
+  value,
+  disabled,
+  onCommit,
+}: {
+  label: string
+  value: number
+  disabled: boolean
+  onCommit: (value: number) => void
+}) {
+  const [draft, setDraft] = useState<string>()
+  const latest = useRef({ draft, value, onCommit })
+  useEffect(() => {
+    latest.current = { draft, value, onCommit }
+  })
+
+  function commit() {
+    const current = latest.current
+    if (current.draft === undefined || current.draft.trim() === '') return
+    const next = Number(current.draft)
+    if (Number.isFinite(next) && next !== current.value) current.onCommit(next)
+  }
+  useEffect(() => commit, [])
+
+  return (
+    <label>
+      {label}
+      <input
+        type="number"
+        step={1}
+        value={draft ?? value}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          commit()
+          setDraft(undefined)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur()
+        }}
+      />
+      px
+    </label>
   )
 }
 
