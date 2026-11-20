@@ -51,7 +51,7 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
-test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, 발췌를 보여 준다', async () => {
+test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, AI 요약 영역을 보여 준다', async () => {
   mock.seed('file', '교내 일회용품 조사.pdf', { text: '반납 장소까지의 거리가 영향을 주었다.', pageCount: 6 })
   mock.seed('link', '감축 사례', { createdBy: member, description: '함께 볼 사례' })
   mock.seed('memo', '다회용컵 인터뷰', { createdBy: member, markdown: '반납함이 멀다' })
@@ -66,9 +66,9 @@ test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, 발�
   await detailTitle('교내 일회용품 조사.pdf')
   expect(screen.getByText(/PDF · 6쪽 · 팀원 1 님이 추가/)).toBeTruthy()
   expect(screen.getByText('분석 완료')).toBeTruthy()
-  expect(screen.getByText('반납 장소까지의 거리가 영향을 주었다.')).toBeTruthy()
-  // 요약이 없으면 핵심 요약 영역을 숨긴다
-  expect(screen.queryByText('핵심 요약')).toBeNull()
+  expect(screen.getByRole('heading', { name: 'AI 요약' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '원문 보기' })).toBeTruthy()
+  expect(screen.queryByText('반납 장소까지의 거리가 영향을 주었다.')).toBeNull()
   fireEvent.click(await row('감축 사례'))
   expect(await screen.findByRole('link', { name: 'https://example.com/reuse-cup' })).toBeTruthy()
   expect(screen.getByText('함께 볼 사례')).toBeTruthy()
@@ -303,6 +303,45 @@ test('삭제된 자료의 주소로 들어오면 삭제됐다고 안내한다', 
   expect(await screen.findByText('삭제된 자료예요')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '자료 목록 보기' }))
   await detailTitle('남은 메모')
+})
+
+test.each([
+  { code: 'MATERIAL_DELETED', status: 410, message: '삭제된 자료예요' },
+  { code: 'NOT_FOUND', status: 404, message: '자료를 찾을 수 없어요' },
+])('요약 확인 중 자료가 사라지면 $code 안내와 자료 목록 복귀를 보여 준다', async ({ code, status, message }) => {
+  const id = mock.seed('memo', '요약 중인 회의록')
+  mock.seed('memo', '남아 있는 회의록')
+  const inner = mock.fetchAs(actor)
+  let firstDetail = true
+  let releasePoll = () => {}
+  const waitForPoll = new Promise<void>((resolve) => { releasePoll = resolve })
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input) !== `/v1/materials/${id}` || init?.method !== 'GET') return inner(input, init)
+    if (!firstDetail) {
+      await waitForPoll
+      return Response.json({ error: { code, message, retryable: false }, requestId: 'summary_poll' }, { status })
+    }
+    firstDetail = false
+    const material = await (await inner(input, init)).json()
+    const summaryJob = { id: 'summary-job', projectId: mock.projectId, type: 'material_summary', targetType: 'material_summary',
+      targetId: material.currentRevision.id, status: 'running', progress: 10, createdAt: material.createdAt, updatedAt: material.updatedAt }
+    return Response.json({ ...material, summaryJob })
+  })
+
+  const router = mount(`?material=${id}`)
+  await detailTitle('요약 중인 회의록')
+  expect(await screen.findByText('AI 요약 중')).toBeTruthy()
+  mock.get(id)!.deleted = true
+  releasePoll()
+  expect(await screen.findByText(message)).toBeTruthy()
+  expect(screen.queryByRole('heading', { level: 2, name: '요약 중인 회의록' })).toBeNull()
+  expect(screen.queryByText('AI 요약 중')).toBeNull()
+  expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '자료 관리' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '자료 목록 보기' }))
+  await detailTitle('남아 있는 회의록')
+  expect(router.state.location.search).toBe('')
+  await waitFor(() => expect(screen.queryByRole('link', { name: /요약 중인 회의록/ })).toBeNull())
 })
 
 test('추가 페이지의 처리 중 자료도 갱신하고 더 이상 불필요하게 조회하지 않는다', async () => {
