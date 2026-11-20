@@ -1,7 +1,7 @@
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import type { ApiClient } from '../../shared/api/client.ts'
 import { errorBodySchema } from '../../shared/api/contract.ts'
-import { api } from '../auth/api.ts'
+import { api } from '../session/api.ts'
 import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema,
   materialNoteSchema, materialSchema, materialSourceSchema, uploadTicketSchema,

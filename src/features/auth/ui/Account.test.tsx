@@ -3,9 +3,9 @@ import { afterEach, beforeAll, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import Account from './Account.tsx'
-import { SessionContext } from '../sessionContext.ts'
-import { authCapabilitiesSchema } from '../model.ts'
-import type { User } from '../model.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import { authCapabilitiesSchema } from '../../../entities/session/model.ts'
+import type { User } from '../../../entities/session/model.ts'
 
 const user: User = { id: 'member', name: '팀원', email: 'member@example.test', canEmailReauth: true,
   consentVersions: {}, ownedProjectCount: 0, onboardingStatus: 'completed', version: 1,

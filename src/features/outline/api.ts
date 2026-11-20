@@ -1,5 +1,5 @@
 import type { ApiClient } from '../../shared/api/client.ts'
-import { api } from '../auth/api.ts'
+import { api } from '../../entities/session/api.ts'
 import { outlineSchema } from './model.ts'
 import type { OutlineInput } from './model.ts'
 

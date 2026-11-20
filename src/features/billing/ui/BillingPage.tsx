@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { Button } from '../../../shared/ui/Button.tsx'
 import buttons from '../../../shared/ui/Button.module.css'
-import { useSession } from '../../auth/sessionContext.ts'
+import { useSession } from '../../../entities/session/sessionContext.ts'
 import styles from './BillingPage.module.css'
 
 const accountPath = '/account'

@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { api } from '../auth/api.ts'
-import { jobSchema } from '../materials/model.ts'
-import type { Job } from '../materials/model.ts'
+import { api } from '../../entities/session/api.ts'
+import { jobSchema } from '../../entities/material/model.ts'
+import type { Job } from '../../entities/material/model.ts'
 
 const jobPage = z.object({ items: z.array(jobSchema), nextCursor: z.string().nullable() })
 export const outlineResultSchema = z.object({

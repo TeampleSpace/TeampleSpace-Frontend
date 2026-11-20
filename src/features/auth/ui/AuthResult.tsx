@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router'
-import { SessionStatus } from './Session.tsx'
-import { useSession } from '../sessionContext.ts'
-import { authDestination, safeReturnTo } from '../model.ts'
-import { setBillingPreviewReturn } from '../billingPreviewReturn.ts'
+import { SessionStatus } from '../../../entities/session/SessionStatus.tsx'
+import { useSession } from '../../../entities/session/sessionContext.ts'
+import { authDestination, safeReturnTo } from '../../../entities/session/model.ts'
+import { setBillingPreviewReturn } from '../../../entities/session/billingPreviewReturn.ts'
 import { AuthLayout } from './AuthLayout.tsx'
 
 export default function AuthResult() {

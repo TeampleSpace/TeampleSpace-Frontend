@@ -1,8 +1,8 @@
 import { ApiError } from '../../shared/api/client.ts'
-import type { MaterialsApi } from './api.ts'
-import { isUncertain } from './errors.ts'
-import { formatBytes } from './model.ts'
-import type { Material, UploadTicket } from './model.ts'
+import type { MaterialsApi } from '../../entities/material/api.ts'
+import { isUncertain } from '../../entities/material/errors.ts'
+import { formatBytes } from '../../entities/material/model.ts'
+import type { Material, UploadTicket } from '../../entities/material/model.ts'
 
 export type UploadStep = 'hashing' | 'preparing' | 'sending' | 'registering'
 export const uploadSteps: { step: UploadStep; label: string }[] = [

@@ -5,9 +5,9 @@ import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
-import { useSession } from '../../auth/sessionContext.ts'
-import { projectsApi } from '../../projects/api.ts'
-import type { Project } from '../../projects/model.ts'
+import { useSession } from '../../../entities/session/sessionContext.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
+import type { Project } from '../../../entities/project/model.ts'
 import DesignPage from './DesignPage.tsx'
 
 export default function DesignRoute() {

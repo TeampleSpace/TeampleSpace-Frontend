@@ -1,6 +1,6 @@
 import errorCodes from '../../contracts/error-codes.json'
 import { REQUEST_ID_HEADER } from '../shared/api/contract.ts'
-import type { Job, Material, MaterialKind, MaterialNote } from '../features/materials/model.ts'
+import type { Job, Material, MaterialKind, MaterialNote } from '../entities/material/model.ts'
 
 // 자료, 업로드, 원문, 팀 메모, 작업 계약을 메모리에서 흉내 내는 가짜 서버다
 // 개발 화면과 테스트에서만 쓰며 실제 서버 연동을 대신하지 않는다

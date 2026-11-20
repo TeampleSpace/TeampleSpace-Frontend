@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import { errorBodySchema } from '../../shared/api/contract.ts'
-import { api } from '../auth/api.ts'
+import { api } from '../../entities/session/api.ts'
 
 const fontLimit = 5 * 1024 * 1024
 const fontSchema = z.object({

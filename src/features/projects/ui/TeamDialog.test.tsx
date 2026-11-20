@@ -2,12 +2,12 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TeamDialog } from './TeamDialog.tsx'
-import { allMembers, projectsApi } from '../api.ts'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import type { Project } from '../model.ts'
-import type { User } from '../../auth/model.ts'
+import { allMembers, projectsApi } from '../../../entities/project/api.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import type { Project } from '../../../entities/project/model.ts'
+import type { User } from '../../../entities/session/model.ts'
 
-vi.mock('../api.ts', () => ({ allMembers: vi.fn(), projectsApi: { invite: vi.fn() } }))
+vi.mock('../../../entities/project/api.ts', () => ({ allMembers: vi.fn(), projectsApi: { invite: vi.fn() } }))
 const project: Project = { id: 'project', name: '팀 과제', ownerId: 'owner', topic: null, presentationConstraints: null,
   version: 1, memberCount: 1, createdAt: '', updatedAt: '' }
 const user: User = { id: 'owner', name: '소유자', email: null, canEmailReauth: false, consentVersions: {},

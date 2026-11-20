@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Button } from '../../../shared/ui/Button.tsx'
-import { limits } from '../model.ts'
+import { limits } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
 const Markdown = lazy(() => import('./Markdown.tsx'))

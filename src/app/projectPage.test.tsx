@@ -3,21 +3,21 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useCallback, useState } from 'react'
 import { createMemoryRouter, Link, Outlet, RouterProvider } from 'react-router'
-import ProjectPage from './ProjectPage.tsx'
-import { allMembers, projectsApi } from '../api.ts'
-import type { Project } from '../model.ts'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import { RequireSession } from '../../auth/ui/Session.tsx'
-import { authApi } from '../../auth/api.ts'
-import type { User } from '../../auth/model.ts'
-import Account from '../../auth/ui/Account.tsx'
-import Login from '../../auth/ui/Login.tsx'
-import { ApiError, TransportError } from '../../../shared/api/client.ts'
+import ProjectPage from '../features/projects/ui/ProjectPage.tsx'
+import { allMembers, projectsApi } from '../entities/project/api.ts'
+import type { Project } from '../entities/project/model.ts'
+import { SessionContext } from '../entities/session/sessionContext.ts'
+import { RequireSession } from '../features/auth/ui/Session.tsx'
+import { authApi } from '../entities/session/api.ts'
+import type { User } from '../entities/session/model.ts'
+import Account from '../features/auth/ui/Account.tsx'
+import Login from '../features/auth/ui/Login.tsx'
+import { ApiError, TransportError } from '../shared/api/client.ts'
 
-vi.mock('../api.ts', () => ({ allMembers: vi.fn(), projectsApi: {
+vi.mock('../entities/project/api.ts', () => ({ allMembers: vi.fn(), projectsApi: {
   get: vi.fn(), remove: vi.fn(), removeMember: vi.fn(), transfer: vi.fn(),
 } }))
-vi.mock('../../auth/api.ts', () => ({ authApi: { me: vi.fn() } }))
+vi.mock('../entities/session/api.ts', () => ({ authApi: { me: vi.fn() } }))
 
 const project: Project = { id: 'project-1', name: '팀 과제', topic: null, presentationConstraints: null,
   ownerId: 'owner', version: 1, memberCount: 2, createdAt: '2026-11-18T00:00:00Z', updatedAt: '2026-11-18T00:00:00Z' }

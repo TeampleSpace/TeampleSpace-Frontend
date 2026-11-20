@@ -5,8 +5,8 @@ import { Button } from '../../../shared/ui/Button.tsx'
 import { Field } from '../../../shared/ui/Field.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
-import { projectsApi } from '../api.ts'
-import type { ProjectInput } from '../model.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
+import type { ProjectInput } from '../../../entities/project/model.ts'
 import styles from './Projects.module.css'
 
 export function CreateProject({ open, onClose }: { open: boolean; onClose: () => void }) {

@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import type { Project } from '../model.ts'
+import type { Project } from '../../../entities/project/model.ts'
 import styles from './Projects.module.css'
 import buttons from '../../../shared/ui/Button.module.css'
 

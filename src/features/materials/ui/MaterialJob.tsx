@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
-import { materialsApi } from '../api.ts'
-import type { Material } from '../model.ts'
+import { materialsApi } from '../../../entities/material/api.ts'
+import type { Material } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
 export function MaterialJob({ material, onChanged, onError }: {

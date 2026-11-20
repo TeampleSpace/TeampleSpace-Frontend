@@ -1,6 +1,6 @@
 import type { ApiClient } from '../../shared/api/client.ts'
-import { api } from '../auth/api.ts'
-import { emptySchema } from '../auth/model.ts'
+import { api } from '../session/api.ts'
+import { emptySchema } from '../session/model.ts'
 import { acceptSchema, invitationLinkSchema, invitationSchema, memberListSchema, projectListSchema, projectSchema, removalSchema } from './model.ts'
 import type { ProjectInput } from './model.ts'
 
