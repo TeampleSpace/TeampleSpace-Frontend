@@ -34,6 +34,7 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
 
   useEffect(() => {
     if (!pollId || !revisionId) return
+    const polledRevisionId = revisionId
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
     async function check() {
@@ -41,17 +42,17 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
       try {
         const latest = await materialsApi.get(material.id, controller.signal)
         if (controller.signal.aborted) return
-        if (latest.status === 'ready' && latest.currentRevision?.id === revisionId && !latest.summaryJob && !latest.currentRevision?.summary) {
+        if (latest.status === 'ready' && latest.currentRevision?.id === polledRevisionId && !latest.summaryJob && !latest.currentRevision?.summary) {
           throw new TransportError('invalid_response')
         }
         setPollError(undefined)
         onChanged(latest)
         setAccepted(undefined)
-        if (latest.currentRevision?.id !== revisionId || latest.summaryJob?.id !== pollId || !inProgress(latest.summaryJob)) return
+        if (latest.currentRevision?.id !== polledRevisionId || latest.summaryJob?.id !== pollId || !inProgress(latest.summaryJob)) return
       } catch (reason) {
         if (controller.signal.aborted) return
         if (isGone(reason)) {
-          onGone(material.id, revisionId, reason)
+          onGone(material.id, polledRevisionId, reason)
           return
         }
         onError(reason)
