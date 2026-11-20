@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import { Button } from '../../shared/ui/Button.tsx'
@@ -8,6 +8,7 @@ import { RequestError } from '../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../shared/ui/StatusPanel.tsx'
 import { UnsavedGuard } from '../../shared/ui/UnsavedGuard.tsx'
 import { designApi, designColor } from './api.ts'
+import { DesignFontField } from './DesignFontField.tsx'
 import type { CustomDesign, DesignCatalog, DesignInput, DesignSettings, DesignTemplate, TemplateSelection } from './api.ts'
 import { DesignPreview } from './DesignPreview.tsx'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
@@ -16,7 +17,7 @@ import styles from './DesignPage.module.css'
 type Mode = 'template' | 'custom'
 type Drafts = { template: TemplateSelection | null; custom: CustomDesign }
 type PageData = { settings: DesignSettings; catalog: DesignCatalog }
-type InputField = keyof CustomDesign | 'template'
+type InputField = Exclude<keyof CustomDesign, 'fontAssetId'> | 'template'
 type InputErrors = Partial<Record<InputField, string>>
 type SaveAttempt = { body: DesignInput; key: string }
 type AccessError = (reason: unknown) => void
@@ -24,6 +25,7 @@ type AccessError = (reason: unknown) => void
 const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표 색상', guidelines: '디자인 지침', template: '템플릿' }
 const layoutNames: Record<string, string> = { title: '제목', content: '본문', summary: '요약' }
 const defaultPreview: PreviewStyle = { backgroundColor: '#FFFFFF', headingColor: '#20242D' }
+const defaultCustomColor = '#2864E8'
 const same = (left: object | null, right: object | null) => JSON.stringify(left) === JSON.stringify(right)
 const modeOf = ({ mode }: DesignSettings): Mode => mode === 'custom' ? mode : 'template'
 const selectionOf = ({ id, version }: DesignTemplate): TemplateSelection => ({ templateId: id, templateVersion: version })
@@ -34,7 +36,7 @@ const previewOf = (template: DesignTemplate): PreviewStyle => ({
 function makeDrafts(settings: DesignSettings, catalog: DesignCatalog): Drafts {
   return {
     template: settings.mode === 'template' ? { templateId: settings.templateId, templateVersion: settings.templateVersion } : null,
-    custom: settings.custom ?? { name: '', font: catalog.allowedFonts[0] ?? '', primaryColor: '#2864E8', guidelines: '' },
+    custom: settings.custom ?? { name: '', font: catalog.allowedFonts[0] ?? '', primaryColor: defaultCustomColor, guidelines: '' },
   }
 }
 
@@ -52,7 +54,8 @@ function validDraft(body: DesignInput, allowedFonts: string[]): InputErrors {
 function responseFields(error: ApiError): InputErrors {
   const errors: InputErrors = {}
   for (const { field, message } of error.fieldErrors) {
-    const name = field === 'templateId' || field === 'templateVersion' ? 'template' : field.replace(/^custom\./, '')
+    const property = field === 'templateId' || field === 'templateVersion' ? 'template' : field.replace(/^custom\./, '')
+    const name = property === 'fontAssetId' ? 'font' : property
     if (name === 'name' || name === 'font' || name === 'primaryColor' || name === 'guidelines' || name === 'template') {
       errors[name] ??= message
     }
@@ -119,7 +122,7 @@ export default function DesignPage({ projectId, projectName, fromOutline = false
 function DesignSettingsForm({ settings, catalog, projectId, projectName, back, onAccessError }: PageData & {
   projectId: string; projectName?: string; back: { path: string; label: string }; onAccessError: AccessError
 }) {
-  const { items, allowedFonts } = catalog
+  const { items, allowedFonts, projectFontsEnabled = false } = catalog
   const [base, setBase] = useState(settings)
   const [initial, setInitial] = useState(() => makeDrafts(settings, catalog))
   const [drafts, setDrafts] = useState(initial)
@@ -135,6 +138,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const [loadingLatest, setLoadingLatest] = useState(false)
   const [latestError, setLatestError] = useState<unknown>()
   const [waitingUntil, setWaitingUntil] = useState(0)
+  const [previewFont, setPreviewFont] = useState<string>()
   const formId = useId()
   const operation = useRef<AbortController | null>(null)
   const fieldToFocus = useRef<InputField | undefined>(undefined)
@@ -149,13 +153,19 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const conflict = error instanceof ApiError && error.code === 'VERSION_CONFLICT'
   const readyToSave = mode === 'template' ? !!template && hasActiveChange : hasActiveChange
   const inputLocked = saving || !!pending
+  const customColor = designColor.test(configuredCustom.primaryColor)
+    ? configuredCustom.primaryColor
+    : base.custom?.primaryColor ?? defaultCustomColor
   const preview = mode === 'template' ? (template ? previewOf(template) : defaultPreview) : {
     ...defaultPreview,
-    headingColor: designColor.test(configuredCustom.primaryColor) ? configuredCustom.primaryColor : defaultPreview.headingColor,
-    font: allowedFonts.includes(custom.font) ? custom.font : undefined,
+    headingColor: customColor,
+    font: previewFont ?? (allowedFonts.includes(custom.font) ? custom.font : undefined),
   }
 
   useEffect(() => () => operation.current?.abort(), [])
+  const reportFontError = useCallback((reason: unknown) => {
+    if (accessLost(reason)) onAccessError(reason)
+  }, [onAccessError])
 
   useEffect(() => {
     if (!waitingUntil) return
@@ -185,6 +195,13 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   function changeCustom(field: keyof CustomDesign, value: string) {
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, [field]: value } }))
     setInputErrors((current) => ({ ...current, [field]: undefined }))
+    setSaved(false)
+  }
+
+  function changeFont(value: Pick<CustomDesign, 'font' | 'fontAssetId'>) {
+    setPreviewFont(undefined)
+    setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, ...value } }))
+    setInputErrors((current) => ({ ...current, font: undefined }))
     setSaved(false)
   }
 
@@ -331,19 +348,19 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
           <legend className={styles.visuallyHidden}>직접 디자인 입력</legend>
           <Field label={fields.name} id={`${formId}-name`} value={custom.name} maxLength={80} required error={inputErrors.name}
             onChange={(event) => changeCustom('name', event.target.value)} />
-          <div className={styles.selectField}>
-            <label htmlFor={`${formId}-font`}>{fields.font}</label>
-            <select id={`${formId}-font`} value={custom.font} aria-invalid={!!inputErrors.font}
-              aria-describedby={inputErrors.font ? `${formId}-font-error` : undefined}
-              onChange={(event) => changeCustom('font', event.target.value)}>
-              {!allowedFonts.includes(custom.font) && <option value={custom.font} disabled>{custom.font || '사용 가능한 글꼴 없음'}</option>}
-              {allowedFonts.map((font) => <option key={font} value={font}>{font}</option>)}
-            </select>
-            {inputErrors.font && <p className={styles.fieldError} id={`${formId}-font-error`}>{inputErrors.font}</p>}
+          <DesignFontField projectId={projectId} uploadsEnabled={projectFontsEnabled} fonts={allowedFonts} font={custom.font}
+            fontAssetId={custom.fontAssetId} fieldId={`${formId}-font`} error={inputErrors.font} disabled={inputLocked}
+            onChange={changeFont} onPreviewChange={setPreviewFont} onError={reportFontError} />
+          <div className={styles.colorFields}>
+            <Field label={fields.primaryColor} id={`${formId}-primaryColor`} value={custom.primaryColor} maxLength={7} required
+              placeholder={defaultCustomColor} autoComplete="off" spellCheck={false} error={inputErrors.primaryColor}
+              onChange={(event) => changeCustom('primaryColor', event.target.value)} />
+            <div className={styles.pickerField}>
+              <label htmlFor={`${formId}-colorPicker`}>색상 선택</label>
+              <input id={`${formId}-colorPicker`} className={styles.colorPicker} type="color" value={customColor}
+                onChange={(event) => changeCustom('primaryColor', event.target.value.toUpperCase())} />
+            </div>
           </div>
-          <Field label={fields.primaryColor} id={`${formId}-primaryColor`} value={custom.primaryColor} maxLength={7} required
-            placeholder="#2864E8" autoComplete="off" spellCheck={false} error={inputErrors.primaryColor}
-            onChange={(event) => changeCustom('primaryColor', event.target.value)} />
           <Field label={fields.guidelines} id={`${formId}-guidelines`} multiline rows={3} maxLength={2000} value={custom.guidelines}
             error={inputErrors.guidelines} onChange={(event) => changeCustom('guidelines', event.target.value)} />
         </fieldset>}

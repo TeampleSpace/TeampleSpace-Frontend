@@ -49,6 +49,22 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
 })
 
+test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보기에 반영한다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
+  const code = screen.getByLabelText<HTMLInputElement>('대표 색상')
+  const picker = screen.getByLabelText<HTMLInputElement>('색상 선택')
+  const preview = screen.getByRole('region', { name: '슬라이드 미리보기' }).querySelector<HTMLElement>('[style]')
+
+  fireEvent.change(code, { target: { value: '#7183a0' } })
+  expect(picker.value).toBe('#7183a0')
+  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#7183A0')
+
+  fireEvent.change(picker, { target: { value: '#aabbcc' } })
+  expect(code.value).toBe('#AABBCC')
+  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#AABBCC')
+})
+
 test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식만 저장한다', async () => {
   mount()
   fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
