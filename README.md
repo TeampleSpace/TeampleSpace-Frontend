@@ -98,6 +98,8 @@ PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를
 
 편집 실험의 확인 기록은 `../Docs/fe/editor-experiment.md`, 파일 출력 비교 기준과 결과는 `../Docs/fe/output-comparison.md`에 있다.
 
+실제 서버에 연결한 편집 화면은 프로젝트의 슬라이드 메뉴에 있다. 아직 문서가 없으면 개발 서버에서만 예제 문서 만들기 버튼이 보이고, 백엔드를 `teamplespace.editor.sample-presentation-enabled=true`로 실행해야 동작한다. 화면 구성과 동작 기준은 `../Docs/fe/slide-editor.md`에 있다.
+
 ## 서버 계약
 
 요청, 응답, 문서 형식은 백엔드 저장소의 공통 계약을 그대로 쓴다. `contracts` 폴더는 백엔드 저장소 `contracts` 폴더의 복사본이므로 직접 고치지 않는다.
