@@ -48,8 +48,10 @@ test('업로드 파일을 그대로 전송하고 저장할 글꼴과 미리보�
   const onPreview = vi.fn()
   function Field({ saved }: { saved?: string }) {
     const [selection, setSelection] = useState({ font: 'Pretendard', fontAssetId: saved })
+    const [uploading, setUploading] = useState(false)
     return <DesignFontField projectId={projectId} uploadsEnabled fonts={['Pretendard', 'Noto Sans']}
       font={selection.font} fontAssetId={selection.fontAssetId} fieldId="font"
+      uploading={uploading} onUploadingChange={setUploading}
       onPreviewChange={onPreview} onChange={(value) => {
         onSelection(value)
         setSelection({ font: value.font, fontAssetId: value.fontAssetId })

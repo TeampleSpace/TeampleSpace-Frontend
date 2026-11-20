@@ -16,12 +16,15 @@ type Props = FontSelection & {
   fieldId: string
   error?: string
   disabled?: boolean
+  uploading: boolean
+  onUploadingChange: (uploading: boolean) => void
   onChange: (selection: FontSelection) => void
   onPreviewChange: (family?: string) => void
   onError?: (error: unknown) => void
 }
 
-export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAssetId, fieldId, error, disabled, onChange, onPreviewChange, onError }: Props) {
+export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAssetId, fieldId, error, disabled,
+  uploading, onUploadingChange, onChange, onPreviewChange, onError }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<AbortController | null>(null)
   const [catalog, setCatalog] = useState<{ projectId: string; items: ProjectFont[] }>()
@@ -30,7 +33,6 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
   const [uploadError, setUploadError] = useState<unknown>()
   const [validation, setValidation] = useState<string>()
   const [previewErrorFor, setPreviewErrorFor] = useState<string>()
-  const [uploading, setUploading] = useState(false)
   const items = uploadsEnabled && catalog?.projectId === projectId ? catalog.items : emptyFonts
   const selected = items.find((item) => item.id === fontAssetId)
   const loadingFonts = uploadsEnabled && catalog?.projectId !== projectId && !listError
@@ -93,7 +95,7 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
 
     const controller = new AbortController()
     uploadRef.current = controller
-    setUploading(true)
+    onUploadingChange(true)
     try {
       const added = await fontsApi.upload(projectId, file, controller.signal)
       if (controller.signal.aborted) return
@@ -110,7 +112,7 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
     } finally {
       if (uploadRef.current === controller) {
         uploadRef.current = null
-        setUploading(false)
+        onUploadingChange(false)
       }
     }
   }
