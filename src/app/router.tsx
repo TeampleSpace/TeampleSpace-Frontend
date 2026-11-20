@@ -38,6 +38,29 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : []
 
+const billingPreviewRoutes: RouteObject[] = import.meta.env.DEV ? [
+  {
+    path: 'account/subscription',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).SubscriptionPage }),
+  },
+  {
+    path: 'account/subscription/manage',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingManagePage }),
+  },
+  {
+    path: 'account/subscription/preview/complete',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingCompletePreviewPage }),
+  },
+  {
+    path: 'account/subscription/preview/interrupted',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingInterruptedPreviewPage }),
+  },
+  {
+    path: 'billing/return',
+    lazy: async () => ({ Component: (await import('../features/billing/BillingPage.tsx')).BillingReturnPage }),
+  },
+] : []
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -54,6 +77,7 @@ export const router = createBrowserRouter([
         { element: <RequireSession />, children: [{ element: <AppShell />, children: [
           { index: true, element: <ProjectHome /> },
           { path: 'account', element: <Account /> },
+          ...billingPreviewRoutes,
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/settings', element: <ProjectPage /> },
           { path: 'projects/:projectId/design', lazy: async () => ({

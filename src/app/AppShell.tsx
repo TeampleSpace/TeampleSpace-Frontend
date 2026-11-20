@@ -9,8 +9,10 @@ import styles from './AppShell.module.css'
 export default function AppShell() {
   const [currentProject, setCurrentProject] = useState<CurrentProject>(null)
   const match = useMatch('/projects/:projectId/*')
+  const account = useMatch('/account/*')
+  const billingReturn = useMatch('/billing/return')
   const location = useLocation()
-  const showingProjects = location.pathname !== '/account'
+  const showingProjects = !account && !billingReturn
   const [projects, setProjects] = useState<Project[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [error, setError] = useState(false)
