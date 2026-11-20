@@ -190,7 +190,14 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | 문서와 커서를 같은 시점에 읽는 처리와 시험이 있다. 팀원, 디자인, 작업, 자료 요약은 없다 | 4단계 |
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |
-| 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 형식만 | 3단계 |
+| 발표 템플릿 목록 | `GET /v1/templates` | `TemplateCatalog` | 공개 개정과 옵션 조회 | 3단계 |
+| 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 저장한 선택과 개정 조회 | 3단계 |
+| 디자인 설정 저장 | `PUT /v1/projects/{projectId}/design-settings` | `DesignSettingsPutRequest`, `DesignSettings` | 버전 비교와 멱등 저장, [디자인 계약](stage-3-design.md) | 3단계 |
+| 발표 구성 조회 | `GET /v1/projects/{projectId}/outline` | `Outline` | 현재 구성과 고정된 자료 개정 조회 | 3단계 |
+| 발표 구성 저장 | `PUT /v1/projects/{projectId}/outline` | `OutlinePutRequest`, `Outline` | 버전 비교와 멱등 저장, [발표 구성 계약](stage-3.md) | 3단계 |
+| 발표 항목 근거 교체 | `PUT /v1/outline-items/{itemId}/sources` | `OutlineSourcesPutRequest`, `Outline` | 한 항목의 자료 근거를 버전 비교로 교체 | 3단계 |
+| 발표 구성 생성 | `POST /v1/projects/{projectId}/outline-jobs` | `OutlineJobRequest`, `Job` | 입력 고정과 생성 결과 발행, [생성 계약](stage-3-generation.md) | 3단계 |
+| 최초 PPT 생성 입력 | 생성용 요청과 고정 스냅샷 | `PresentationGenerationRequest`, `PresentationGenerationSnapshot` | 입력 형식만 | 5단계 |
 | 프로젝트 작업 목록 | `GET /v1/projects/{projectId}/jobs` | `JobList` | 필터와 커서 페이지, 프로젝트 권한 확인 구현 | 2단계 |
 | 작업 조회 | `GET /v1/jobs/{jobId}` | `Job` | 구현. 임대 선점과 내부 재시도, 시험이 있다 | 2단계 |
 | 작업 취소 | `POST /v1/jobs/{jobId}/cancel` | `Job` | 구현. 요청자와 소유자만 취소하고 완료와의 경합 시험이 있다 | 2단계 |
@@ -250,7 +257,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 내보내기 형식을 지원한다고 공개하는 기준 | 기능 지원 정보의 `formats`는 비워 두었다 |
 | 기본 캔버스 크기 | 예제는 1280x720이다. 문서마다 `canvas`를 가지므로 형식에는 영향이 없다 |
 | 업로드 허용 형식과 크기 | PDF만 받고 20MB까지다. 크기는 검증용 기본값이며 서버 설정으로 바꾼다 |
-| 파일 저장소와 요약 모델 | 정해지지 않아 서버 폴더에 보관하고 요약은 비워 둔다. `stage-2.md`의 외부 설정과 남은 결정에 적었다 |
+| 파일 저장소와 요약 모델 | 파일은 서버 폴더에 보관한다. 자료 요약은 제공자를 설정하고 사용자가 요청하면 개정에 저장한다. `stage-2.md`에 설정과 요청 규칙을 적었다 |
 | 목록 크기 | 예제의 기본 30과 상한 100은 설계서의 제안값이다 |
 | 약관 문서의 종류, 버전, 주소 | `legalDocuments`는 비워 두었다. 비어 있으면 가입 완료를 열지 않는다 |
 | 프로젝트에 참여한 적 없는 사용자의 응답 | 지금은 403이다. 대상이 있는지 숨기려면 404로 바꿔야 한다 |

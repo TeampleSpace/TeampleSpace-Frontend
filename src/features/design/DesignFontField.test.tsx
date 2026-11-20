@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import bootstrap from '../../../contracts/examples/auth-bootstrap-authenticated.json'
@@ -21,6 +21,7 @@ const projectFont = {
 const fontRegistry = { add: vi.fn(), delete: vi.fn() }
 
 afterEach(() => {
+  cleanup()
   vi.unstubAllGlobals()
   Reflect.deleteProperty(document, 'fonts')
   vi.clearAllMocks()
@@ -94,4 +95,33 @@ test('프로젝트 글꼴 경로가 아닌 주소에는 요청하지 않는다',
   await expect(fontsApi.content(projectId, { ...projectFont, contentUrl: '//other.test/font' }, new AbortController().signal))
     .rejects.toMatchObject({ kind: 'invalid_response' })
   expect(fetcher).not.toHaveBeenCalled()
+})
+
+test('서버에서 적용한 글꼴이 기존 목록에 없으면 다시 읽어 미리보기에 적용한다', async () => {
+  let available = false
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    if (String(input) === rootUrl) return Response.json({ items: available ? [projectFont] : [] })
+    if (String(input) === projectFont.contentUrl) return new Response(bytes)
+    return new Response(null, { status: 404 })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  vi.stubGlobal('FontFace', class {
+    async load() { return this }
+  })
+  Object.defineProperty(document, 'fonts', { configurable: true, value: fontRegistry })
+  const onPreview = vi.fn()
+  const props = {
+    projectId, uploadsEnabled: true, fonts: ['Pretendard'], font: 'Pretendard', fieldId: 'font',
+    uploading: false, onUploadingChange: vi.fn(), onChange: vi.fn(), onPreviewChange: onPreview,
+  }
+  const view = render(<DesignFontField {...props} />)
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '글꼴 업로드' }).disabled).toBe(false))
+
+  available = true
+  view.rerender(<DesignFontField {...props} fontAssetId={assetId} />)
+
+  await screen.findByRole('option', { name: projectFont.fileName })
+  expect(screen.getByRole<HTMLSelectElement>('combobox', { name: '폰트' }).value).toBe(`upload:${assetId}`)
+  await waitFor(() => expect(onPreview).toHaveBeenLastCalledWith(`ProjectFont-${assetId}`))
+  expect(fetcher.mock.calls.filter(([path]) => String(path) === rootUrl)).toHaveLength(2)
 })

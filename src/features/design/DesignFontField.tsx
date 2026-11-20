@@ -27,7 +27,7 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
   uploading, onUploadingChange, onChange, onPreviewChange, onError }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<AbortController | null>(null)
-  const [catalog, setCatalog] = useState<{ projectId: string; items: ProjectFont[] }>()
+  const [catalog, setCatalog] = useState<{ projectId: string; items: ProjectFont[]; reload: number }>()
   const [reload, setReload] = useState(0)
   const [listError, setListError] = useState<unknown>()
   const [uploadError, setUploadError] = useState<unknown>()
@@ -39,13 +39,15 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
   const uploadValue = fontAssetId ? `upload:${fontAssetId}` : undefined
   const notifyPreview = useEffectEvent((family?: string) => onPreviewChange(family))
   const reportError = useEffectEvent((reason: unknown) => onError?.(reason))
+  const hasCurrentFonts = useEffectEvent(() => catalog?.projectId === projectId && catalog.reload === reload
+    && (!fontAssetId || selected !== undefined))
 
   useEffect(() => {
-    if (!uploadsEnabled) return
+    if (!uploadsEnabled || hasCurrentFonts()) return
     const controller = new AbortController()
     void fontsApi.list(projectId, controller.signal).then(({ items }) => {
       if (!controller.signal.aborted) {
-        setCatalog({ projectId, items })
+        setCatalog({ projectId, items, reload })
         setListError(undefined)
       }
     }).catch((reason) => {
@@ -55,7 +57,7 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
       }
     })
     return () => controller.abort()
-  }, [projectId, reload, uploadsEnabled])
+  }, [projectId, reload, uploadsEnabled, fontAssetId])
 
   useEffect(() => () => uploadRef.current?.abort(), [projectId, uploadsEnabled])
 
@@ -101,7 +103,7 @@ export function DesignFontField({ projectId, uploadsEnabled, fonts, font, fontAs
       if (controller.signal.aborted) return
       setCatalog((previous) => {
         const previousItems = previous?.projectId === projectId ? previous.items : emptyFonts
-        return { projectId, items: [added, ...previousItems.filter((item) => item.id !== added.id)] }
+        return { projectId, items: [added, ...previousItems.filter((item) => item.id !== added.id)], reload }
       })
       onChange({ font, fontAssetId: added.id })
     } catch (reason) {

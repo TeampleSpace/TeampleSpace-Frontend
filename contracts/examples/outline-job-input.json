@@ -1,0 +1,15 @@
+{
+  "outlineVersion": 1,
+  "sources": [
+    {
+      "materialId": "10000000-0000-4000-8000-000000000003",
+      "revisionId": "10000000-0000-4000-8000-000000000004",
+      "sourceVersion": 1,
+      "materialVersion": 2
+    }
+  ],
+  "instructions": "근거를 먼저 설명",
+  "model": "configured-model",
+  "schemaVersion": 1,
+  "promptVersion": "outline-v1"
+}

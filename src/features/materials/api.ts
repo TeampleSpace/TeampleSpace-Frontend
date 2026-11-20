@@ -6,19 +6,20 @@ import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema,
   materialNoteSchema, materialSchema, materialSourceSchema, uploadTicketSchema,
 } from './model.ts'
-import type { MaterialKind, UploadTicket } from './model.ts'
+import type { MaterialKind, MaterialSummary, UploadTicket } from './model.ts'
 
 const segment = encodeURIComponent
-export type MaterialQuery = { q?: string; kind?: MaterialKind | ''; cursor?: string }
+export type MaterialQuery = { q?: string; kind?: MaterialKind | ''; status?: MaterialSummary['status']; cursor?: string; limit?: number }
 
 export function createMaterialsApi(client: ApiClient, fetchImpl: typeof fetch = (input, init) => fetch(input, init)) {
   const created = (path: string, body: unknown, key: string) =>
     client.request(path, materialCreatedSchema, { method: 'POST', body, idempotencyKey: key, timeoutMs: 20000 })
   return {
     list: (projectId: string, query: MaterialQuery = {}, signal?: AbortSignal) => {
-      const params = new URLSearchParams({ limit: '30' })
+      const params = new URLSearchParams({ limit: String(query.limit ?? 30) })
       if (query.q) params.set('q', query.q)
       if (query.kind) params.set('kind', query.kind)
+      if (query.status) params.set('status', query.status)
       if (query.cursor) params.set('cursor', query.cursor)
       return client.request(`/projects/${segment(projectId)}/materials?${params}`, materialListSchema, { timeoutMs: 10000, signal })
     },
@@ -31,6 +32,10 @@ export function createMaterialsApi(client: ApiClient, fetchImpl: typeof fetch = 
     // 보관한 원본으로 분석만 다시 한다. 재시도할 때 같은 키를 다시 보낸다
     reprocess: (id: string, key: string) =>
       client.request(`/materials/${segment(id)}/reprocess`, materialCreatedSchema, { method: 'POST', idempotencyKey: key, timeoutMs: 15000 }),
+    summarize: (id: string, expectedRevisionId: string, key: string) =>
+      client.request(`/materials/${segment(id)}/summary-jobs`, jobSchema, {
+        method: 'POST', body: { expectedRevisionId }, idempotencyKey: key, timeoutMs: 15000,
+      }),
     note: (id: string, signal?: AbortSignal) => client.request(`/materials/${segment(id)}/note`, materialNoteSchema, { timeoutMs: 10000, signal }),
     saveNote: (id: string, expectedVersion: number, markdown: string) =>
       client.request(`/materials/${segment(id)}/note`, materialNoteSavedSchema, { method: 'PUT', body: { expectedVersion, markdown }, timeoutMs: 15000 }),

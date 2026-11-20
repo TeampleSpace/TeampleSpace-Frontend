@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import MaterialsPage from './MaterialsPage.tsx'
+import { SourceViewer } from './SourceViewer.tsx'
 import { projectsApi } from '../projects/api.ts'
 import type { Project } from '../projects/model.ts'
 import { SessionContext } from '../auth/sessionContext.ts'
@@ -105,6 +106,7 @@ test('PDF 원문은 실제 쪽수로 이전과 다음을 정하고 전체 보기
   // 서버가 알려 준 쪽수보다 실제 문서의 쪽수를 따른다
   expect(await popup.findByText('PDF · 1쪽 / 3쪽')).toBeTruthy()
   expect(popup.getByRole('button', { name: '이전 쪽' })).toHaveProperty('disabled', true)
+  await waitFor(() => expect(pdf.rendered).toEqual([1]))
   fireEvent.click(popup.getByRole('button', { name: '다음 쪽' }))
   await waitFor(() => expect(pdf.rendered).toEqual([1, 2]))
   fireEvent.click(popup.getByRole('button', { name: '다음 쪽' }))
@@ -197,6 +199,19 @@ test('마크다운과 링크 자료는 원문 팝업에서 본문을 보여 준�
   const next = await openViewer()
   expect(await next.findByText('여러 대학이 반납함을 늘렸다.')).toBeTruthy()
   expect(next.getByRole('link', { name: 'https://example.com/reuse-cup' })).toBeTruthy()
+})
+
+test('고정된 개정이 있으면 최신 메모 대신 연결 당시 원문을 조회한다', async () => {
+  const id = mock.seed('memo', '회의 메모', { markdown: '연결 당시 메모' })
+  const material = mock.get(id)!
+  const previous = material.revisions[0]
+  material.revisions.push({ ...previous, id: crypto.randomUUID(), sourceVersion: 2, markdown: '새로운 메모' })
+
+  render(<SourceViewer material={{ id, title: material.title }} revisionId={previous.id} onClose={vi.fn()} onError={vi.fn()} />)
+
+  expect(await viewer().findByText('연결 당시 메모')).toBeTruthy()
+  expect(viewer().queryByText('새로운 메모')).toBeNull()
+  expect(sources()[0].path).toContain(`revisionId=${previous.id}`)
 })
 
 test('처리 중이거나 실패한 자료에는 원문 보기를 두지 않는다', async () => {

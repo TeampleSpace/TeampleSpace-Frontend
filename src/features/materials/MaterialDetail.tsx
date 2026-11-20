@@ -9,11 +9,11 @@ import styles from './Materials.module.css'
 export type ManageAction = 'rename' | 'delete'
 
 // 선택한 자료의 상세. 처리 상태에 따라 본문 자리를 바꾼다
-export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, children }: {
+export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, summary, children }: {
   material: Material; retrying: boolean; retryError: unknown
   onRetry: () => void; onManage: (action: ManageAction) => void
   // 제목 옆에 두는 동작과 관리 메뉴에 더하는 항목
-  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; children?: ReactNode
+  actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; summary?: ReactNode; children?: ReactNode
 }) {
   const revision = material.currentRevision
   const source = material.source
@@ -37,15 +37,14 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       {material.description && <p>{material.description}</p>}
     </div>}
 
-    {material.status === 'processing' && <div className={styles.state} role="status">
-      <p>{material.kind === 'file' ? 'PDF 본문을 추출하고 있어요.' : '웹페이지 본문을 가져오고 있어요.'}</p>
-      {jobControls}
-    </div>}
+    {material.status === 'processing' && (material.job && jobControls
+      ? jobControls
+      : <p className={styles.jobFallback} role="status">분석 상태를 확인하고 있어요.</p>)}
 
     {material.status === 'failed' && <div className={styles.state}>
       <p>자료를 분석하지 못했어요</p>
-      <p className={styles.info} role="alert">{material.job?.status === 'canceled' ? '분석을 취소했어요' : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
-      <p className={styles.info}>{material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 올리지 않고 분석만 다시 시도해요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
+      <p className={styles.stateMessage} role="alert">{material.job?.status === 'canceled' ? '분석을 취소했어요' : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
+      <p className={styles.stateMessage}>{material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 분석할 수 있어요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
       <RequestError error={retryError} />
       <div className={styles.actions}>
         {error?.retryable === false && material.job?.status !== 'canceled'
@@ -54,21 +53,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       </div>
     </div>}
 
-    {revision?.summary && <section className={styles.summary}>
-      <h3 className={styles.sectionTitle}>핵심 요약</h3>
-      <p>{revision.summary}</p>
-      <p className={styles.provenance}>자세한 내용은 원문에서 확인하세요.</p>
-    </section>}
-
-    {revision?.excerpt && <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h3 className={styles.sectionTitle}>원문 발췌</h3>
-        {revision.excerpt.page && <span>{revision.excerpt.page}쪽</span>}
-      </div>
-      <p className={styles.plain}>{revision.excerpt.text}</p>
-    </section>}
-
-    {material.status === 'ready' && !revision?.excerpt && <p className={styles.listNote}>원문에서 추출한 글이 없어요</p>}
+    {summary}
     {children}
   </>
 }

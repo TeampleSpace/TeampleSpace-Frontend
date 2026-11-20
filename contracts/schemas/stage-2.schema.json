@@ -148,7 +148,7 @@
         "id": { "$ref": "api.schema.json#/$defs/Uuid" },
         "sourceVersion": { "$ref": "api.schema.json#/$defs/Version" },
         "pageCount": { "$ref": "#/$defs/PageCount" },
-        "summary": { "description": "요약 모델이 연결되지 않았으면 null", "type": ["string", "null"] },
+        "summary": { "description": "이 원문 개정의 AI 요약. 요약이 완료되기 전에는 null", "type": ["string", "null"] },
         "excerpt": {
           "description": "원문에서 뽑은 발췌. 추출한 글이 없으면 null",
           "anyOf": [
@@ -392,10 +392,22 @@
             }
           ]
         },
+        "summaryJob": {
+          "description": "현재 원문 개정의 가장 최근 AI 요약 작업. 요청한 적이 없으면 생략한다",
+          "$ref": "api.schema.json#/$defs/Job"
+        },
         "canDelete": {
           "description": "요청한 사용자가 소유자이거나 자료 작성자면 true",
           "type": "boolean"
         }
+      }
+    },
+    "MaterialSummaryJobRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedRevisionId"],
+      "properties": {
+        "expectedRevisionId": { "$ref": "api.schema.json#/$defs/Uuid" }
       }
     },
     "MaterialCreated": {

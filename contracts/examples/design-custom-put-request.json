@@ -1,0 +1,10 @@
+{
+  "expectedVersion": 2,
+  "mode": "custom",
+  "custom": {
+    "name": "우리 팀 발표 스타일",
+    "font": "Pretendard",
+    "primaryColor": "#2864E8",
+    "guidelines": "핵심 주장을 크게 쓰고 출처를 표기"
+  }
+}

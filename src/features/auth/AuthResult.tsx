@@ -1,12 +1,17 @@
+import { useEffect } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router'
 import { SessionStatus } from './Session.tsx'
 import { useSession } from './sessionContext.ts'
 import { authDestination, safeReturnTo } from './model.ts'
+import { setBillingPreviewReturn } from './billingPreviewReturn.ts'
 import { AuthLayout } from './AuthLayout.tsx'
 
 export default function AuthResult() {
   const session = useSession()
   const [params] = useSearchParams()
+  useEffect(() => {
+    if (params.has('code')) setBillingPreviewReturn()
+  }, [params])
   if (session.loading || session.error) return <AuthLayout><SessionStatus /></AuthLayout>
   const code = params.get('code')
   const returnTo = safeReturnTo(params.get('returnTo'))

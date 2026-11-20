@@ -433,5 +433,100 @@
     "example": "invalid/material-summary-memo-processing.json",
     "schema": "stage-2.schema.json#/$defs/MaterialSummary",
     "valid": false
+  },
+  {
+    "example": "outline-empty.json",
+    "schema": "stage-3.schema.json#/$defs/Outline",
+    "valid": true
+  },
+  {
+    "example": "outline.json",
+    "schema": "stage-3.schema.json#/$defs/Outline",
+    "valid": true
+  },
+  {
+    "example": "outline-put-request.json",
+    "schema": "stage-3.schema.json#/$defs/OutlinePutRequest",
+    "valid": true
+  },
+  {
+    "example": "invalid/outline-duplicate-source.json",
+    "schema": "stage-3.schema.json#/$defs/OutlinePutRequest",
+    "valid": false
+  },
+  {
+    "example": "error-outline-version-conflict.json",
+    "schema": "api.schema.json#/$defs/ErrorResponse",
+    "valid": true
+  },
+  {
+    "example": "outline-sources-put-request.json",
+    "schema": "stage-3.schema.json#/$defs/OutlineSourcesPutRequest",
+    "valid": true
+  },
+  {
+    "example": "template-catalog.json",
+    "schema": "stage-3-design.schema.json#/$defs/TemplateCatalog",
+    "valid": true
+  },
+  {
+    "example": "design-template-put-request.json",
+    "schema": "stage-3-design.schema.json#/$defs/DesignSettingsPutRequest",
+    "valid": true
+  },
+  {
+    "example": "design-custom-put-request.json",
+    "schema": "stage-3-design.schema.json#/$defs/DesignSettingsPutRequest",
+    "valid": true
+  },
+  {
+    "example": "design-settings-unset.json",
+    "schema": "api.schema.json#/$defs/DesignSettings",
+    "valid": true
+  },
+  {
+    "example": "design-settings-custom.json",
+    "schema": "api.schema.json#/$defs/DesignSettings",
+    "valid": true
+  },
+  {
+    "example": "invalid/design-mixed-mode.json",
+    "schema": "stage-3-design.schema.json#/$defs/DesignSettingsPutRequest",
+    "valid": false
+  },
+  {
+    "example": "outline-job-request.json",
+    "schema": "stage-3-generation.schema.json#/$defs/OutlineJobRequest",
+    "valid": true
+  },
+  {
+    "example": "outline-job-input.json",
+    "schema": "stage-3-generation.schema.json#/$defs/OutlineJobInput",
+    "valid": true
+  },
+  {
+    "example": "outline-job-result.json",
+    "schema": "stage-3-generation.schema.json#/$defs/OutlineJobResult",
+    "valid": true
+  },
+  {
+    "example": "presentation-generation-request.json",
+    "schema": "stage-3-generation.schema.json#/$defs/PresentationGenerationRequest",
+    "valid": true
+  },
+  {
+    "example": "presentation-generation-snapshot.json",
+    "schema": "stage-3-generation.schema.json#/$defs/PresentationGenerationSnapshot",
+    "valid": true
+  },
+  {
+    "example": "invalid/presentation-generation-unset-design.json",
+    "schema": "stage-3-generation.schema.json#/$defs/PresentationGenerationSnapshot",
+    "valid": false
+  },
+  {
+    "example": "material-summary-job-request.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialSummaryJobRequest",
+    "valid": true
   }
 ]
