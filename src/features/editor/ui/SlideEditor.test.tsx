@@ -143,6 +143,28 @@ test('키보드로 요소를 고르고 방향키로 옮기면 위치를 저장�
   expect(screen.queryByRole('textbox', { name: '텍스트 편집' })).toBeNull()
 })
 
+test('위치를 입력하다가 다른 요소를 골라도 입력하던 값을 저장한다', async () => {
+  const { server } = setup()
+  mount(open(server.fetchAs(userA)))
+  const geometry = () =>
+    server.getDocument().slides.flatMap((slide) => slide.elements).find((element) => element.id === bodyId)!.geometry
+
+  const target = await body()
+  fireEvent.keyDown(target, { key: ' ' })
+  const [x, y] = screen.getAllByRole('spinbutton') as HTMLInputElement[]
+  // Enter로 끝내면 바로 반영한다
+  fireEvent.change(x, { target: { value: '321' } })
+  fireEvent.keyDown(x, { key: 'Enter' })
+  fireEvent.blur(x)
+  await waitFor(() => expect(geometry().x).toBe(321))
+
+  // 입력란을 벗어나지 않고 다른 요소를 고른다
+  fireEvent.change(y, { target: { value: '222' } })
+  const other = screen.getAllByRole('button', { pressed: false }).find((button) => button.hasAttribute('data-element'))!
+  fireEvent.keyDown(other, { key: ' ' })
+  await waitFor(() => expect(geometry().y).toBe(222))
+})
+
 test('다른 팀원이 먼저 고친 요소는 덮어쓰지 않고 두 내용을 보여 준 뒤 고른 대로 이어 간다', async () => {
   const { server, serverText, saveAsTeammate } = setup()
   // 저장을 기다리는 동안 다른 팀원의 저장이 먼저 도착한다
