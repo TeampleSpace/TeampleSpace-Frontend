@@ -340,7 +340,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
         {mode === 'template' ? <>
           {drafts.template && !template && <p className={styles.notice}>버전 {drafts.template.templateVersion} 템플릿이 저장되어 있어요. 현재 목록에서 해당 버전을 미리 볼 수 없어요.</p>}
           {!items.length && <p className={styles.notice}>선택할 수 있는 템플릿이 없어요. 직접 입력으로 디자인을 설정할 수 있어요.</p>}
-          <div id={`${formId}-template`}>
+          <div id={`${formId}-template`} tabIndex={-1} role="group" aria-label="템플릿 선택">
             <TemplateGallery items={items} selected={template} disabled={inputLocked} projectName={projectName}
               modes={modes} onSelect={chooseTemplate} onDetail={setDetail} />
           </div>

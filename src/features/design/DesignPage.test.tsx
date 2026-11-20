@@ -78,6 +78,27 @@ test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 �
   expect(screen.getByRole('button', { name: '클린 리포트 선택됨' })).toBeTruthy()
 })
 
+test('템플릿 저장 오류 안내를 닫으면 갤러리로 포커스가 돌아간다', async () => {
+  vi.mocked(designApi.save).mockRejectedValue(new ApiError(422, {
+    error: {
+      code: 'VALIDATION_FAILED', message: '템플릿 확인 필요', retryable: false,
+      fieldErrors: [{ field: 'templateVersion', code: 'INVALID', message: '현재 템플릿을 다시 선택해 주세요' }],
+    },
+    requestId: 'request',
+  }))
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 선택' }))
+  const gallery = screen.getByRole('region', { name: '템플릿 갤러리' })
+  const save = screen.getByRole('button', { name: '디자인 저장' })
+  save.focus()
+  fireEvent.click(save)
+
+  const invalid = await screen.findByRole('dialog', { name: '디자인 설정을 확인해 주세요' })
+  fireEvent.click(within(invalid).getByRole('button', { name: '설정으로 돌아가기' }))
+
+  expect(document.activeElement).toBe(gallery.parentElement)
+})
+
 test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보기에 반영한다', async () => {
   mount()
   fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
