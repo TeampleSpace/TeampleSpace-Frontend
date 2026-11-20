@@ -13,7 +13,15 @@
 .flow h2 { font-size: 18px; font-weight: 500; }
 .flow p { font: var(--text-meta); color: var(--color-secondary); }
 .flow ol { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.flow li button { display: flex; align-items: baseline; gap: var(--space-12); width: 100%; min-height: 46px; padding: var(--space-12); border: 0; border-radius: var(--radius-md); background: transparent; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.flow li { position: relative; }
+.flow li[data-moving] { opacity: .52; }
+.flow li[data-insert]::after { content: ''; position: absolute; inset-inline: 4px; height: 2px; border-radius: 1px; background: var(--color-primary); pointer-events: none; }
+.flow li[data-insert='before']::after { top: 0; }
+.flow li[data-insert='after']::after { bottom: 0; }
+.flow .grip { flex: 0 0 28px; height: 32px; margin-left: auto; align-self: center; display: grid; place-items: center; color: var(--color-tertiary); cursor: grab; touch-action: none; }
+.grip::before { content: ''; width: 10px; height: 15px; background: radial-gradient(circle, currentColor 1.3px, transparent 1.5px) 0 0 / 5px 5px; }
+.flow li[data-moving] .grip { cursor: grabbing; }
+.flow li button { display: flex; align-items: center; user-select: none; gap: var(--space-12); width: 100%; min-height: 46px; padding: 4px 4px 4px var(--space-12); border: 0; border-radius: var(--radius-md); background: transparent; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .flow li button:hover { background: var(--color-muted); }
 .flow li button[aria-current='true'] { background: var(--color-primary-soft); color: var(--color-primary); }
 .flow li button span { font: var(--text-meta); color: var(--color-secondary); }

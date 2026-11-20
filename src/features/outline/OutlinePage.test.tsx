@@ -159,3 +159,32 @@ test('AI 결과로 처음 구성 항목을 불러와도 작업 상태 컴포넌�
   await waitFor(() => expect(screen.getByRole('button', { name: 'AI 작업 결과 반영' })).toBe(trigger))
   expect(mounted).toHaveBeenCalledTimes(1)
 })
+
+test('여러 칸 옮긴 목차는 목적지를 확인한 뒤 표시된 순서로 저장한다', async () => {
+  const middle = { ...old, id: 'item-2', title: '조사 결과', position: 1 }
+  const last = { ...old, id: 'item-3', title: '해결 제안', position: 2 }
+  const items = [old, middle, last]
+  const reordered = [last, old, middle].map((item, position) => ({ ...item, position }))
+  vi.mocked(outlineApi.save).mockResolvedValue({ ...initial, items: reordered, version: 2 })
+  mount({ ...initial, items })
+  const flow = within(await screen.findByRole('navigation', { name: '발표 흐름' }))
+  const list = flow.getByRole('list')
+  const source = flow.getByRole('button', { name: /해결 제안/ })
+  source.setPointerCapture = vi.fn()
+  vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 150))
+  for (const [index, row] of flow.getAllByRole('listitem').entries()) {
+    vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 50 * index, 200, 50))
+  }
+  const pointer = { isPrimary: true, pointerId: 1, pointerType: 'mouse', button: 0, clientX: 80 }
+  fireEvent.pointerDown(source, { ...pointer, clientY: 120 })
+  fireEvent.pointerMove(source, { ...pointer, clientY: 12 })
+  fireEvent.pointerUp(source, { ...pointer, clientY: 12 })
+  const dialog = within(await screen.findByRole('dialog', { name: '목차 순서를 바꿀까요?' }))
+  expect(dialog.getByText(/첫 번째 목차 앞으로/)).toBeTruthy()
+  expect(outlineApi.save).not.toHaveBeenCalled()
+  fireEvent.click(dialog.getByRole('button', { name: '순서 저장' }))
+  await screen.findByText('목차 순서를 저장했어요')
+  const body = vi.mocked(outlineApi.save).mock.calls[0][1]
+  expect(body.expectedVersion).toBe(1)
+  expect(body.items.map((item) => item.id)).toEqual(reordered.map((item) => item.id))
+})
