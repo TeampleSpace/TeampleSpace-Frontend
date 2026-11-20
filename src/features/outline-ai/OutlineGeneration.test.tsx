@@ -19,17 +19,23 @@ const queued: Job = {
   id: 'job-1', projectId, targetId: projectId, type: 'outline_generation', targetType: 'outline',
   progress: 0, status: 'queued', createdAt: '', updatedAt: '', inputVersions: { outlineVersion: 1 },
 }
+const succeeded: Job = { ...queued, status: 'succeeded', progress: 100,
+  resultRef: { type: 'outline', projectId, outlineVersion: 2 },
+}
 
-function mount(enabled: boolean, onAccessError = vi.fn()) {
+function mount(enabled: boolean, onAccessError = vi.fn(), options: {
+  dirty?: boolean; onGenerated?: () => Promise<boolean>
+} = {}) {
   const current = capabilitiesExample as AuthCapabilities
   const capabilities = { ...current, featureFlags: { ...current.featureFlags, outlineGeneration: enabled } }
   const session = { user: null, capabilities, loading: false, error: undefined, refresh: vi.fn(), setUser: vi.fn() }
-  const onGenerated = vi.fn(async () => {})
-  render(<SessionContext value={session}>
-    <OutlineGeneration projectId={projectId} version={1} outlineHasItems={false} dirty={false}
+  const onGenerated = vi.fn(options.onGenerated ?? (async () => true))
+  const component = (dirty = false) => <SessionContext value={session}>
+    <OutlineGeneration projectId={projectId} version={1} outlineHasItems={false} dirty={dirty}
       onGenerated={onGenerated} onAccessError={onAccessError} />
-  </SessionContext>)
-  return onGenerated
+  </SessionContext>
+  const { rerender } = render(component(options.dirty))
+  return { onGenerated, setDirty: (dirty: boolean) => rerender(component(dirty)) }
 }
 
 function apiError(status: number, code: string, retryAfter?: number) {
@@ -58,10 +64,8 @@ test('기능이 비활성이면 생성과 작업 확인을 요청하지 않는�
 test('생성 응답이 끊겨도 같은 키와 본문으로 재시도하고 완료된 구성을 다시 읽는다', async () => {
   const create = vi.spyOn(outlineGenerationApi, 'create')
     .mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(queued)
-  vi.spyOn(materialsApi, 'job').mockResolvedValue({ ...queued, status: 'succeeded', progress: 100,
-    resultRef: { type: 'outline', projectId, outlineVersion: 2 },
-  })
-  const refresh = mount(true)
+  vi.spyOn(materialsApi, 'job').mockResolvedValue(succeeded)
+  const { onGenerated: refresh } = mount(true)
   fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
   const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
   fireEvent.click(await form.findByRole('checkbox', { name: source.title }))
@@ -80,7 +84,7 @@ test('재진입한 작업을 닫아도 유지하고 명시적 취소만 서버�
   vi.mocked(outlineGenerationApi.latest).mockResolvedValue(queued)
   vi.spyOn(materialsApi, 'job').mockResolvedValue(queued)
   const cancel = vi.spyOn(materialsApi, 'cancelJob').mockResolvedValue({ ...queued, status: 'canceled' })
-  const refresh = mount(true)
+  const { onGenerated: refresh } = mount(true)
   const open = await screen.findByRole('button', { name: '구성 생성 진행 보기' })
   fireEvent.click(open)
   const progress = within(await screen.findByRole('dialog', { name: '발표 구성을 만들고 있어요' }))
@@ -94,11 +98,34 @@ test('재진입한 작업을 닫아도 유지하고 명시적 취소만 서버�
 })
 
 test('구성을 조회한 직후 작업이 완료됐다면 다시 진입했을 때 결과를 불러온다', async () => {
-  vi.mocked(outlineGenerationApi.latest).mockResolvedValue({ ...queued, status: 'succeeded', progress: 100,
-    resultRef: { type: 'outline', projectId, outlineVersion: 2 },
-  })
-  const refresh = mount(true)
+  vi.mocked(outlineGenerationApi.latest).mockResolvedValue(succeeded)
+  const { onGenerated: refresh } = mount(true)
   await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+})
+
+test('미저장 편집을 마칠 때까지 백그라운드 생성 결과 적용을 미룬다', async () => {
+  vi.mocked(outlineGenerationApi.latest).mockResolvedValue(succeeded)
+  const { onGenerated, setDirty } = mount(true, undefined, { dirty: true })
+  fireEvent.click(await screen.findByRole('button', { name: '생성 결과 보기' }))
+  expect(await screen.findByText('편집을 마치면 생성한 발표 구성을 불러올 수 있어요')).toBeTruthy()
+  expect(onGenerated).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: '생성 결과 다시 불러오기' })).toBeNull()
+  setDirty(false)
+  expect(await screen.findByText('발표 구성을 만들었어요')).toBeTruthy()
+  expect(onGenerated).toHaveBeenCalledTimes(1)
+})
+
+test('결과 조회 중에 시작한 편집 때문에 결과 적용을 보류하면 완료로 표시하지 않는다', async () => {
+  vi.mocked(outlineGenerationApi.latest).mockResolvedValue(succeeded)
+  const onGenerated = vi.fn<() => Promise<boolean>>().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+  vi.spyOn(materialsApi, 'job').mockResolvedValue(succeeded)
+  mount(true, undefined, { onGenerated })
+  fireEvent.click(await screen.findByRole('button', { name: '생성 결과 보기' }))
+  expect(await screen.findByText('편집을 마치면 생성한 발표 구성을 불러올 수 있어요')).toBeTruthy()
+  expect(screen.queryByText('발표 구성을 만들었어요')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '생성 결과 다시 불러오기' }))
+  expect(await screen.findByText('발표 구성을 만들었어요')).toBeTruthy()
+  expect(onGenerated).toHaveBeenCalledTimes(2)
 })
 
 test('생성에 사용할 수 없어진 자료만 제외하고 입력과 나머지 선택을 유지한다', async () => {

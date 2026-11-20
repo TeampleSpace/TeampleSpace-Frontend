@@ -18,13 +18,14 @@ type Props = {
   version: number
   dirty: boolean
   outlineHasItems: boolean
-  onGenerated: () => Promise<void>
+  onGenerated: () => Promise<boolean>
   onAccessError: (reason: unknown) => void
 }
 
 type Request = { body: GenerationInput; key: string }
 type Choices = { items: MaterialSummary[]; nextCursor: string | null }
 type ChoicesFailure = { reason: unknown; cursor?: string }
+type ResultState = { jobId: string; status: 'applied' | 'deferred' }
 const maxSources = 20
 const maxInstructions = 1000
 
@@ -73,7 +74,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const [writeError, setWriteError] = useState<unknown>()
   const [pending, setPending] = useState<Request>()
   const [write, setWrite] = useState<'create' | 'cancel' | 'refresh' | null>(null)
-  const [checkedJobId, setCheckedJobId] = useState<string>()
+  const [result, setResult] = useState<ResultState>()
   const [readAttempt, setReadAttempt] = useState(0)
   const [retryUntil, setRetryUntil] = useState<number>()
   const [cancelDeniedFor, setCancelDeniedFor] = useState<string>()
@@ -84,6 +85,9 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const active = isActive(job)
   const activeJobId = active ? job?.id : undefined
   const completedJobId = job?.status === 'succeeded' ? job.id : undefined
+  const completedResult = result?.jobId === completedJobId ? result?.status : undefined
+  const resultApplied = completedResult === 'applied'
+  const resultWaiting = !resultApplied && (dirty || completedResult === 'deferred')
   const showProgress = view === 'job' && active
   const isConflictError = isConflict(writeError)
 
@@ -158,24 +162,30 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     return () => { controller.abort(); clearTimeout(timer) }
   }, [activeJobId, projectId, readAttempt])
 
-  async function refreshGenerated(result: Job, signal?: AbortSignal) {
-    const reference = outlineResultSchema.safeParse(result.resultRef)
-    const inputVersion = result.inputVersions?.outlineVersion
+  async function refreshGenerated(completed: Job, signal?: AbortSignal) {
+    if (dirty || signal?.aborted) return false
+    const reference = outlineResultSchema.safeParse(completed.resultRef)
+    const inputVersion = completed.inputVersions?.outlineVersion
     if (!reference.success || reference.data.projectId.toLowerCase() !== projectId.toLowerCase()
       || (typeof inputVersion === 'number' && reference.data.outlineVersion !== inputVersion + 1)) {
       throw new TransportError('invalid_response')
     }
-    if (reference.data.outlineVersion > version) await onGenerated()
-    if (!signal?.aborted) {
-      setCheckedJobId(result.id)
-      setSelected([])
-      setInstructions('')
-      setChoices(undefined)
+    setResult((current) => current?.jobId === completed.id && current.status === 'deferred' ? undefined : current)
+    if (reference.data.outlineVersion > version && !(await onGenerated())) {
+      if (!signal?.aborted) setResult({ jobId: completed.id, status: 'deferred' })
+      return false
     }
+    if (signal?.aborted) return false
+    setResult({ jobId: completed.id, status: 'applied' })
+    setSelected([])
+    setInstructions('')
+    setChoices(undefined)
+    return true
   }
 
   const applyCompleted = useEffectEvent(async (jobId: string, signal: AbortSignal) => {
-    if (signal.aborted || job?.id !== jobId) return
+    if (signal.aborted || dirty || job?.id !== jobId) return
+    setJobError(undefined)
     try { await refreshGenerated(job, signal) }
     catch (reason) {
       if (signal.aborted) return
@@ -185,11 +195,11 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   })
 
   useEffect(() => {
-    if (!completedJobId) return
+    if (!completedJobId || dirty || resultApplied) return
     const controller = new AbortController()
     void Promise.resolve().then(() => applyCompleted(completedJobId, controller.signal))
     return () => controller.abort()
-  }, [completedJobId])
+  }, [completedJobId, resultApplied, dirty])
 
   async function loadChoices(cursor?: string) {
     if (choicesLock.current) return
@@ -292,7 +302,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   }
 
   async function refresh() {
-    if (writeLock.current) return
+    if (writeLock.current || dirty) return
     writeLock.current = true
     setWrite('refresh')
     setJobError(undefined)
@@ -301,9 +311,8 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
         const latest = confirmJob(await materialsApi.job(job.id), projectId)
         if (latest.id !== job.id || latest.status !== 'succeeded') throw new TransportError('invalid_response')
         setJob(latest)
-        await refreshGenerated(latest)
-      } else await onGenerated()
-      setWriteError(undefined)
+        if (await refreshGenerated(latest)) setWriteError(undefined)
+      } else if (await onGenerated()) setWriteError(undefined)
     } catch (reason) {
       setJobError(reason)
       reportAccess(reason)
@@ -313,7 +322,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const hint = !enabled ? '현재 환경에서 AI 구성을 사용할 수 없어요' : dirty ? '변경 내용을 저장한 뒤 AI 구성을 만들 수 있어요' : undefined
   const busy = write !== null
   const freezeInput = busy || choicesLoading || Boolean(pending)
-  const retryAfterConflict = isConflictError && <Button variant="secondary" loading={write === 'refresh'} onClick={() => void refresh()}>최신 구성 확인</Button>
+  const retryAfterConflict = isConflictError && <Button variant="secondary" disabled={dirty} loading={write === 'refresh'} onClick={() => void refresh()}>최신 구성 확인</Button>
   const canCancel = active && !job?.cancelRequestedAt && cancelDeniedFor !== job?.id
 
   return <>
@@ -370,15 +379,18 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
             <p role="status">{job.cancelRequestedAt ? '취소 요청을 확인하고 있어요' : `${job.status === 'queued' ? '생성 대기 중' : '생성 중'} ${job.progress}%`}</p>
             <progress className={styles.progress} max={100} value={job.progress} aria-label="발표 구성 생성 진행률" />
           </div>}
-          {job.status === 'succeeded' && !jobError && <p role="status">
-            {checkedJobId === job.id ? '발표 구성을 만들었어요' : '생성한 발표 구성을 불러오고 있어요'}
+          {job.status === 'succeeded' && (resultWaiting || !jobError) && <p role="status">
+            {resultWaiting ? '편집을 마치면 생성한 발표 구성을 불러올 수 있어요'
+              : resultApplied ? '발표 구성을 만들었어요' : '생성한 발표 구성을 불러오고 있어요'}
           </p>}
+          {completedResult === 'deferred' && !dirty && !jobError && <Button variant="secondary" loading={write === 'refresh'}
+            onClick={() => void refresh()}>생성 결과 다시 불러오기</Button>}
           {job.status === 'failed' && <StatusPanel kind="error" title={job.error?.message || '발표 구성을 만들지 못했어요'} />}
           {job.status === 'canceled' && <p role="status">발표 구성 생성을 취소했어요</p>}
           <RequestError error={writeError} />
           {retryUntil && <p role="status" className={styles.note}>잠시 뒤 다시 시도할 수 있어요</p>}
           <RequestError error={jobError} action={
-            <Button variant="secondary" disabled={active && retryDelay(jobError) > 0} loading={write === 'refresh'}
+            <Button variant="secondary" disabled={active ? retryDelay(jobError) > 0 : dirty} loading={write === 'refresh'}
               onClick={() => active ? setReadAttempt((value) => value + 1) : void refresh()}>
               {active ? '진행 상태 다시 확인' : '생성 결과 다시 불러오기'}
             </Button>}
