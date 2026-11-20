@@ -28,6 +28,7 @@ export type OutlineEvidenceProps = {
   openRequest: number
   disabled: boolean
   onSaved: (outline: Outline) => void
+  onCompared: (outline: Outline) => void
   onReloadOutline: (keepItemId?: string) => Promise<Outline>
   onAccessError: (reason: unknown) => void
   onDirtyChange: (dirty: boolean) => void
@@ -398,7 +399,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
           {visibleSections.claim && <section className={styles.claim}><h3>핵심 주장</h3><p>{visibleSections.claim}</p></section>}
           <section className={styles.content}><h3>발표 내용</h3><p>{visibleSections.content || '입력한 발표 내용이 없어요'}</p></section>
           {Evidence && <Evidence projectId={project.id} outline={outline} item={selected} openRequest={evidenceRequest}
-            disabled={busy || conflict || uncertain || Boolean(modal)} onSaved={onEvidenceSaved} onReloadOutline={reloadOutline}
+            disabled={busy || conflict || uncertain || Boolean(modal)} onSaved={onEvidenceSaved} onCompared={setLatest} onReloadOutline={reloadOutline}
             onAccessError={onAccessError} onDirtyChange={setEvidenceDirty} />}
           {outline.items.length > 1 && <div className={styles.orderActions} aria-label="목차 순서 변경">
             <Button variant="text" disabled={selected.position === 0 || evidenceDirty} onClick={() => move(selected, -1)}>위로 이동</Button>

@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
-import { TransportError } from '../../shared/api/client.ts'
+import { ApiError, TransportError } from '../../shared/api/client.ts'
 import { materialsApi } from '../materials/api.ts'
 import type { MaterialSummary } from '../materials/model.ts'
 import { outlineApi } from './api.ts'
@@ -21,14 +21,15 @@ const outline: Outline = { projectId: 'project-1', version: 3, items: [
 const material = (id: string, title: string, status: MaterialSummary['status']): MaterialSummary => ({ id, title, status, kind: 'memo', projectId: outline.projectId,
   version: 2, pageCount: null, createdBy: { name: '팀원', userId: 'user-1' }, createdAt: '2026-11-20T00:00:00Z', updatedAt: '2026-11-20T00:00:00Z' })
 
-function mount() {
+function mount(latest?: Outline) {
   const onSaved = vi.fn()
   const onAccessError = vi.fn()
   const onDirtyChange = vi.fn()
   function Harness() {
     const [saved, setSaved] = useState(outline)
+    if (!saved.items.length) return <p>빈 발표 흐름</p>
     return <OutlineEvidence projectId={saved.projectId} item={saved.items[0]} outline={saved} openRequest={0} disabled={false}
-      onSaved={(next) => { setSaved(next); onSaved(next) }} onReloadOutline={() => Promise.resolve(saved)} onAccessError={onAccessError} onDirtyChange={onDirtyChange} />
+      onSaved={(next) => { setSaved(next); onSaved(next) }} onCompared={setSaved} onReloadOutline={() => Promise.resolve(latest ?? saved)} onAccessError={onAccessError} onDirtyChange={onDirtyChange} />
   }
   render(<Harness />)
   return onSaved
@@ -110,4 +111,17 @@ test('같은 자료를 다시 연결하면 최신 개정이 근거로 저장된�
   expect(vi.mocked(outlineApi.saveSources).mock.calls[0].slice(0, 2)).toEqual(['item-1', { expectedVersion: 3, sourceIds: ['material-1'] }])
   fireEvent.click(screen.getByRole('button', { name: '원문 보기' }))
   expect(await screen.findByRole('button', { name: 'latest-revision 닫기' })).toBeTruthy()
+})
+
+test('팀원이 삭제한 목차는 근거 선택을 닫을 때 발표 흐름에서도 사라진다', async () => {
+  mount({ ...outline, items: [], version: 4 })
+  vi.mocked(outlineApi.saveSources).mockRejectedValue(new ApiError(409, {
+    error: { code: 'VERSION_CONFLICT', message: '버전 충돌', retryable: false }, requestId: 'test',
+  }))
+  fireEvent.click(screen.getByRole('button', { name: '자료에서 찾기' }))
+  fireEvent.click(await screen.findByRole('button', { name: '1개 연결' }))
+  fireEvent.click(await screen.findByRole('button', { name: '최신 근거 확인' }))
+  await screen.findByText(/목차가 삭제되었어요/)
+  fireEvent.click(screen.getByRole('button', { name: '취소' }))
+  expect(await screen.findByText('빈 발표 흐름')).toBeTruthy()
 })
