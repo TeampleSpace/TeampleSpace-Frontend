@@ -3,15 +3,15 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import MaterialsPage from './MaterialsPage.tsx'
-import { projectsApi } from '../../projects/api.ts'
-import type { Project } from '../../projects/model.ts'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import type { User } from '../../auth/model.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
+import type { Project } from '../../../entities/project/model.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import type { User } from '../../../entities/session/model.ts'
 import { createMaterialsMock } from '../../../mocks/materials.ts'
 import type { MaterialsMock } from '../../../mocks/materials.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 서버 연동 검증이 아니다
-vi.mock('../../projects/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
+vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
 
 const member = '0193a000-0000-7000-8000-0000000000d2'
 let mock: MaterialsMock

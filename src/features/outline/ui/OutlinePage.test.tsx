@@ -4,17 +4,17 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { useEffect } from 'react'
 import { ApiError, TransportError } from '../../../shared/api/client.ts'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import { materialsApi } from '../../materials/api.ts'
-import { projectsApi } from '../../projects/api.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import { materialsApi } from '../../../entities/material/api.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
 import { outlineApi } from '../api.ts'
 import { readOutlineSummary, writeOutlineSummary } from '../model.ts'
 import type { Outline, OutlineItem } from '../model.ts'
 import OutlinePage from './OutlinePage.tsx'
 import type { OutlineAiSlotProps, OutlineEvidenceProps } from './OutlinePage.tsx'
 
-vi.mock('../../materials/api.ts', () => ({ materialsApi: { list: vi.fn() } }))
-vi.mock('../../projects/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
+vi.mock('../../../entities/material/api.ts', () => ({ materialsApi: { list: vi.fn() } }))
+vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
 vi.mock('../api.ts', () => ({ outlineApi: { get: vi.fn(), save: vi.fn() } }))
 
 const project = { id: 'project-1', name: '캠퍼스', topic: null, presentationConstraints: null, ownerId: 'user-1', version: 1,

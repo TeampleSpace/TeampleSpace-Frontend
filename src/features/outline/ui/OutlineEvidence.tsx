@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ComponentType } from 'react'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { Field } from '../../../shared/ui/Field.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
-import { materialsApi } from '../../materials/api.ts'
-import { isUncertain } from '../../materials/errors.ts'
-import { kindLabels } from '../../materials/model.ts'
-import type { Material, MaterialList, MaterialSummary } from '../../materials/model.ts'
-import { SourceViewer } from '../../materials/ui/SourceViewer.tsx'
+import { materialsApi } from '../../../entities/material/api.ts'
+import { isUncertain } from '../../../entities/material/errors.ts'
+import { kindLabels } from '../../../entities/material/model.ts'
+import type { Material, MaterialList, MaterialSummary } from '../../../entities/material/model.ts'
 import { outlineApi } from '../api.ts'
 import { outlineLimits } from '../model.ts'
 import type { Outline, OutlineItem, OutlineSource } from '../model.ts'
@@ -21,8 +21,16 @@ const equalIds = (left: string[], right: string[]) => left.length === right.leng
 
 type PickerState = { version: number; original: string[] }
 
-export default function OutlineEvidence(props: OutlineEvidenceProps) {
-  const { item, outline, openRequest, disabled, onAccessError } = props
+// 자료 원문 보기는 자료 기능의 화면이라 직접 가져오지 않고 넘겨받는다
+export type OutlineSourceViewerProps = {
+  material: Pick<Material, 'id' | 'title'> & Partial<Pick<Material, 'currentRevision' | 'createdBy'>>
+  revisionId?: string
+  onClose: () => void
+  onError: (reason: unknown) => void
+}
+
+export default function OutlineEvidence(props: OutlineEvidenceProps & { sourceViewer: ComponentType<OutlineSourceViewerProps> }) {
+  const { item, outline, openRequest, disabled, onAccessError, sourceViewer: SourceViewer } = props
   const [seenRequest, setSeenRequest] = useState(0)
   const [picker, setPicker] = useState<PickerState | null>(null)
   const [viewer, setViewer] = useState<OutlineSource | null>(null)

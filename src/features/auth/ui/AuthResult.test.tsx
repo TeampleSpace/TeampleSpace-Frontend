@@ -2,8 +2,8 @@ import { expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router'
 import AuthResult from './AuthResult.tsx'
-import { SessionContext } from '../sessionContext.ts'
-import type { User } from '../model.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import type { User } from '../../../entities/session/model.ts'
 
 const user: User = {
   id: 'user-1', name: '팀원', email: 'test@example.test', canEmailReauth: true,

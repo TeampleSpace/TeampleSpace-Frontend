@@ -3,15 +3,13 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { ApiError, TransportError } from '../../../shared/api/client.ts'
-import { materialsApi } from '../../materials/api.ts'
-import type { MaterialSummary } from '../../materials/model.ts'
+import { materialsApi } from '../../../entities/material/api.ts'
+import type { MaterialSummary } from '../../../entities/material/model.ts'
 import { outlineApi } from '../api.ts'
 import OutlineEvidence from './OutlineEvidence.tsx'
 import type { Outline } from '../model.ts'
 
-vi.mock('../../materials/api.ts', () => ({ materialsApi: { get: vi.fn(), list: vi.fn() } }))
-vi.mock('../../materials/ui/SourceViewer.tsx', () => ({ SourceViewer: ({ revisionId, onClose }: { revisionId: string; onClose: () => void }) =>
-  <button type="button" onClick={onClose}>{revisionId} 닫기</button> }))
+vi.mock('../../../entities/material/api.ts', () => ({ materialsApi: { get: vi.fn(), list: vi.fn() } }))
 vi.mock('../api.ts', () => ({ outlineApi: { saveSources: vi.fn() } }))
 
 const source = { materialId: 'material-1', revisionId: 'saved-revision', sourceVersion: 1, sourceDeleted: false }
@@ -21,6 +19,10 @@ const outline: Outline = { projectId: 'project-1', version: 3, items: [
 const material = (id: string, title: string, status: MaterialSummary['status']): MaterialSummary => ({ id, title, status, kind: 'memo', projectId: outline.projectId,
   version: 2, pageCount: null, createdBy: { name: '팀원', userId: 'user-1' }, createdAt: '2026-11-20T00:00:00Z', updatedAt: '2026-11-20T00:00:00Z' })
 
+function SourceViewer({ revisionId, onClose }: { revisionId?: string; onClose: () => void }) {
+  return <button type="button" onClick={onClose}>{revisionId} 닫기</button>
+}
+
 function mount(latest?: Outline) {
   const onSaved = vi.fn()
   const onAccessError = vi.fn()
@@ -28,7 +30,7 @@ function mount(latest?: Outline) {
   function Harness() {
     const [saved, setSaved] = useState(outline)
     if (!saved.items.length) return <p>빈 발표 흐름</p>
-    return <OutlineEvidence projectId={saved.projectId} item={saved.items[0]} outline={saved} openRequest={0} disabled={false}
+    return <OutlineEvidence sourceViewer={SourceViewer} projectId={saved.projectId} item={saved.items[0]} outline={saved} openRequest={0} disabled={false}
       onSaved={(next) => { setSaved(next); onSaved(next) }} onCompared={setSaved} onReloadOutline={() => Promise.resolve(latest ?? saved)} onAccessError={onAccessError} onDirtyChange={onDirtyChange} />
   }
   render(<Harness />)

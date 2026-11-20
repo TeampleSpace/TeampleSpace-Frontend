@@ -7,13 +7,13 @@ import { CreateProject } from './CreateProject.tsx'
 import { ProjectSettings } from './ProjectSettings.tsx'
 import Invitation from './Invitation.tsx'
 import { JoinProject } from './JoinProject.tsx'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import type { User } from '../../auth/model.ts'
-import type { Project } from '../model.ts'
-import { projectsApi } from '../api.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import type { User } from '../../../entities/session/model.ts'
+import type { Project } from '../../../entities/project/model.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
 import { ApiError, TransportError } from '../../../shared/api/client.ts'
 
-vi.mock('../api.ts', () => ({ projectsApi: { create: vi.fn(), update: vi.fn(), invitation: vi.fn(), accept: vi.fn() } }))
+vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { create: vi.fn(), update: vi.fn(), invitation: vi.fn(), accept: vi.fn() } }))
 const project: Project = { id: 'project-1', name: '팀 과제', topic: null, presentationConstraints: null,
   ownerId: 'owner', version: 1, memberCount: 2, createdAt: '2026-11-18T00:00:00Z', updatedAt: '2026-11-18T00:00:00Z' }
 const member: User = { id: 'member', name: '팀원', email: 'member@example.test', canEmailReauth: true,

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { api } from '../auth/api.ts'
+import { api } from '../../entities/session/api.ts'
 
 const version = z.number().int().positive()
 export const designColor = /^#[0-9a-f]{6}$/i

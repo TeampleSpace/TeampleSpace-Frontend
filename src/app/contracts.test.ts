@@ -9,8 +9,8 @@ import materialStageSchema from '../../contracts/schemas/stage-2.schema.json'
 import outlineStageSchema from '../../contracts/schemas/stage-3.schema.json'
 import designStageSchema from '../../contracts/schemas/stage-3-design.schema.json'
 import generationStageSchema from '../../contracts/schemas/stage-3-generation.schema.json'
-import { authCapabilitiesSchema, userSchema, challengeSchema, loginSchema } from '../features/auth/model.ts'
-import { projectSchema, projectListSchema, memberListSchema, invitationSchema, acceptSchema, removalSchema } from '../features/projects/model.ts'
+import { authCapabilitiesSchema, userSchema, challengeSchema, loginSchema } from '../entities/session/model.ts'
+import { projectSchema, projectListSchema, memberListSchema, invitationSchema, acceptSchema, removalSchema } from '../entities/project/model.ts'
 import {
   editorSnapshotSchema,
   elementChangeSchema,
@@ -20,12 +20,12 @@ import {
   presentationSchema,
 } from '../entities/presentation/schema.ts'
 import { createEditorSession } from '../features/editor/session.ts'
-import { createMaterialsApi } from '../features/materials/api.ts'
+import { createMaterialsApi } from '../entities/material/api.ts'
 import { outlineSchema } from '../features/outline/model.ts'
 import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema, materialNoteSchema,
   materialSchema, materialSourceSchema, materialSummarySchema, uploadTicketSchema,
-} from '../features/materials/model.ts'
+} from '../entities/material/model.ts'
 import { createMaterialsMock } from '../mocks/materials.ts'
 import { exampleSnapshot } from '../mocks/example.ts'
 import { createMockServer } from '../mocks/server.ts'

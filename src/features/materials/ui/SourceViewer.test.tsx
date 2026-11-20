@@ -4,15 +4,15 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import MaterialsPage from './MaterialsPage.tsx'
 import { SourceViewer } from './SourceViewer.tsx'
-import { projectsApi } from '../../projects/api.ts'
-import type { Project } from '../../projects/model.ts'
-import { SessionContext } from '../../auth/sessionContext.ts'
-import type { User } from '../../auth/model.ts'
+import { projectsApi } from '../../../entities/project/api.ts'
+import type { Project } from '../../../entities/project/model.ts'
+import { SessionContext } from '../../../entities/session/sessionContext.ts'
+import type { User } from '../../../entities/session/model.ts'
 import { createMaterialsMock } from '../../../mocks/materials.ts'
 import type { MaterialsMock } from '../../../mocks/materials.ts'
 
 // PDF.js는 테스트 환경에서 돌지 않아 문서 열기만 바꾼다. 실제 PDF 표시는 브라우저에서 확인한다
-vi.mock('../../projects/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
+vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
 const pdf = vi.hoisted(() => ({ opened: [] as string[], failOpen: 0, failRender: 0, rendered: [] as number[] }))
 vi.mock('../pdf.ts', () => ({
   openPdf: (url: string) => {

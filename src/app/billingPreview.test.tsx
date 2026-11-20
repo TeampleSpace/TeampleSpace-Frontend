@@ -8,8 +8,8 @@ import challenge from '../../contracts/examples/auth-challenge-response.json'
 import user from '../../contracts/examples/auth-user.json'
 import capabilities from '../../contracts/examples/capabilities.json'
 import projects from '../../contracts/examples/project-list.json'
-import { oauthUrl } from '../features/auth/model.ts'
-import { setBillingPreviewReturn, takeBillingPreviewReturn } from '../features/auth/billingPreviewReturn.ts'
+import { oauthUrl } from '../entities/session/model.ts'
+import { setBillingPreviewReturn, takeBillingPreviewReturn } from '../entities/session/billingPreviewReturn.ts'
 import { router } from './router.tsx'
 
 function open(path: string, authenticated = true, currentUser = user) {
