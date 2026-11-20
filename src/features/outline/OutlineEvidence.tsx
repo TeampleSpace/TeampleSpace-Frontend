@@ -46,9 +46,9 @@ export default function OutlineEvidence(props: OutlineEvidenceProps) {
   }, [sourceIds, onAccessError])
 
   const onCloseViewer = () => setViewer(null)
-  const setSaved = (next: Outline) => {
+  const setSaved = (next: Outline, keepOpen = false) => {
     props.onSaved(next)
-    setPicker(null)
+    if (!keepOpen) setPicker(null)
   }
 
   return <section className={styles.section}>
@@ -78,7 +78,8 @@ export default function OutlineEvidence(props: OutlineEvidenceProps) {
   </section>
 }
 
-type PickerProps = OutlineEvidenceProps & { initial: PickerState; onClose: () => void }
+type PickerProps = Omit<OutlineEvidenceProps, 'onSaved'> & { initial: PickerState; onClose: () => void; onSaved: (outline: Outline, keepOpen?: boolean) => void }
+type SaveCommand = { body: { expectedVersion: number; sourceIds: string[] }; key: string }
 
 function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, onReloadOutline, onAccessError, onDirtyChange }: PickerProps) {
   const [version, setVersion] = useState(initial.version)
@@ -98,12 +99,14 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
   const [deleted, setDeleted] = useState(false)
   const [discard, setDiscard] = useState(false)
   const latestRequest = useRef(0)
-  const pending = useRef<{ key: string; input: string } | null>(null)
+  const pending = useRef<SaveCommand | null>(null)
+  const [uncertain, setUncertain] = useState(false)
+  const [recovered, setRecovered] = useState(false)
   const lock = useRef(false)
   const dirty = !equalIds(selected, original)
-  const conflict = serverConflict || version !== outline.version
+  const conflict = !uncertain && (serverConflict || version !== outline.version)
 
-  useEffect(() => { onDirtyChange(dirty || busy); return () => onDirtyChange(false) }, [dirty, busy, onDirtyChange])
+  useEffect(() => { onDirtyChange(dirty || busy || uncertain); return () => onDirtyChange(false) }, [dirty, busy, uncertain, onDirtyChange])
 
   const load = useCallback(async (request: number, signal?: AbortSignal, cursor?: string) => {
     try {
@@ -139,7 +142,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
 
   function requestClose() {
     if (busy) return
-    if (dirty) setDiscard(true)
+    if (dirty || uncertain) setDiscard(true)
     else onClose()
   }
 
@@ -168,16 +171,30 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
 
   async function save() {
     if (lock.current || conflict || retryUntil) return
-    if (!dirty && !item.sourceRefs.some((source) => source.sourceDeleted)) { onClose(); return }
-    const body = { expectedVersion: version, sourceIds: selected }
-    const input = JSON.stringify(body)
-    if (pending.current?.input !== input) pending.current = { input, key: crypto.randomUUID() }
+    const existing = pending.current
+    if (!existing && !selected.length && !item.sourceRefs.length) { onClose(); return }
+    const command = existing ?? { body: { expectedVersion: version, sourceIds: selected }, key: crypto.randomUUID() }
+    pending.current = command
     lock.current = true
     setBusy(true)
     setError(undefined)
-    try { onSaved(await outlineApi.saveSources(item.id, body, pending.current.key)) }
+    setRecovered(false)
+    try {
+      const saved = await outlineApi.saveSources(item.id, command.body, command.key)
+      pending.current = null
+      setUncertain(false)
+      const target = saved.items.find((entry) => entry.id === item.id)
+      if (existing && target && !equalIds(selected, existing.body.sourceIds)) {
+        setVersion(saved.version)
+        setOriginal(selectableIds(target))
+        setRecovered(true)
+        onSaved(saved, true)
+      } else onSaved(saved)
+    }
     catch (reason) {
-      if (!isUncertain(reason)) pending.current = null
+      const unknownResult = isUncertain(reason)
+      if (!unknownResult) pending.current = null
+      setUncertain(unknownResult)
       if (reason instanceof ApiError) {
         if (reason.code === 'VERSION_CONFLICT' || reason.code === 'NOT_FOUND') setServerConflict(true)
         if (reason.retryAfterSeconds) setRetryUntil(Date.now() + reason.retryAfterSeconds * 1000)
@@ -215,6 +232,8 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
         {selected.length === outlineLimits.sources && <p className={styles.empty}>목차 한 개에 근거 자료를 20개까지 연결할 수 있어요.</p>}
         {original.length > 0 && <p className={styles.empty}>연결을 저장하면 선택한 자료의 최신 개정이 근거로 저장돼요.</p>}
         {item.sourceRefs.some((source) => source.sourceDeleted) && <p className={styles.empty}>저장하면 삭제된 자료의 연결을 제거해요.</p>}
+        {uncertain && <p className={styles.empty}>다시 연결하면 이전 요청의 결과를 먼저 확인해요.</p>}
+        {recovered && <p role="status">이전 저장 결과를 확인했어요. 새 선택을 저장하려면 다시 연결해 주세요.</p>}
         {conflict && <div className={styles.conflict} role="alert">
           <strong>다른 곳에서 발표 구성이 바뀌었어요</strong>
           {deleted ? <p>목차가 삭제되었어요. 이 항목에 근거 자료를 연결할 수 없어요.</p>
@@ -224,7 +243,7 @@ function EvidencePicker({ projectId, item, outline, initial, onClose, onSaved, o
         {!(error instanceof ApiError && error.code === 'VERSION_CONFLICT') && <RequestError error={error} />}
       </div>
     </Modal>
-    {discard && <Modal open size="confirm" title="저장하지 않은 선택이 있어요" description="닫으면 선택한 자료가 저장되지 않아요" onClose={() => setDiscard(false)}
+    {discard && <Modal open size="confirm" title={uncertain ? '이전 저장 결과를 확인하지 못했어요' : '저장하지 않은 선택이 있어요'} description="닫으면 새로 선택한 자료가 저장되지 않아요" onClose={() => setDiscard(false)}
       footer={<><Button variant="secondary" onClick={() => setDiscard(false)}>계속 선택</Button><Button onClick={onClose}>닫기</Button></>} />}
   </>
 }
