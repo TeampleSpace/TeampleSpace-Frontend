@@ -17,3 +17,7 @@
 @media (max-width: 440px) {
   .sources li { flex-wrap: wrap; gap: var(--space-8); }
 }
+
+/* 움직임 */
+.choice { transition: background-color var(--motion-fast) var(--motion-ease-out); }
+.conflict { animation: var(--motion-feedback-enter); }

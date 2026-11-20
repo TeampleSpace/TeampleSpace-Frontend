@@ -60,3 +60,14 @@
   .flow { min-height: 0; }
   .flow ol { max-height: 260px; overflow-y: auto; padding: 2px; }
 }
+
+/* 움직임. 시간과 곡선은 tokens.css의 값을 쓴다 */
+.flow li { transition: opacity var(--motion-fast) var(--motion-ease-out); }
+.flow li button { transition: background-color var(--motion-fast) var(--motion-ease-out), color var(--motion-fast) var(--motion-ease-out); }
+.flow li button span, .grip { transition: color var(--motion-fast) var(--motion-ease-out); }
+.flow li button:hover .grip { color: var(--color-secondary); }
+.flow li[data-insert]::after { animation: var(--motion-fade-enter); }
+.notice, .conflict { animation: var(--motion-feedback-enter); }
+.readyCount, .callout { animation: var(--motion-content-enter); }
+.linkAction { transition: background-color var(--motion-fast) var(--motion-ease-out); }
+.linkAction:active { translate: 0 1px; }

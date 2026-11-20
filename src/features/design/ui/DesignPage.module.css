@@ -297,3 +297,14 @@ p.notice + p.notice { margin-top: var(--space-16); }
   .header { align-items: flex-start; flex-wrap: wrap; }
   .card { grid-template-columns: minmax(72px, 112px) minmax(0, 1fr); }
 }
+
+/* 움직임. 시간과 곡선은 tokens.css의 값을 쓴다 */
+.modes button { transition: color var(--motion-fast) var(--motion-ease-out), border-color var(--motion-fast) var(--motion-ease-out); }
+.custom, .preview { animation: var(--motion-content-enter); }
+.palette button { transition: background-color var(--motion-fast) var(--motion-ease-out); }
+.palette button::before { transition: scale var(--motion-fast) var(--motion-ease-out); }
+.palette button:not(:disabled):hover::before { scale: 1.08; }
+.palette button:not(:disabled):active::before { scale: .94; }
+.slide { transition: background-color var(--motion-normal) var(--motion-ease-out); }
+.slideContext, .slideTitle, .slideBody { transition: color var(--motion-normal) var(--motion-ease-out); }
+.returnLink { transition: background-color var(--motion-fast) var(--motion-ease-out); }
