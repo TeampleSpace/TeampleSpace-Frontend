@@ -63,6 +63,12 @@ Vercel에서의 경로 처리는 `vercel.json`이 정한다.
 
 API 주소가 바뀌면 `vercel.json`의 `destination`을 고친다. 백엔드의 `FRONTEND_ORIGIN`과 `BACKEND_ORIGIN`에는 둘 다 Vercel 운영 주소를 넣는다. 미리보기 배포는 주소가 달라 로그인과 저장이 되지 않는다.
 
+## 약관 문서
+
+`public/legal`의 이용약관과 개인정보 처리방침은 정식 문서가 나오기 전까지 쓰는 임시 문서다. 운영 주소에서 `/legal/terms.html`, `/legal/privacy.html`로 열린다.
+
+백엔드의 `TERMS_URL`, `PRIVACY_URL`에 두 문서의 운영 주소를 넣고 `TERMS_VERSION`, `PRIVACY_VERSION`에는 문서에 적은 버전을 넣는다. 문서 내용을 바꾸면 문서의 버전과 시행일, 백엔드의 버전 값을 함께 바꾼다.
+
 ## CI
 
 PR과 `main` 푸시에서 GitHub Actions가 설치, 린트, 테스트, 빌드를 실행한다. 설정은 `.github/workflows/ci.yml`에 있다.
