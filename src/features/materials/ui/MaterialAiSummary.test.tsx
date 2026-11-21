@@ -44,6 +44,15 @@ test('새 요약을 만들 수 없어도 저장한 요약을 표시한다', () =
   expect(screen.getByText('팀 회의 결과를 정리했어요.')).toBeTruthy()
   expect(screen.queryByText('원문 미리보기')).toBeNull()
   expect(screen.queryByRole('button', { name: 'AI 요약 만들기' })).toBeNull()
+  expect(screen.getByText('AI가 자료를 바탕으로 정리한 요약이에요. 원문과 함께 확인하세요.')).toBeTruthy()
+})
+
+test('요약이 없으면 요청할 때만 만든다는 안내를 AI 요약을 쓸 수 있을 때만 보여 준다', () => {
+  mount(material, true)
+  expect(screen.getByText(/요청할 때만 만들어요/)).toBeTruthy()
+  cleanup()
+  mount(material, false)
+  expect(screen.queryByText(/요청할 때만 만들어요/)).toBeNull()
 })
 
 test('요약은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 복구한다', async () => {
