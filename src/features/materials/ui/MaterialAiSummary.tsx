@@ -106,8 +106,6 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
     </p> : failed ? <p role="alert" className={styles.listNote}>
       {job?.status === 'canceled' ? '요약이 취소됐어요.' : job?.error?.message ?? '요약을 만들지 못했어요.'}
     </p> : <p className={styles.listNote}>{enabled ? '아직 요약이 없어요.' : '이 환경에서는 AI 요약을 만들 수 없어요.'}</p>}
-    {summary ? <p className={styles.listNote}>AI가 자료를 바탕으로 정리한 요약이에요. 원문과 함께 확인하세요.</p>
-      : enabled && <p className={styles.listNote}>AI 요약은 버튼을 눌러 요청할 때만 만들어요. 자료를 올리고 분석하는 과정에서는 AI를 쓰지 않아요.</p>}
     <RequestError error={pollError} action={<Button variant="text" onClick={() => setAttempt((value) => value + 1)}>상태 다시 확인</Button>} />
     <Modal open={open} size="confirm" title="자료를 AI로 요약할까요?"
       description="이 자료의 제목과 원문 일부가 AI 서비스로 전달돼요." onClose={close}
