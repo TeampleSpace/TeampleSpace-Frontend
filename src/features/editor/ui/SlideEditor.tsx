@@ -338,7 +338,7 @@ function Workspace({
                   label={axis.toUpperCase()}
                   value={selected.geometry[axis]}
                   disabled={locked(selected.id)}
-                  onCommit={(value) =>
+                  onChange={(value) =>
                     session.edit(selected.id, { geometry: { ...selected.geometry, [axis]: value } })
                   }
                 />
@@ -376,32 +376,20 @@ function Workspace({
   )
 }
 
-// 요소 위치 한 칸. 입력란을 벗어나거나 Enter를 누를 때 반영한다
-// 다른 요소를 골라 입력란이 사라질 때도 입력하던 값을 먼저 반영한다
+// 요소 위치 한 칸. 입력하는 대로 편집 세션에 반영해 다른 입력과 같은 방식으로 저장하고 보호한다
 function PositionField({
   label,
   value,
   disabled,
-  onCommit,
+  onChange,
 }: {
   label: string
   value: number
   disabled: boolean
-  onCommit: (value: number) => void
+  onChange: (value: number) => void
 }) {
+  // 입력하는 동안에는 지우는 중인 빈 값도 그대로 보여 준다
   const [draft, setDraft] = useState<string>()
-  const latest = useRef({ draft, value, onCommit })
-  useEffect(() => {
-    latest.current = { draft, value, onCommit }
-  })
-
-  function commit() {
-    const current = latest.current
-    if (current.draft === undefined || current.draft.trim() === '') return
-    const next = Number(current.draft)
-    if (Number.isFinite(next) && next !== current.value) current.onCommit(next)
-  }
-  useEffect(() => commit, [])
 
   return (
     <label>
@@ -411,11 +399,13 @@ function PositionField({
         step={1}
         value={draft ?? value}
         disabled={disabled}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => {
-          commit()
-          setDraft(undefined)
+        onChange={(event) => {
+          const text = event.target.value
+          setDraft(text)
+          const next = Number(text)
+          if (text.trim() !== '' && Number.isFinite(next) && next !== value) onChange(next)
         }}
+        onBlur={() => setDraft(undefined)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur()
         }}
