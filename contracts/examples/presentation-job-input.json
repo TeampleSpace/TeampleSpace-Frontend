@@ -1,0 +1,48 @@
+{
+  "snapshot": {
+    "schemaVersion": 1,
+    "outline": {
+      "projectId": "10000000-0000-4000-8000-000000000001",
+      "version": 2,
+      "items": [
+        {
+          "id": "10000000-0000-4000-8000-000000000002",
+          "title": "발표 배경",
+          "summary": "문제와 조사 범위를 설명한다",
+          "position": 0,
+          "sourceRefs": [
+            {
+              "materialId": "10000000-0000-4000-8000-000000000003",
+              "revisionId": "10000000-0000-4000-8000-000000000004",
+              "sourceVersion": 1,
+              "sourceDeleted": false
+            }
+          ]
+        }
+      ]
+    },
+    "designSettings": {
+      "version": 3,
+      "mode": "custom",
+      "templateId": null,
+      "templateVersion": null,
+      "custom": {
+        "name": "우리 팀 발표 스타일",
+        "font": "Pretendard",
+        "primaryColor": "#2864E8",
+        "guidelines": "핵심 주장을 크게 쓰고 출처를 표기"
+      },
+      "updatedAt": "2026-11-20T00:01:00Z"
+    },
+    "sources": [
+      {
+        "materialId": "10000000-0000-4000-8000-000000000003",
+        "revisionId": "10000000-0000-4000-8000-000000000004",
+        "sourceVersion": 1,
+        "materialVersion": 2
+      }
+    ]
+  },
+  "model": "configured-model",
+  "promptVersion": "presentation-v1"
+}

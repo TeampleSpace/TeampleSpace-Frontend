@@ -520,6 +520,16 @@
     "valid": true
   },
   {
+    "example": "presentation-job-input.json",
+    "schema": "stage-3-generation.schema.json#/$defs/PresentationJobInput",
+    "valid": true
+  },
+  {
+    "example": "presentation-job-result.json",
+    "schema": "stage-3-generation.schema.json#/$defs/PresentationJobResult",
+    "valid": true
+  },
+  {
     "example": "invalid/presentation-generation-unset-design.json",
     "schema": "stage-3-generation.schema.json#/$defs/PresentationGenerationSnapshot",
     "valid": false

@@ -5,6 +5,13 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-22 첫 발표 자료 생성 작업 추가
+
+- 발표 자료 생성 작업 등록과 고정 입력, 결과 참조 형식, `featureFlags.presentationGeneration`을 추가
+- 작업 실패 코드 `JOB_PRESENTATION_PROVIDER_UNAVAILABLE`, `JOB_PRESENTATION_INVALID_RESULT`, `JOB_PRESENTATION_ACCESS_REVOKED`를 추가
+- 성공하면 `presentation.replaced` 이벤트를 보낸다. 받은 화면은 동기화 스냅샷을 다시 읽는다
+- 직접 입력에서 고른 프로젝트 글꼴은 텍스트 `fontFamily`에 `ProjectFont-{fontAssetId}`로 적는다
+
 ## 2026-11-20 편집 경로의 HTTP 공개
 
 - 요소 수정, 동기화 스냅샷, 이벤트 구독을 HTTP 경로로 열었다. 스키마와 예제는 바뀌지 않았다
