@@ -126,15 +126,19 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
     return () => { controller.abort(); clearTimeout(timer) }
   }, [activeJobId, projectId, readAttempt])
 
-  const finish = useEffectEvent(async (done: Job) => {
-    if (finished.current === done.id) return
+  // 만든 문서를 불러온다. 실패하면 완료 안내에서 다시 불러올 수 있다
+  async function complete(done: Job) {
     finished.current = done.id
     const result = presentationResultSchema.safeParse(done.resultRef)
     if (!result.success || result.data.projectId.toLowerCase() !== projectId.toLowerCase()) {
       setJobError(new TransportError('invalid_response'))
       return
     }
+    setJobError(undefined)
     try { await onCompleted?.() } catch (reason) { setJobError(reason) }
+  }
+  const finish = useEffectEvent((done: Job) => {
+    if (finished.current !== done.id) void complete(done)
   })
   useEffect(() => {
     const done = job?.status === 'succeeded' ? job : undefined
@@ -299,7 +303,8 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
         {failed && <p>{job?.error?.message || '잠시 후 다시 시도해 주세요.'}</p>}
         <RequestError error={writeError} />
         <RequestError error={jobError} action={active
-          ? <Button variant="secondary" onClick={() => setReadAttempt((value) => value + 1)}>진행 상태 다시 확인</Button> : undefined} />
+          ? <Button variant="secondary" onClick={() => setReadAttempt((value) => value + 1)}>진행 상태 다시 확인</Button>
+          : succeeded && job ? <Button variant="secondary" onClick={() => void complete(job)}>결과 다시 불러오기</Button> : undefined} />
       </Modal>
     </div>
     <Modal open={view === 'cancel'} size="confirm" title="생성을 취소할까요?" description="취소된 초안은 저장되지 않습니다."
