@@ -20,9 +20,6 @@ import styles from './PresentationGeneration.module.css'
 type Props = {
   projectId: string
   projectName?: string
-  // 저장하지 않은 디자인이 있으면 만들지 않는다
-  dirty?: boolean
-  primary?: boolean
   onCompleted?: () => Promise<void> | void
   // 버튼을 놓을 자리를 정한다. 모달은 버튼이 사라져도 계속 보인다
   children?: (trigger: ReactNode) => ReactNode
@@ -61,7 +58,7 @@ export default function PresentationGeneration(props: Props) {
   return <Generation key={props.projectId} {...props} />
 }
 
-function Generation({ projectId, projectName, dirty = false, primary = true, onCompleted, children }: Props) {
+function Generation({ projectId, projectName, onCompleted, children }: Props) {
   const { capabilities } = useSession()
   const enabled = capabilities?.featureFlags.presentationGeneration === true
   const navigate = useNavigate()
@@ -180,7 +177,7 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
   }
 
   async function start() {
-    if (writeLock.current || !summary || summary.blocker || !enabled || dirty) return
+    if (writeLock.current || !summary || summary.blocker || !enabled) return
     const command = pending ?? { body: summary.request, key: crypto.randomUUID() }
     setPending(command)
     writeLock.current = true
@@ -229,12 +226,12 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
     }
   }
 
-  const hint = !enabled ? '현재 환경에서 PPT 생성을 사용할 수 없어요' : dirty ? '디자인을 저장한 뒤 PPT를 만들 수 있어요' : undefined
+  const hint = enabled ? undefined : '현재 환경에서 PPT 생성을 사용할 수 없어요'
   const showJob = active || succeeded
   const trigger = <span className={styles.trigger}>
-    <Button variant={primary && !showJob ? 'primary' : 'secondary'} disabled={!showJob && Boolean(hint)}
+    <Button variant={showJob ? 'secondary' : 'primary'} disabled={!showJob && Boolean(hint)}
       aria-describedby={!showJob && hint ? hintId : undefined} onClick={() => showJob ? setView('job') : open()}>
-      {active ? '생성 진행 보기' : succeeded ? '생성 결과 보기' : 'PPT 초안 만들기'}
+      {active ? '생성 진행 보기' : succeeded ? '생성 결과 보기' : 'PPT 만들기'}
     </Button>
     {!showJob && hint && <span className={styles.note} id={hintId}>{hint}</span>}
   </span>
@@ -252,7 +249,7 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
       description="검토한 발표 구성과 근거 자료로 초안을 만듭니다." onClose={() => setView(null)}
       footer={<>
         <Button variant="secondary" onClick={() => goTo('design')}>디자인 다시 보기</Button>
-        <Button disabled={!summary || Boolean(summary.blocker) || dirty || !enabled} loading={write === 'create'}
+        <Button disabled={!summary || Boolean(summary.blocker) || !enabled} loading={write === 'create'}
           onClick={() => void start()}>{pending ? '생성 요청 다시 확인' : '초안 생성'}</Button>
       </>}>
       {loading && <StatusPanel kind="loading" title="발표 구성과 디자인을 확인하고 있어요" />}
@@ -287,7 +284,7 @@ function Generation({ projectId, projectName, dirty = false, primary = true, onC
           <Button variant="secondary" onClick={() => goTo('outline')}>발표 구성으로</Button>
           <Button onClick={() => goTo('slides')}>생성 결과 보기</Button>
         </> : <>
-          <Button disabled={!enabled || dirty} onClick={open}>다시 생성</Button>
+          <Button disabled={!enabled} onClick={open}>다시 생성</Button>
           <Button variant="secondary" onClick={() => goTo('design')}>설정 확인</Button>
         </>}>
         {showJob && steps && <ol className={styles.steps}>

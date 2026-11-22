@@ -8,7 +8,6 @@ import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
 import { useSession } from '../../../entities/session/sessionContext.ts'
 import { projectsApi } from '../../../entities/project/api.ts'
 import type { Project } from '../../../entities/project/model.ts'
-import PresentationGeneration from '../../generation/ui/PresentationGeneration.tsx'
 import DesignPage from './DesignPage.tsx'
 
 export default function DesignRoute() {
@@ -51,6 +50,5 @@ function ProjectDesign({ projectId }: { projectId: string }) {
     <Link to="/">프로젝트 목록으로</Link>
   </>
   if (!project) return <StatusPanel kind="loading" title="프로젝트를 불러오고 있어요" />
-  return <DesignPage projectId={projectId} projectName={project.name} fromOutline={state?.fromOutline === true} onAccessError={deny}
-    generation={(dirty) => <PresentationGeneration projectId={projectId} projectName={project.name} dirty={dirty} />} />
+  return <DesignPage projectId={projectId} projectName={project.name} fromOutline={state?.fromOutline === true} onAccessError={deny} />
 }
