@@ -143,19 +143,17 @@ test('키보드로 요소를 고르고 방향키로 옮기면 위치를 저장�
   expect(screen.queryByRole('textbox', { name: '텍스트 편집' })).toBeNull()
 })
 
-test('위치를 입력하다가 다른 요소를 골라도 입력하던 값을 저장한다', async () => {
+test('위치는 입력하는 대로 반영하고 다른 요소를 고르거나 연결이 끊겨도 입력한 값을 저장한다', async () => {
   const { server } = setup()
-  mount(open(server.fetchAs(userA)))
+  mount(open(server.fetchAs(userA), 300))
   const geometry = () =>
     server.getDocument().slides.flatMap((slide) => slide.elements).find((element) => element.id === bodyId)!.geometry
 
-  const target = await body()
-  fireEvent.keyDown(target, { key: ' ' })
+  fireEvent.keyDown(await body(), { key: ' ' })
   const [x, y] = screen.getAllByRole('spinbutton') as HTMLInputElement[]
-  // Enter로 끝내면 바로 반영한다
+  // 지우는 중인 빈 값은 반영하지 않는다
+  fireEvent.change(x, { target: { value: '' } })
   fireEvent.change(x, { target: { value: '321' } })
-  fireEvent.keyDown(x, { key: 'Enter' })
-  fireEvent.blur(x)
   await waitFor(() => expect(geometry().x).toBe(321))
 
   // 입력란을 벗어나지 않고 다른 요소를 고른다
@@ -163,6 +161,16 @@ test('위치를 입력하다가 다른 요소를 골라도 입력하던 값을 �
   const other = screen.getAllByRole('button', { pressed: false }).find((button) => button.hasAttribute('data-element'))!
   fireEvent.keyDown(other, { key: ' ' })
   await waitFor(() => expect(geometry().y).toBe(222))
+
+  // 입력한 직후 연결이 끊겨도 다시 연결되면 저장한다
+  fireEvent.keyDown(await body(), { key: ' ' })
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '654' } })
+  server.setOffline(true)
+  await screen.findByRole('alert')
+  expect(geometry().x).toBe(321)
+  server.setOffline(false)
+  fireEvent.click(screen.getByRole('button', { name: '다시 연결' }))
+  await waitFor(() => expect(geometry().x).toBe(654))
 })
 
 test('다른 팀원이 먼저 고친 요소는 덮어쓰지 않고 두 내용을 보여 준 뒤 고른 대로 이어 간다', async () => {
