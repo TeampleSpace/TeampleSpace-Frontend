@@ -675,3 +675,41 @@ test('남은 입력을 바로 보내면 보낸 요청은 남는 입력으로 세
   await tick()
   expect(a.flush()).toBe(true)
 })
+
+test('문서 교체 이벤트 뒤 스냅샷을 읽지 못하면 다시 연결해 스냅샷부터 읽는다', async () => {
+  const encoder = new TextEncoder()
+  let push: ((chunk: string) => void) | undefined
+  let snapshots = 0
+  const fetchImpl: typeof fetch = (input, init) => {
+    if (String(input).includes('/sync-snapshot')) {
+      snapshots += 1
+      // 처음에는 문서가 없고, 이벤트 뒤 첫 조회는 실패하고, 그다음 조회에서 만든 문서를 받는다
+      if (snapshots === 1) return Promise.resolve(Response.json({ ...exampleSnapshot, presentation: null, eventCursor: '1' }))
+      if (snapshots === 2) return Promise.reject(new TypeError('network'))
+      return Promise.resolve(Response.json({ ...exampleSnapshot, eventCursor: '2' }))
+    }
+    return Promise.resolve(new Response(new ReadableStream({
+      // 실제 fetch처럼 연결을 끊으면 스트림도 끝난다
+      start(controller) {
+        push = (chunk) => controller.enqueue(encoder.encode(chunk))
+        init?.signal?.addEventListener('abort', () => controller.error(init.signal?.reason))
+      },
+    })))
+  }
+  const session = createEditorSession({ client: createApiClient(fetchImpl), fetchImpl, projectId })
+  session.start()
+  await settle()
+  expect(session.getState().view).toBeUndefined()
+
+  push?.(`id: 2\nevent: presentation.replaced\ndata: ${JSON.stringify({
+    eventId: '2', projectId, type: 'presentation.replaced', occurredAt: '2026-11-22T00:00:00Z',
+    presentationVersion: 1, generation: 1, payload: { presentationId: exampleSnapshot.presentation?.id },
+  })}\n\n`)
+  await settle()
+  await tick(0)
+  await settle()
+
+  expect(snapshots).toBe(3)
+  expect(session.getState().view?.slides.length).toBe(exampleSnapshot.presentation?.slides.length)
+  session.stop()
+})

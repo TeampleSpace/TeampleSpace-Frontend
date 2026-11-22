@@ -460,7 +460,7 @@ export function createEditorSession(options: {
         entry.serverLatest = entry.deferred
         entry.deferred = undefined
       } else {
-        void snapshot()
+        resync()
       }
       return
     }
@@ -567,20 +567,20 @@ export function createEditorSession(options: {
       if (event.presentationVersion > streamVersion + 1) {
         // 문서 버전이 건너뛰었으면 놓친 변경이 있으므로 스냅샷을 다시 읽는다
         log('이벤트 사이에 빠진 버전이 있어 다시 동기화합니다')
-        void snapshot()
+        resync()
         return
       }
       streamVersion = Math.max(streamVersion, event.presentationVersion)
     }
 
-    // 팀원이 바뀌면 팀원 수를 다시 읽는다
-    if (event.type === 'membership.changed') void snapshot()
+    // 팀원이 바뀌거나 문서를 새로 만들면 스냅샷을 다시 읽는다
+    if (event.type === 'membership.changed' || event.type === 'presentation.replaced') resync()
 
     if (event.type === 'element.updated') {
       const result = elementChangeSchema.safeParse(event.payload)
       if (result.success && !find(result.data.resource.id)) {
         // 내가 모르는 요소다. 문서 구성이 달라졌으므로 스냅샷으로 다시 맞춘다
-        void snapshot()
+        resync()
       } else if (result.success) {
         const { resource } = result.data
         // 같은 요소의 오래된 버전이나 이미 반영한 내용은 무시한다
@@ -589,13 +589,23 @@ export function createEditorSession(options: {
         reconcile(resource, event.clientMutationId)
       } else {
         // 계약과 다른 내용은 조용히 넘기지 않고 스냅샷으로 다시 맞춘다
-        void snapshot()
+        resync()
       }
     }
     publish()
   }
 
   // 스냅샷과 연결
+
+  // 이벤트로 시작한 스냅샷이 실패하면 커서를 비우고 다시 연결해 스냅샷부터 읽는다
+  function resync() {
+    snapshot().catch(() => {
+      log('스냅샷을 읽지 못해 다시 동기화합니다')
+      lastEventId = undefined
+      resyncNow = true
+      stream?.abort()
+    })
+  }
 
   // 문서와 이벤트 커서를 같은 시점에서 읽고 내 입력과 비교한다
   function snapshot(): Promise<void> {

@@ -10,8 +10,18 @@
 - 성공 시 [결과 참조](examples/outline-job-result.json)의 새 버전을 반환한다. 구성 전체는 기존 조회 API에서 읽는다.
 - `GET /v1/capabilities`의 `featureFlags.outlineGeneration`이 false인 환경의 신규 요청은 503을 반환한다.
 
-## 후속 PPT 생성 입력
+## 첫 발표 자료 생성
 
-[최초 PPT 요청](examples/presentation-generation-request.json)은 저장된 구성과 디자인 버전, 선택한 자료 ID를 전달한다. [스냅샷](examples/presentation-generation-snapshot.json)은 그 요청에서 확정한 구성 본문과 디자인, 자료 개정을 담는다. 이 단계에서 입력 계약을 제공하고 실제 PPT 작업 및 출력은 후속 단계에서 구현한다.
+`POST /v1/projects/{projectId}/presentation-jobs`는 활성 팀원의 [생성 요청](examples/presentation-generation-request.json)을 받아 작업을 등록하고 202와 공통 `Job`을 반환한다. `type`은 `presentation_generation`, `targetType`은 `presentation`, `targetId`는 프로젝트 ID다. 작업 조회, 목록, 취소는 기존 작업 API를 사용한다.
 
-요청을 등록할 때 같은 프로젝트 잠금 안에서 두 버전, 빈 구성 여부, 선택한 디자인과 자료 상태를 확인한다. 구성에 연결된 모든 근거는 선택한 자료에 포함하고 개정 ID가 일치해야 한다. 일치하지 않으면 이전 원문을 최신 원문으로 자동 대체하지 않고 사용자가 확인한 뒤 다시 요청하게 한다. 발행 전에는 스냅샷의 버전과 권한을 다시 비교한다.
+- 저장된 구성과 디자인의 현재 버전, 선택한 자료 ID를 보낸다. 두 버전 중 하나라도 다르면 409와 두 현재 버전을 `currentVersions`에 담아 반환한다
+- 이미 발표 자료가 있으면 `REGENERATION_NOT_ENABLED`(409)다. 다시 생성은 후속 범위다
+- 구성 항목이 없거나 디자인을 정하지 않았으면 422다. 구성에 연결된 모든 근거는 선택한 자료에 포함되고 개정이 일치해야 한다. 일치하지 않으면 이전 원문을 최신 원문으로 자동 대체하지 않고 422로 거절해 사용자가 구성을 확인한 뒤 다시 요청하게 한다
+- 권한 확인 후 `Idempotency-Key`를 검사한다. 같은 프로젝트에 진행 중인 생성 작업이 있으면 `REQUEST_IN_PROGRESS`다
+- [고정 입력](examples/presentation-job-input.json)에 요청에서 확정한 [스냅샷](examples/presentation-generation-snapshot.json)과 모델, 프롬프트 개정을 저장한다. 제공자에게 구성 항목의 제목과 설명, 선택한 자료의 제목과 2000자 이하 텍스트, 직접 입력 디자인의 지침을 보낸다. 계정과 내부 식별자는 보내지 않는다
+- 제공자는 발표 제목과 소개, 구성 항목마다 한 장의 제목과 문장 1개에서 5개, 마지막 정리 슬라이드의 글만 만든다. 서버가 디자인 설정의 배경색, 제목색, 글꼴로 1280 x 720 캔버스의 텍스트와 도형 요소를 배치한다. 슬라이드는 표지, 구성 항목 순서의 본문, 정리 순서이고 본문 아래에 연결된 자료 제목을 출처로 적는다
+- 제목색이 배경과 3:1 대비가 안 되면 제목과 강조 도형은 본문색을 쓴다. 직접 입력에서 프로젝트 글꼴을 고르면 텍스트의 `fontFamily`는 `ProjectFont-{fontAssetId}`이고, 화면은 그 글꼴 파일을 이 이름으로 등록해 그린다
+- 슬라이드 수가 구성 항목과 다르거나 글이 글상자에 넘치는 길이면 `JOB_PRESENTATION_INVALID_RESULT`로 끝내고 저장하지 않는다. 일시적인 제공자 오류만 같은 작업에서 내부 재시도한다
+- 발행 직전 요청자의 접근 권한, 구성과 디자인 버전, 자료의 고정 개정, 발표 자료가 아직 없는지를 다시 검사한다. 바뀌었으면 `JOB_INPUT_STALE`, 권한이 회수됐으면 `JOB_PRESENTATION_ACCESS_REVOKED`로 끝내고 아무것도 저장하지 않는다
+- 성공하면 발표 자료와 슬라이드, 요소를 한 트랜잭션에서 만들고 `presentation.replaced` 이벤트를 보낸다. 이벤트의 `presentationVersion`과 `generation`은 1이다. [결과 참조](examples/presentation-job-result.json)의 발표 ID로 동기화 스냅샷을 다시 읽는다
+- `GET /v1/capabilities`의 `featureFlags.presentationGeneration`이 false인 환경의 신규 요청은 503을 반환한다
