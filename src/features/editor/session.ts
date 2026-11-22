@@ -573,8 +573,8 @@ export function createEditorSession(options: {
       streamVersion = Math.max(streamVersion, event.presentationVersion)
     }
 
-    // 팀원이 바뀌면 팀원 수를 다시 읽는다
-    if (event.type === 'membership.changed') void snapshot()
+    // 팀원이 바뀌거나 문서를 새로 만들면 스냅샷을 다시 읽는다
+    if (event.type === 'membership.changed' || event.type === 'presentation.replaced') void snapshot()
 
     if (event.type === 'element.updated') {
       const result = elementChangeSchema.safeParse(event.payload)

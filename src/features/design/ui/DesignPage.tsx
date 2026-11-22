@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
@@ -24,6 +25,8 @@ type InputField = Exclude<keyof CustomDesign, 'fontAssetId'> | 'template'
 type InputErrors = Partial<Record<InputField, string>>
 type SaveAttempt = { body: DesignInput; key: string }
 type AccessError = (reason: unknown) => void
+// 저장하지 않은 디자인이 있는지 받아 PPT 생성 버튼을 그린다
+type Generation = (dirty: boolean) => ReactNode
 
 const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표 색상', guidelines: '디자인 지침', template: '템플릿' }
 const layoutNames: Record<string, string> = { title: '제목', content: '본문', summary: '요약' }
@@ -75,8 +78,8 @@ function accessLost(reason: unknown): reason is ApiError {
   return reason instanceof ApiError && (reason.status === 401 || reason.status === 403 || reason.status === 404 || reason.status === 410)
 }
 
-export default function DesignPage({ projectId, projectName, fromOutline = false, onAccessError }: {
-  projectId: string; projectName?: string; fromOutline?: boolean; onAccessError?: AccessError
+export default function DesignPage({ projectId, projectName, fromOutline = false, onAccessError, generation }: {
+  projectId: string; projectName?: string; fromOutline?: boolean; onAccessError?: AccessError; generation?: Generation
 }) {
   const back = {
     path: `/projects/${projectId}${fromOutline ? '/outline' : ''}`,
@@ -117,7 +120,7 @@ export default function DesignPage({ projectId, projectName, fromOutline = false
       <h1 id="design-title">디자인 설정</h1>
       <RequestError error={error} action={<Button onClick={retry}>다시 불러오기</Button>} />
       <Link to={back.path}>{back.label}</Link>
-    </> : data?.projectId === projectId ? <DesignSettingsForm key={projectId} {...data.value} projectId={projectId} projectName={projectName} back={back} onAccessError={(reason) => {
+    </> : data?.projectId === projectId ? <DesignSettingsForm key={projectId} {...data.value} projectId={projectId} projectName={projectName} back={back} generation={generation} onAccessError={(reason) => {
       setFailure({ projectId, reason })
       onAccessError?.(reason)
     }} /> : <>
@@ -127,8 +130,8 @@ export default function DesignPage({ projectId, projectName, fromOutline = false
   </section>
 }
 
-function DesignSettingsForm({ settings, catalog, projectId, projectName, back, onAccessError }: PageData & {
-  projectId: string; projectName?: string; back: { path: string; label: string }; onAccessError: AccessError
+function DesignSettingsForm({ settings, catalog, projectId, projectName, back, onAccessError, generation }: PageData & {
+  projectId: string; projectName?: string; back: { path: string; label: string }; onAccessError: AccessError; generation?: Generation
 }) {
   const { items, allowedFonts, projectFontsEnabled = false } = catalog
   const [base, setBase] = useState(settings)
@@ -325,7 +328,10 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       <div><h1 id="design-title">디자인 설정</h1><p>{mode === 'template'
         ? '발표에 어울리는 디자인을 고르세요. 템플릿을 누르면 자세히 볼 수 있어요.'
         : '글꼴과 색상, 지침을 직접 입력해 발표 디자인을 정하세요.'}</p></div>
-      {mode === 'custom' && saveButton}
+      <div className={styles.headerActions}>
+        {mode === 'custom' && saveButton}
+        {generation?.(dirty || modeLocked || !!pending)}
+      </div>
     </header>
     {saved && <p className={`${styles.notice} motion-feedback`} role="status">디자인을 저장했어요</p>}
     {conflict ? <div className={styles.notice} role="status">

@@ -10,6 +10,7 @@ import { useShell } from '../../../shared/lib/shellContext.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
+import PresentationGeneration from '../../generation/ui/PresentationGeneration.tsx'
 import { createEditorSession } from '../session.ts'
 import { SlideEditor } from './SlideEditor.tsx'
 
@@ -67,10 +68,14 @@ function ProjectSlides({ projectId, slideId }: { projectId: string; slideId?: st
     <Link to="/">프로젝트 목록으로</Link>
   </>
   if (!project) return <StatusPanel kind="loading" title="프로젝트를 불러오고 있어요" />
-  return <SlideEditor projectId={projectId} projectName={project.name} session={session} slideId={slideId}
-    // 문서 생성 기능이 생기기 전까지 개발 서버에서 편집을 확인하는 용도다
-    onCreateSample={import.meta.env.DEV ? async () => {
-      await api.request(`/projects/${projectId}/sample-presentation`, emptySchema, { method: 'POST' })
-      await session.refresh()
-    } : undefined} />
+  // 생성이 끝나 문서가 생겨도 완료 안내가 이어서 보이도록 생성 모달은 편집기 바깥에 둔다
+  return <PresentationGeneration projectId={projectId} projectName={project.name} onCompleted={session.refresh}>
+    {(generate) => <SlideEditor projectId={projectId} projectName={project.name} session={session} slideId={slideId}
+      generate={generate}
+      // 개발 서버에서 AI 없이 편집을 확인하는 용도다
+      onCreateSample={import.meta.env.DEV ? async () => {
+        await api.request(`/projects/${projectId}/sample-presentation`, emptySchema, { method: 'POST' })
+        await session.refresh()
+      } : undefined} />}
+  </PresentationGeneration>
 }

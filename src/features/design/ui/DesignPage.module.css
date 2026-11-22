@@ -22,6 +22,14 @@
 
 .page h1 { margin: 0; }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-12);
+}
+
 .header p {
   margin: var(--space-8) 0 0;
   color: var(--color-secondary);

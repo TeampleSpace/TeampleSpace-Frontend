@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { Element, Presentation, Slide } from '../../../entities/presentation/schema.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
@@ -9,6 +10,7 @@ import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
 import { UnsavedGuard } from '../../../shared/ui/UnsavedGuard.tsx'
 import { fitScale } from '../coords.ts'
 import { describeElement } from '../describe.ts'
+import { useProjectFonts } from '../projectFonts.ts'
 import type { EditorSession, SaveStatus, SessionState } from '../session.ts'
 import { SlideStage } from './SlideStage.tsx'
 import styles from './SlideEditor.module.css'
@@ -63,12 +65,16 @@ type Props = {
   slideId?: string
   // 개발 서버에서만 넘긴다. 편집을 확인할 예제 문서를 만든다
   onCreateSample?: () => Promise<void>
+  // 문서가 없을 때 보여 줄 PPT 생성 버튼
+  generate?: ReactNode
 }
 
-export function SlideEditor({ projectId, projectName, session, slideId, onCreateSample }: Props) {
+export function SlideEditor({ projectId, projectName, session, slideId, onCreateSample, generate }: Props) {
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const base = `/projects/${projectId}/slides`
   const view = state.view
+  useProjectFonts(projectId, view?.slides.flatMap((slide) =>
+    slide.elements.flatMap((element) => element.type === 'text' ? [element.style.fontFamily] : [])) ?? [])
 
   if (state.rejected) {
     return (
@@ -93,7 +99,7 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
       <StatusPanel kind="loading" title="슬라이드를 불러오고 있어요" />
     )
   }
-  if (!view) return <NoPresentation projectId={projectId} onCreateSample={onCreateSample} />
+  if (!view) return <NoPresentation projectId={projectId} onCreateSample={onCreateSample} generate={generate} />
 
   const index = Math.max(0, view.slides.findIndex((slide) => slide.id === slideId))
   const slide = view.slides[index]
@@ -419,9 +425,11 @@ function PositionField({
 function NoPresentation({
   projectId,
   onCreateSample,
+  generate,
 }: {
   projectId: string
   onCreateSample?: () => Promise<void>
+  generate?: ReactNode
 }) {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<unknown>()
@@ -437,7 +445,8 @@ function NoPresentation({
       <section className={styles.steps}>
         <h2>자료 모으기, 발표 구성, 디자인 선택, PPT 생성</h2>
         <div className={styles.row}>
-          <Link className={styles.primaryLink} to={`/projects/${projectId}/outline`}>
+          {generate}
+          <Link className={generate ? styles.secondaryLink : styles.primaryLink} to={`/projects/${projectId}/outline`}>
             발표 구성으로 이동
           </Link>
           {onCreateSample && (
