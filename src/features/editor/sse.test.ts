@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest'
-import { createSseParser } from './sse.ts'
+import { expect, test, vi } from 'vitest'
+import { createSseParser, openEventStream } from './sse.ts'
 import type { SseMessage } from './sse.ts'
 
 function collect() {
@@ -28,4 +28,35 @@ test('연결 유지용 주석 줄은 메시지로 만들지 않는다', () => {
   feed(': keep-alive\n\n')
   feed('event: snapshot_required\ndata: {}\n\n')
   expect(messages).toEqual([{ id: undefined, event: 'snapshot_required', data: '{}' }])
+})
+
+test('아무것도 오지 않는 연결은 정해 둔 시간이 지나면 끊긴 것으로 본다', async () => {
+  vi.useFakeTimers()
+  try {
+    const encoder = new TextEncoder()
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({ start: (value) => void (controller = value) })
+    const result = openEventStream({
+      fetchImpl: () => Promise.resolve(new Response(body)),
+      url: '/v1/projects/p/events',
+      signal: new AbortController().signal,
+      idleTimeoutMs: 40000,
+      onOpen: () => {},
+      onMessage: () => {},
+    }).then(
+      () => 'ended',
+      (error: Error) => error.message,
+    )
+
+    // 연결 유지용 주석 줄이 오는 동안은 끊지 않는다
+    await vi.advanceTimersByTimeAsync(30000)
+    controller.enqueue(encoder.encode(': keep-alive\n\n'))
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(await Promise.race([result, Promise.resolve('open')])).toBe('open')
+
+    await vi.advanceTimersByTimeAsync(40000)
+    expect(await result).toBe('이벤트 연결이 응답하지 않습니다')
+  } finally {
+    vi.useRealTimers()
+  }
 })

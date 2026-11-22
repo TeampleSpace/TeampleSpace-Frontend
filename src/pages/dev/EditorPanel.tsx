@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { PointerEvent } from 'react'
-import type { Element, TextElement } from '../../entities/presentation/schema.ts'
-import { SlideRenderer } from '../../features/editor/ui/SlideRenderer.tsx'
-import { deltaToDoc, fitScale } from '../../features/editor/coords.ts'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { fitScale } from '../../features/editor/coords.ts'
 import type { EditorSession, SaveStatus } from '../../features/editor/session.ts'
-import { textStyle } from '../../features/editor/textStyle.ts'
+import { describeElement as describe } from '../../features/editor/describe.ts'
+import { SlideStage } from '../../features/editor/ui/SlideStage.tsx'
 import { Button } from '../../shared/ui/Button.tsx'
 import { StatusPanel } from '../../shared/ui/StatusPanel.tsx'
 import styles from './EditorLab.module.css'
@@ -21,63 +19,6 @@ const statusLabels: Record<SaveStatus, string> = {
 // 여러 요소의 상태 중 가장 먼저 알려야 하는 것
 const statusOrder: SaveStatus[] = ['conflict', 'failed', 'saving', 'dirty', 'saved', 'clean']
 
-function describe(element: Element): string {
-  if (element.type === 'text') return `텍스트 ${element.content.text.slice(0, 14)}`
-  if (element.type === 'image') return `이미지 ${element.content.alt}`
-  return element.content.shape === 'ellipse' ? '도형 타원' : '도형 사각형'
-}
-
-type Drag = { id: string; startX: number; startY: number; dx: number; dy: number }
-
-// 한글 조합 입력을 받는 글상자. 조합 중인지 함께 알린다
-function TextEditor({
-  element,
-  readOnly,
-  onInput,
-  onDone,
-}: {
-  element: TextElement
-  readOnly: boolean
-  onInput: (value: string, composing: boolean) => void
-  onDone: () => void
-}) {
-  const [value, setValue] = useState(element.content.text)
-  const composing = useRef(false)
-  const { x, y, width, height } = element.geometry
-
-  return (
-    <textarea
-      className={styles.textEditor}
-      style={{ left: x, top: y, width, height, ...textStyle(element) }}
-      aria-label="텍스트 편집"
-      autoFocus
-      readOnly={readOnly}
-      value={value}
-      onChange={(event) => {
-        setValue(event.target.value)
-        onInput(event.target.value, composing.current)
-      }}
-      onCompositionStart={() => {
-        composing.current = true
-      }}
-      onCompositionEnd={(event) => {
-        // 조합이 끝난 글자부터 저장 대기 시간을 센다
-        composing.current = false
-        onInput(event.currentTarget.value, false)
-      }}
-      onBlur={onDone}
-      onKeyDown={(event) => {
-        // 입력 중의 키는 요소 조작으로 넘기지 않는다
-        event.stopPropagation()
-        if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
-          event.currentTarget.blur()
-        }
-      }}
-      onPointerDown={(event) => event.stopPropagation()}
-    />
-  )
-}
-
 export function EditorPanel({
   label,
   session,
@@ -93,7 +34,6 @@ export function EditorPanel({
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const [selectedId, setSelectedId] = useState<string>()
   const [editingId, setEditingId] = useState<string>()
-  const [drag, setDrag] = useState<Drag>()
   // 문서를 불러온 뒤에 생기는 영역이라 요소가 붙는 시점부터 너비를 잰다
   const [area, setArea] = useState<HTMLDivElement | null>(null)
   const [areaWidth, setAreaWidth] = useState(0)
@@ -117,32 +57,12 @@ export function EditorPanel({
 
   const slide = view.slides[slideIndex] ?? view.slides[0]
   const elements = slide.elements
-  const byId = (id: string) => elements.find((element) => element.id === id)
   const online = state.connection === 'online'
   const scale =
     zoom > 0 ? zoom : fitScale(view.canvas, { width: areaWidth || 1, height: Infinity })
   const overall = statusOrder.find((status) =>
     elements.some((element) => state.elements[element.id]?.status === status),
   )
-
-  // 끄는 동안에는 화면에서만 미리 옮겨 보여 준다
-  const shownSlide = drag
-    ? {
-        ...slide,
-        elements: elements.map((element) =>
-          element.id === drag.id
-            ? {
-                ...element,
-                geometry: {
-                  ...element.geometry,
-                  x: element.geometry.x + drag.dx,
-                  y: element.geometry.y + drag.dy,
-                },
-              }
-            : element,
-        ),
-      }
-    : slide
 
   function select(id: string | undefined) {
     // 선택이 다른 요소로 옮겨 가면 이전 요소의 편집 묶음을 닫는다
@@ -155,37 +75,6 @@ export function EditorPanel({
     setEditingId(id)
   }
 
-  function onPointerDown(event: PointerEvent<HTMLDivElement>, id: string) {
-    select(id)
-    if (!online || state.elements[id]?.status === 'conflict') return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0 })
-  }
-
-  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (!drag) return
-    // 화면에서 움직인 거리를 현재 배율로 나눠 문서 좌표로 바꾼다
-    const moved = deltaToDoc(event.clientX - drag.startX, event.clientY - drag.startY, scale)
-    setDrag({ ...drag, dx: moved.x, dy: moved.y })
-  }
-
-  function onPointerUp() {
-    if (!drag) return
-    setDrag(undefined)
-    const geometry = byId(drag.id)?.geometry
-    if (!geometry || Math.abs(drag.dx) + Math.abs(drag.dy) < 2) return
-    // 놓는 순간 한 번의 명령으로 저장하고 묶음을 닫는다. 좌표 항목은 통째로 보낸다
-    session.edit(drag.id, {
-      geometry: {
-        ...geometry,
-        x: Math.round(geometry.x + drag.dx),
-        y: Math.round(geometry.y + drag.dy),
-      },
-    })
-    session.endEdit(drag.id)
-  }
-
-  const editing = editingId ? byId(editingId) : undefined
   const conflicts = elements.filter(
     (element) => state.elements[element.id]?.status === 'conflict',
   )
@@ -201,51 +90,18 @@ export function EditorPanel({
       </p>
 
       <div ref={setArea} className={styles.stageArea}>
-        <SlideRenderer
+        <SlideStage
           canvas={view.canvas}
-          slide={shownSlide}
+          slide={slide}
           scale={scale}
-          hiddenElementId={editingId}
-        >
-          {shownSlide.elements.map((element) => {
-            const { x, y, width, height, rotation } = element.geometry
-            return (
-              <div
-                key={element.id}
-                className={[styles.hit, element.id === selectedId ? styles.selected : '']
-                  .filter(Boolean)
-                  .join(' ')}
-                style={{
-                  left: x,
-                  top: y,
-                  width,
-                  height,
-                  transform: rotation ? `rotate(${rotation}deg)` : undefined,
-                }}
-                onPointerDown={(event) => onPointerDown(event, element.id)}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onDoubleClick={() => {
-                  if (element.type === 'text') startEditing(element.id)
-                }}
-              />
-            )
-          })}
-          {editing?.type === 'text' && (
-            <TextEditor
-              key={editing.id}
-              element={editing}
-              readOnly={!online || state.elements[editing.id]?.status === 'conflict'}
-              onInput={(value, composing) =>
-                session.edit(editing.id, { content: { text: value } }, { composing })
-              }
-              onDone={() => {
-                session.endEdit(editing.id)
-                setEditingId(undefined)
-              }}
-            />
-          )}
-        </SlideRenderer>
+          selectedId={selectedId}
+          editingId={editingId}
+          locked={(id) => !online || state.elements[id]?.status === 'conflict'}
+          onSelect={select}
+          onEditingChange={(id) => (id ? startEditing(id) : setEditingId(undefined))}
+          onChange={(id, patch, input) => session.edit(id, patch, input)}
+          onCommit={(id) => session.endEdit(id)}
+        />
       </div>
 
       {conflicts.map((element) => {

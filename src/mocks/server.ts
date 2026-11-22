@@ -334,6 +334,7 @@ export function createMockServer(
   function openStream(cursor: string | null, signal?: AbortSignal | null): Response {
     const encoder = new TextEncoder()
     let stream: Stream | undefined
+    let keepAlive: ReturnType<typeof setInterval> | undefined
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         const write = (type: string, id: string | undefined, data: unknown) => {
@@ -353,10 +354,16 @@ export function createMockServer(
         }
         for (const event of events.slice(after)) write(event.type, event.eventId, event)
 
+        // 실제 서버처럼 이벤트가 없어도 15초마다 주석 줄을 보낸다
+        keepAlive = setInterval(
+          () => controller.enqueue(encoder.encode(': keep-alive\n\n')),
+          15000,
+        )
         const current: Stream = {
           send: (event) => write(event.type, event.eventId, event),
           close: () => {
             if (!streams.delete(current)) return
+            clearInterval(keepAlive)
             controller.close()
           },
         }
@@ -365,6 +372,7 @@ export function createMockServer(
         signal?.addEventListener('abort', current.close, { once: true })
       },
       cancel() {
+        clearInterval(keepAlive)
         if (stream) streams.delete(stream)
       },
     })

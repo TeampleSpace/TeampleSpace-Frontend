@@ -573,3 +573,105 @@ test('처리 중이라는 응답을 받으면 알려 준 시간 뒤에 같은 �
   expect(serverElement().version).toBe(2)
   a.stop()
 })
+
+test('첫 스냅샷을 읽지 못하면 바로 되풀이하지 않고 간격을 두고 다시 시도한다', async () => {
+  const { server, calls, open } = setup()
+  server.setOffline(true)
+  const a = open('user-a')
+  await settle()
+  await tick(500)
+
+  const snapshots = () => calls.filter((call) => call.path.endsWith('/sync-snapshot')).length
+  expect(snapshots()).toBe(1)
+  expect(a.getState()).toMatchObject({ connection: 'offline', loaded: false })
+
+  server.setOffline(false)
+  await tick(1000)
+  await settle()
+  expect(snapshots()).toBe(2)
+  expect(a.getState()).toMatchObject({ connection: 'online', loaded: true })
+})
+
+test('프로젝트에 접근할 수 없으면 세션을 멈추고 다시 연결하지 않는다', async () => {
+  let requests = 0
+  const denied: typeof fetch = () => {
+    requests += 1
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          error: { code: 'ACCESS_DENIED', message: '프로젝트 접근 권한이 없어요.', retryable: false },
+          requestId: 'req_denied',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+  }
+  const session = createEditorSession({
+    client: createApiClient(denied),
+    fetchImpl: denied,
+    projectId,
+  })
+  session.start()
+  await settle()
+  await tick(20000)
+
+  expect(requests).toBe(1)
+  expect(session.getState().rejected).toMatchObject({ status: 403, code: 'ACCESS_DENIED' })
+  expect(session.getState().connection).toBe('offline')
+})
+
+test('오래 이어진 구독을 서버가 끝내면 끊김으로 보지 않고 바로 다시 구독한다', async () => {
+  const { server, open, saveDirectly } = setup()
+  const a = open('user-a')
+  await tick(6000)
+  const seen: string[] = []
+  a.subscribe(() => seen.push(a.getState().connection))
+
+  server.closeStreams()
+  await settle()
+  expect(seen).not.toContain('offline')
+  expect(a.getState().connection).toBe('online')
+  expect(a.edit(bodyId, text('이어서 입력'))).toBe(true)
+
+  await saveDirectly('user-c', '다시 구독한 뒤의 변경')
+  await settle()
+  expect(a.getState().elements[bodyId].status).toBe('conflict')
+})
+
+test('문서를 만들기 전에는 읽었다는 표시만 남기고 팀원 수를 알려 준다', async () => {
+  const fetchImpl: typeof fetch = (input) =>
+    Promise.resolve(
+      String(input).includes('/sync-snapshot')
+        ? Response.json({ ...exampleSnapshot, presentation: null })
+        : new Response(new ReadableStream()),
+    )
+  const session = createEditorSession({ client: createApiClient(fetchImpl), fetchImpl, projectId })
+  session.start()
+  await settle()
+
+  expect(session.getState()).toMatchObject({
+    loaded: true,
+    view: undefined,
+    pending: false,
+    memberCount: exampleSnapshot.members.length,
+  })
+  session.stop()
+})
+
+test('남은 입력을 바로 보내면 보낸 요청은 남는 입력으로 세지 않고 끊긴 동안의 입력은 남는다', async () => {
+  const { server, open, patches, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('떠나기 전 입력'))
+  // 저장 대기 시간을 기다리지 않고 바로 보낸다
+  expect(a.flush()).toBe(false)
+  await settle()
+  expect(patches()).toHaveLength(1)
+  expect(serverText()).toBe('떠나기 전 입력')
+
+  a.edit(bodyId, text('끊기기 직전 입력'))
+  server.setOffline(true)
+  await tick()
+  expect(a.flush()).toBe(true)
+})

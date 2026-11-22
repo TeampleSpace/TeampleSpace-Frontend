@@ -63,33 +63,6 @@
   background: var(--color-muted);
 }
 
-.hit {
-  position: absolute;
-  cursor: move;
-  touch-action: none;
-}
-
-.selected {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.textEditor {
-  position: absolute;
-  margin: 0;
-  padding: 0;
-  border: none;
-  outline: 3px solid var(--color-accent-bright);
-  outline-offset: 2px;
-  background: #ffffff;
-  resize: none;
-  overflow: hidden;
-  white-space: pre-wrap;
-  word-break: normal;
-  overflow-wrap: anywhere;
-  letter-spacing: 0;
-}
-
 .conflict {
   display: flex;
   flex-direction: column;

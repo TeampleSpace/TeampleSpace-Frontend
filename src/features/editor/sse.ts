@@ -50,6 +50,8 @@ export async function openEventStream(options: {
   url: string
   lastEventId?: string
   signal: AbortSignal
+  // 서버는 이벤트가 없어도 15초마다 주석 줄을 보낸다. 이 시간 동안 아무것도 오지 않으면 끊긴 연결로 본다
+  idleTimeoutMs?: number
   onOpen: () => void
   onMessage: (message: SseMessage) => void
 }): Promise<void> {
@@ -71,9 +73,22 @@ export async function openEventStream(options: {
 
   const parse = createSseParser(options.onMessage)
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+  const idleTimeoutMs = options.idleTimeoutMs ?? 40000
   for (;;) {
-    const { value, done } = await reader.read()
-    if (done) return
-    parse(value)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const silent = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('이벤트 연결이 응답하지 않습니다')), idleTimeoutMs)
+    })
+    try {
+      // 중간 장비가 끊김을 알려 주지 않아도 조용한 연결을 붙잡고 있지 않는다
+      const { value, done } = await Promise.race([reader.read(), silent])
+      if (done) return
+      parse(value)
+    } catch (error) {
+      void reader.cancel().catch(() => {})
+      throw error
+    } finally {
+      clearTimeout(timer)
+    }
   }
 }

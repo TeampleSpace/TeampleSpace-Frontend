@@ -84,6 +84,9 @@ export const router = createBrowserRouter([
             Component: (await import('../features/design/ui/DesignRoute.tsx')).default,
           }) },
           { path: 'projects/:projectId/materials', element: <MaterialsRoute /> },
+          { path: 'projects/:projectId/slides/:slideId?', lazy: async () => ({
+            Component: (await import('../features/editor/ui/SlidesRoute.tsx')).default,
+          }) },
           { path: 'projects/:projectId/outline', lazy: async () => ({
             Component: (await import('../pages/OutlineRoute.tsx')).default,
           }) },

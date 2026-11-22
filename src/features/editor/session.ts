@@ -30,8 +30,15 @@ export type ElementView = {
 
 export type SessionState = {
   connection: 'connecting' | 'online' | 'offline'
+  // 로그인이 끝났거나 프로젝트에 접근할 수 없어 세션을 멈춘 이유. 다시 연결하지 않는다
+  rejected?: ApiError | StreamRejectedError
+  // 스냅샷을 한 번이라도 읽었는지. 읽었는데 view가 없으면 아직 문서를 만들기 전이다
+  loaded: boolean
   // 서버 확인본 위에 미전송 입력을 얹은 화면용 문서
   view?: Presentation
+  // 아직 서버가 확인하지 않은 입력이나 요청이 있는지
+  pending: boolean
+  memberCount: number
   elements: Record<string, ElementView>
   stats: { duplicateEvents: number; staleEvents: number; snapshots: number }
 }
@@ -86,6 +93,8 @@ export function createEditorSession(options: {
   const groupIdleMs = options.groupIdleMs ?? 2000
   const groupMaxMs = options.groupMaxMs ?? 30000
   const retryDelaysMs = options.retryDelaysMs ?? [1000, 2000, 4000]
+  // 이보다 오래 이어진 구독이 정상 종료되면 서버의 정기 종료로 본다
+  const stableStreamMs = 5000
   const requestTimeoutMs = options.requestTimeoutMs ?? 10000
   const log = options.onLog ?? (() => {})
 
@@ -102,7 +111,19 @@ export function createEditorSession(options: {
   let reconnectAttempt = 0
   let running = false
   let snapshotting: Promise<void> | undefined
-  let state: SessionState = { connection, elements: {}, stats: { ...stats } }
+  let rejected: SessionState['rejected']
+  let loaded = false
+  let memberCount = 0
+  // 스냅샷을 다시 읽으라는 신호를 받아 기다리지 않고 바로 다시 연결한다
+  let resyncNow = false
+  let state: SessionState = {
+    connection,
+    loaded,
+    pending: false,
+    memberCount,
+    elements: {},
+    stats: { ...stats },
+  }
   const listeners = new Set<() => void>()
 
   function publish() {
@@ -122,7 +143,16 @@ export function createEditorSession(options: {
         })
       }
     }
-    state = { connection, view, elements, stats: { ...stats } }
+    state = {
+      connection,
+      rejected,
+      loaded,
+      view,
+      pending: hasPending(),
+      memberCount,
+      elements,
+      stats: { ...stats },
+    }
     for (const listener of listeners) listener()
   }
 
@@ -135,12 +165,18 @@ export function createEditorSession(options: {
     return entry
   }
 
-  function locate(elementId: string) {
+  function find(elementId: string) {
     for (const slide of doc?.slides ?? []) {
       const index = slide.elements.findIndex((element) => element.id === elementId)
       if (index >= 0) return { slide, index, element: slide.elements[index] }
     }
-    throw new Error(`요소를 찾을 수 없습니다 ${elementId}`)
+    return undefined
+  }
+
+  function locate(elementId: string) {
+    const found = find(elementId)
+    if (!found) throw new Error(`요소를 찾을 수 없습니다 ${elementId}`)
+    return found
   }
 
   function newGroup(): Group {
@@ -196,6 +232,19 @@ export function createEditorSession(options: {
     if (entry.draft && entry.status !== 'conflict') entry.group ??= newGroup()
     closeGroup(elementId)
     publish()
+  }
+
+  // 화면을 떠나기 전에 남은 입력을 바로 보낸다. 보내지 못하고 남는 입력이 있으면 true를 돌려준다
+  // 이미 보낸 요청은 화면을 떠나도 서버에 반영되므로 남는 입력으로 세지 않는다
+  function flush(): boolean {
+    for (const [elementId, entry] of entries) if (entry.draft) endEdit(elementId)
+    return [...entries.values()].some(
+      (entry) =>
+        entry.status === 'conflict' ||
+        entry.status === 'failed' ||
+        (connection !== 'online' && Boolean(entry.draft || entry.flight)) ||
+        (entry.draft !== undefined && entry.flight?.seq !== entry.seq),
+    )
   }
 
   // 편집 종료와 이동처럼 화면에서만 알 수 있는 종료를 서버에 알린다
@@ -491,6 +540,7 @@ export function createEditorSession(options: {
     if (message.event === 'snapshot_required') {
       log('이벤트 보관 범위를 벗어나 다시 동기화합니다')
       lastEventId = undefined
+      resyncNow = true
       stream?.abort()
       return
     }
@@ -523,9 +573,15 @@ export function createEditorSession(options: {
       streamVersion = Math.max(streamVersion, event.presentationVersion)
     }
 
+    // 팀원이 바뀌면 팀원 수를 다시 읽는다
+    if (event.type === 'membership.changed') void snapshot()
+
     if (event.type === 'element.updated') {
       const result = elementChangeSchema.safeParse(event.payload)
-      if (result.success) {
+      if (result.success && !find(result.data.resource.id)) {
+        // 내가 모르는 요소다. 문서 구성이 달라졌으므로 스냅샷으로 다시 맞춘다
+        void snapshot()
+      } else if (result.success) {
         const { resource } = result.data
         // 같은 요소의 오래된 버전이나 이미 반영한 내용은 무시한다
         if (resource.version <= locate(resource.id).element.version) stats.staleEvents += 1
@@ -547,6 +603,8 @@ export function createEditorSession(options: {
       .request(`/projects/${projectId}/sync-snapshot?scope=editor`, editorSnapshotSchema)
       .then((result) => {
         stats.snapshots += 1
+        loaded = true
+        memberCount = result.members.length
         lastEventId = result.eventCursor
         const incoming = result.presentation
         // 아직 발표 자료를 만들기 전이면 문서가 없다
@@ -562,7 +620,8 @@ export function createEditorSession(options: {
           for (const slide of incoming.slides) {
             const local = doc.slides.find((candidate) => candidate.id === slide.id)
             if (local) local.version = Math.max(local.version, slide.version)
-            for (const element of slide.elements) reconcile(element)
+            // ponytail: 요소 추가와 삭제가 생기면 여기서 문서 구성도 맞춘다
+            for (const element of slide.elements) if (find(element.id)) reconcile(element)
           }
         }
         streamVersion = incoming.version
@@ -582,6 +641,8 @@ export function createEditorSession(options: {
     if (!running) return
     const controller = new AbortController()
     stream = controller
+    let openedAt = 0
+    let ended = false
     try {
       // 처음 연결하거나 보내지 못한 입력이 있으면 스냅샷부터 읽어 비교한다
       if (lastEventId === undefined || hasPending()) await snapshot()
@@ -591,6 +652,7 @@ export function createEditorSession(options: {
         lastEventId,
         signal: controller.signal,
         onOpen: () => {
+          openedAt = Date.now()
           connection = 'online'
           reconnectAttempt = 0
           log('연결됨')
@@ -599,10 +661,16 @@ export function createEditorSession(options: {
         },
         onMessage: handleMessage,
       })
+      ended = true
     } catch (error) {
-      if (error instanceof StreamRejectedError) {
-        // 인증이나 권한이 없으면 자동으로 다시 연결하지 않는다
+      const denied =
+        error instanceof StreamRejectedError ||
+        (error instanceof ApiError && [401, 403, 404].includes(error.status))
+      if (denied && running && stream === controller) {
+        // 로그인이 끝났거나 접근할 수 없으면 자동으로 다시 연결하지 않는다
+        rejected = error
         connection = 'offline'
+        running = false
         log(error.message)
         publish()
         return
@@ -610,13 +678,29 @@ export function createEditorSession(options: {
     }
     if (!running || stream !== controller) return
 
+    // 서버는 오래된 구독을 정상 종료한다. 충분히 이어졌던 연결이면 끊김으로 보지 않고 바로 다시 구독한다
+    if (ended && openedAt > 0 && Date.now() - openedAt >= stableStreamMs) {
+      void connect()
+      return
+    }
+
     // 연결이 끊기면 새 편집을 막고 입력은 그대로 둔다
     connection = 'offline'
     log('연결 끊김')
     publish()
-    const delay = Math.min(1000 * 2 ** reconnectAttempt, 10000)
+    const delay = resyncNow ? 0 : Math.min(1000 * 2 ** reconnectAttempt, 10000)
+    resyncNow = false
     reconnectAttempt += 1
-    reconnectTimer = setTimeout(() => void connect(), lastEventId === undefined ? 0 : delay)
+    reconnectTimer = setTimeout(() => void connect(), delay)
+  }
+
+  // 기다리지 않고 지금 다시 연결한다
+  function reconnect() {
+    if (!running || connection === 'online') return
+    clearTimeout(reconnectTimer)
+    reconnectAttempt = 0
+    stream?.abort()
+    void connect()
   }
 
   // 다시 연결되면 확인되지 않은 요청은 같은 키로, 남은 입력은 새 요청으로 보낸다
@@ -655,8 +739,12 @@ export function createEditorSession(options: {
     stop,
     edit,
     endEdit,
+    flush,
     retry,
     resolveConflict,
+    reconnect,
+    // 문서가 새로 만들어졌을 때처럼 이벤트 없이 바뀐 내용을 다시 읽는다
+    refresh: snapshot,
     getState: () => state,
     subscribe(listener: () => void) {
       listeners.add(listener)
