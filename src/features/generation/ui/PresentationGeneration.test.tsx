@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import capabilitiesExample from '../../../../contracts/examples/capabilities.json'
-import { ApiError } from '../../../shared/api/client.ts'
+import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import type { AuthCapabilities } from '../../../entities/session/model.ts'
 import { SessionContext } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
@@ -154,4 +154,19 @@ test('이미 끝난 작업이 있으면 결과 안내를 다시 열고 편집 �
   const done = await screen.findByRole('dialog', { name: '발표자료가 완성됐어요' })
   fireEvent.click(within(done).getByRole('button', { name: '생성 결과 보기' }))
   expect(router.state.location.pathname).toBe(`/projects/${projectId}/slides`)
+})
+
+test('완료 뒤 문서 조회가 실패하면 완료 안내에서 다시 불러온다', async () => {
+  vi.spyOn(presentationGenerationApi, 'create').mockResolvedValue(queued)
+  vi.spyOn(materialsApi, 'job').mockResolvedValue(succeeded)
+  const onCompleted = vi.fn().mockRejectedValueOnce(new TransportError('network')).mockResolvedValue(undefined)
+  mount(true, onCompleted)
+  fireEvent.click(screen.getByRole('button', { name: 'PPT 초안 만들기' }))
+  const confirm = await screen.findByRole('dialog', { name: 'PPT 초안 만들기' })
+  await within(confirm).findByText('클린 리포트')
+  fireEvent.click(within(confirm).getByRole('button', { name: '초안 생성' }))
+  const done = await screen.findByRole('dialog', { name: '발표자료가 완성됐어요' })
+  fireEvent.click(await within(done).findByRole('button', { name: '결과 다시 불러오기' }))
+  await waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(2))
+  await waitFor(() => expect(within(done).queryByRole('button', { name: '결과 다시 불러오기' })).toBeNull())
 })
