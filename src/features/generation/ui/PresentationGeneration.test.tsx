@@ -13,6 +13,13 @@ import type { Outline } from '../../outline/model.ts'
 import { designApi } from '../../design/api.ts'
 import { presentationGenerationApi } from '../api.ts'
 import PresentationGeneration from './PresentationGeneration.tsx'
+import { announceDecided, needsApproval, requestsApi } from '../../../entities/request/api.ts'
+import type { ChangeRequest } from '../../../entities/request/api.ts'
+
+vi.mock('../../../entities/request/api.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../../entities/request/api.ts')>(),
+  needsApproval: vi.fn(), requestsApi: { create: vi.fn(), list: vi.fn(), approve: vi.fn(), reject: vi.fn(), cancel: vi.fn() },
+}))
 
 const projectId = '10000000-0000-4000-8000-000000000001'
 const sourceId = '10000000-0000-4000-8000-000000000003'
@@ -169,4 +176,29 @@ test('완료 뒤 문서 조회가 실패하면 완료 안내에서 다시 불러
   fireEvent.click(await within(done).findByRole('button', { name: '결과 다시 불러오기' }))
   await waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(2))
   await waitFor(() => expect(within(done).queryByRole('button', { name: '결과 다시 불러오기' })).toBeNull())
+})
+
+test('팀원이 둘 이상이면 승인을 요청하고 다른 팀원이 승인해 끝난 문서를 불러온다', async () => {
+  vi.mocked(needsApproval).mockResolvedValue(true)
+  const request: ChangeRequest = {
+    id: 'request-1', projectId, type: 'presentation_generation', state: 'pending', payload: {},
+    requestedBy: { userId: 'me', name: '나' }, decidedBy: null, result: null, error: null, createdAt: '', decidedAt: null,
+  }
+  vi.mocked(requestsApi.create).mockResolvedValue(request)
+  const create = vi.spyOn(presentationGenerationApi, 'create')
+  vi.spyOn(materialsApi, 'job').mockResolvedValue(succeeded)
+  const { onCompleted } = mount()
+  fireEvent.click(screen.getByRole('button', { name: 'PPT 만들기' }))
+  const confirm = await screen.findByRole('dialog', { name: 'PPT 초안 만들기' })
+  await within(confirm).findByText('클린 리포트')
+  fireEvent.click(within(confirm).getByRole('button', { name: '초안 생성' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(create).not.toHaveBeenCalled()
+  expect(requestsApi.create).toHaveBeenCalledWith(projectId, 'presentation_generation',
+    { outlineVersion: 3, designVersion: 2, sourceIds: [sourceId] }, expect.any(String))
+
+  announceDecided({ ...request, state: 'rejected' })
+  announceDecided({ ...request, state: 'approved', result: { jobId: queued.id } })
+  await waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(1))
+  expect(screen.getByRole('button', { name: '생성 결과 보기' })).toBeTruthy()
 })

@@ -6,8 +6,15 @@ import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import { designApi } from '../api.ts'
 import type { DesignSettings } from '../api.ts'
 import DesignPage from './DesignPage.tsx'
+import { announceDecided, needsApproval, requestsApi } from '../../../entities/request/api.ts'
+import type { ChangeRequest } from '../../../entities/request/api.ts'
 import { fontsApi } from '../fontsApi.ts'
 import type { ProjectFont } from '../fontsApi.ts'
+
+vi.mock('../../../entities/request/api.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../../entities/request/api.ts')>(),
+  needsApproval: vi.fn(), requestsApi: { create: vi.fn(), list: vi.fn(), approve: vi.fn(), reject: vi.fn(), cancel: vi.fn() },
+}))
 
 vi.mock('../api.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../api.ts')>(),
@@ -269,4 +276,37 @@ test('템플릿을 연달아 누르면 매번 바로 저장하고 미리보기�
   await screen.findByText('클린 리포트 템플릿으로 저장했어요')
   expect(save.mock.calls[2][1]).toMatchObject({ expectedVersion: 3, templateId: template.id })
   expect(screen.getByRole('button', { name: '클린 리포트 선택됨' }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('팀원이 둘 이상이면 템플릿 변경 승인을 요청하고 승인되면 최신 디자인을 적용한다', async () => {
+  vi.mocked(needsApproval).mockResolvedValue(true)
+  const request: ChangeRequest = {
+    id: 'request-1', projectId: 'project', type: 'design_change', state: 'pending', payload: {},
+    requestedBy: { userId: 'me', name: '나' }, decidedBy: null, result: null, error: null, createdAt: '', decidedAt: null,
+  }
+  vi.mocked(requestsApi.create).mockResolvedValue(request)
+  mount()
+  await choose('클린 리포트')
+  expect(await screen.findByText('클린 리포트 템플릿으로 변경을 요청했어요. 다른 팀원 한 명이 승인하면 적용돼요')).toBeTruthy()
+  expect(designApi.save).not.toHaveBeenCalled()
+  expect(requestsApi.create).toHaveBeenCalledWith('project', 'design_change',
+    { expectedVersion: 1, mode: 'template', templateId: template.id, templateVersion: template.version }, expect.any(String))
+  // 승인 전에는 저장된 디자인이 그대로다
+  expect(screen.getByRole('button', { name: '클린 리포트 선택' }).getAttribute('aria-pressed')).not.toBe('true')
+
+  vi.mocked(designApi.get).mockResolvedValue(storedTemplate)
+  announceDecided({ ...request, state: 'approved', result: { designVersion: 2 } })
+  expect(await screen.findByText('클린 리포트 템플릿이 적용됐어요')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '클린 리포트 선택됨' }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('같은 종류의 승인 요청이 이미 있으면 이유를 보여 주고 다시 고를 수 있다', async () => {
+  vi.mocked(needsApproval).mockResolvedValue(true)
+  vi.mocked(requestsApi.create).mockRejectedValue(new ApiError(409, {
+    error: { code: 'REQUEST_IN_PROGRESS', message: '기다리는 디자인 변경 요청이 있어요', retryable: false }, requestId: 'request',
+  }))
+  mount()
+  await choose('클린 리포트')
+  expect(await screen.findByText('기다리는 디자인 변경 요청이 있어요')).toBeTruthy()
+  expect(screen.queryByText('저장 결과를 확인하면 디자인을 다시 수정할 수 있어요.')).toBeNull()
 })
