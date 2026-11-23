@@ -102,7 +102,7 @@ export default function ProjectPage() {
     <Link to="/">프로젝트 목록으로</Link>{error instanceof ApiError && error.status === 401 && <Link to={`/login?${new URLSearchParams({ returnTo: location.pathname })}`}>다시 로그인</Link>}</>
   if (!project || project.id !== projectId) return <StatusPanel kind="loading" title="프로젝트를 불러오고 있어요" />
   return <>
-    <header className={page.header}><h1>{settings ? '프로젝트 설정' : project.name}</h1><Link to={settings ? `/projects/${project.id}` : '/'}>돌아가기</Link></header>
+    <header className={page.header}><h1>{settings ? '프로젝트 설정' : project.name}</h1><Link className={page.back} to={settings ? `/projects/${project.id}` : '/'}>돌아가기</Link></header>
     <RequestError error={error} action={<Button onClick={() => void refresh().catch(() => {})}>최신 정보 다시 확인</Button>} />
     <RequestError error={userError} action={<Button onClick={() => void refreshUser()}>계정 정보 다시 확인</Button>} />
     {settings ? <ProjectSettings key={project.id} project={project} onChange={refresh} onOpen={open} onError={onAccessError} leaving={leaving} />

@@ -8,7 +8,7 @@
 .banner button, .banner a { flex-shrink: 0; }
 
 /* 왼쪽 목록, 가운데 캔버스, 오른쪽 요소 정보 */
-.editor { display: grid; grid-template-columns: 144px minmax(0, 1fr) 280px; align-items: start; gap: var(--space-24); animation: var(--motion-content-enter); }
+.editor { display: grid; grid-template-columns: 144px minmax(0, 1fr) 240px; align-items: start; gap: var(--space-20); animation: var(--motion-content-enter); }
 
 .slides { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
 .slides h2, .inspector h2 { font: 500 18px/28px var(--font-body); }
@@ -22,7 +22,9 @@
 .stageHead h2 { font: 500 14px/22px var(--font-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stageHead span { flex-shrink: 0; font: var(--text-meta); color: var(--color-tertiary); animation: var(--motion-fade-enter); }
 /* 배율을 키우면 이 영역 안에서 스크롤한다 */
-.stageArea { padding: var(--space-16); overflow: auto; border-radius: var(--radius-lg); background: var(--color-subtle); }
+/* 맞춤 배율의 슬라이드는 가운데에 둔다 */
+.stageArea { display: flex; justify-content: safe center; padding: var(--space-12); overflow: auto; border-radius: var(--radius-lg); background: var(--color-subtle); }
+.stageArea > * { flex: none; }
 .stageFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); font: var(--text-meta); color: var(--color-tertiary); }
 .stageFoot label { display: flex; align-items: center; gap: var(--space-8); flex-shrink: 0; }
 .stageFoot select { min-height: 32px; color: var(--color-ink); }
@@ -51,7 +53,7 @@
 .secondaryLink:hover { background: var(--color-subtle); }
 
 /* 좁아지면 요소 정보를 아래로, 더 좁아지면 목록을 위로 보낸다 */
-@media (max-width: 1280px) {
+@media (max-width: 1100px) {
   .editor { grid-template-columns: 144px minmax(0, 1fr); }
   .inspector { grid-column: 1 / -1; }
 }

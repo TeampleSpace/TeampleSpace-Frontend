@@ -200,14 +200,26 @@ function Workspace({
   // 닫아 둔 충돌 안내. 요소 정보에서 다시 열 수 있다
   const [dismissed, setDismissed] = useState<string>()
   const [area, setArea] = useState<HTMLDivElement | null>(null)
-  const [areaWidth, setAreaWidth] = useState(0)
+  // 맞춤 배율에 쓰는 편집 영역 크기. 높이는 화면 아래까지 남은 공간이다
+  const [areaSize, setAreaSize] = useState({ width: 0, height: 0 })
   const selectedRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     if (!area) return
-    const observer = new ResizeObserver(([entry]) => setAreaWidth(entry.contentRect.width))
+    const measure = () => {
+      const style = getComputedStyle(area)
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      // 아래 안내 줄과 여백만큼 남기고 슬라이드 전체가 한 화면에 들어오게 한다
+      const height = window.innerHeight - area.getBoundingClientRect().top - padding - 72
+      setAreaSize({ width: area.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), height: Math.max(height, 240) })
+    }
+    const observer = new ResizeObserver(measure)
     observer.observe(area)
-    return () => observer.disconnect()
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
   }, [area])
 
   // 다른 슬라이드로 가거나 화면을 떠날 때 남은 입력을 바로 저장한다
@@ -221,7 +233,7 @@ function Workspace({
   const online = state.connection === 'online'
   const statusOf = (id: string) => state.elements[id]?.status ?? 'clean'
   const locked = (id: string) => !online || statusOf(id) === 'conflict'
-  const scale = zoom > 0 ? zoom : fitScale(canvas, { width: areaWidth || 1, height: Infinity })
+  const scale = zoom > 0 ? zoom : fitScale(canvas, { width: areaSize.width || 1, height: areaSize.height || Infinity })
   const modified = slide.elements.some((element) =>
     ['dirty', 'saving', 'failed', 'conflict'].includes(statusOf(element.id)),
   )
