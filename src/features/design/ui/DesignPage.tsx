@@ -8,6 +8,7 @@ import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
 import { UnsavedGuard } from '../../../shared/ui/UnsavedGuard.tsx'
 import { designApi, designColor } from '../api.ts'
+import { needsApproval, requestsApi, useRequestApproved } from '../../../entities/request/api.ts'
 import { DesignFontField } from './DesignFontField.tsx'
 import type { CustomDesign, DesignCatalog, DesignInput, DesignSettings, DesignTemplate, TemplateSelection } from '../api.ts'
 import { DesignPreview } from './DesignPreview.tsx'
@@ -22,7 +23,8 @@ type Drafts = { template: TemplateSelection | null; custom: CustomDesign }
 type PageData = { settings: DesignSettings; catalog: DesignCatalog }
 type InputField = Exclude<keyof CustomDesign, 'fontAssetId'> | 'template'
 type InputErrors = Partial<Record<InputField, string>>
-type SaveAttempt = { body: DesignInput; key: string }
+// request는 팀원 승인을 받아 저장하는지다. 정하기 전이면 비워 둔다
+type SaveAttempt = { body: DesignInput; key: string; request?: boolean }
 type AccessError = (reason: unknown) => void
 
 const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표 색상', guidelines: '디자인 지침', template: '템플릿' }
@@ -151,6 +153,8 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const [previewFont, setPreviewFont] = useState<string>()
   const formId = useId()
   const operation = useRef<AbortController | null>(null)
+  // 입력을 바꿀 때마다 늘린다. 다시 읽는 동안 바뀐 입력을 응답으로 덮어쓰지 않는다
+  const edits = useRef(0)
   const fieldToFocus = useRef<InputField | undefined>(undefined)
   const template = items.find((item) => same(selectionOf(item), drafts.template))
   const { custom } = drafts
@@ -192,6 +196,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   }, [invalid, formId])
 
   function chooseMode(value: Mode) {
+    edits.current += 1
     setMode(value)
     setInputErrors({})
     setSaved(undefined)
@@ -209,12 +214,14 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   }
 
   function changeCustom(field: keyof CustomDesign, value: string) {
+    edits.current += 1
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, [field]: value } }))
     setInputErrors((current) => ({ ...current, [field]: undefined }))
     setSaved(undefined)
   }
 
   function changeFont({ font, fontAssetId }: Pick<CustomDesign, 'font' | 'fontAssetId'>) {
+    edits.current += 1
     setPreviewFont(undefined)
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, font, fontAssetId } }))
     setInputErrors((current) => ({ ...current, font: undefined }))
@@ -240,12 +247,24 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       return
     }
     setInputErrors({})
-    const attempt = pending ?? { body, key: crypto.randomUUID() }
+    let attempt: SaveAttempt = pending ?? { body, key: crypto.randomUUID() }
     const controller = new AbortController()
     operation.current = controller
     setSaving(true)
     setSaved(undefined)
     try {
+      if (attempt.request === undefined) attempt = { ...attempt, request: await needsApproval(projectId) }
+      if (attempt.request) {
+        await requestsApi.create(projectId, 'design_change', attempt.body, attempt.key)
+        if (controller.signal.aborted) return
+        setPending(null)
+        // 승인 전까지는 저장된 템플릿을 그대로 보여 준다
+        if (attempt.body.mode === 'template') setDrafts((current) => ({ ...current, template: makeDrafts(base, catalog).template }))
+        const sent = attempt.body
+        const requested = sent.mode === 'template' ? items.find((item) => item.id === sent.templateId)?.name : undefined
+        setSaved({ id: Date.now(), text: `${requested ? `${requested} 템플릿으로 ` : '디자인 '}변경을 요청했어요. 다른 팀원 한 명이 승인하면 적용돼요` })
+        return
+      }
       const updated = await designApi.save(projectId, attempt.body, attempt.key, controller.signal)
       if (controller.signal.aborted) return
       setPending(null)
@@ -258,7 +277,8 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       setSaved({ id: Date.now(), text: name ? `${name} 템플릿으로 저장했어요` : '디자인을 저장했어요' })
     } catch (reason) {
       if (controller.signal.aborted) return
-      const uncertain = reason instanceof TransportError || (reason instanceof ApiError && (reason.status >= 500 || reason.code === 'REQUEST_IN_PROGRESS'))
+      // 승인 요청의 REQUEST_IN_PROGRESS는 같은 종류의 요청이 이미 기다린다는 뜻이라 결과가 정해진 것이다
+      const uncertain = reason instanceof TransportError || (reason instanceof ApiError && (reason.status >= 500 || (reason.code === 'REQUEST_IN_PROGRESS' && !attempt.request)))
       setPending(uncertain ? attempt : null)
       // 저장하지 못한 템플릿 선택은 저장된 템플릿으로 되돌린다. 충돌은 확인 뒤에 고를 수 있게 남긴다
       if (!uncertain && attempt.body.mode === 'template' && !(reason instanceof ApiError && reason.code === 'VERSION_CONFLICT')) {
@@ -279,6 +299,26 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       if (!controller.signal.aborted) setSaving(false)
     }
   }
+
+  // 다른 팀원이 디자인 변경을 승인하면 최신 디자인을 다시 읽는다. 승인된 것과 다른 입력이 남아 있으면 저장할 때 충돌로 알린다
+  useRequestApproved(projectId, 'design_change', (request) => {
+    if (operation.current) return
+    const requested = request.payload as DesignInput
+    if (dirty && !(requested.mode === 'custom' && mode === 'custom' && same(requested.custom, configuredCustom))) return
+    const at = edits.current
+    void designApi.get(projectId).then((updated) => {
+      if (operation.current || edits.current !== at) return
+      const canonical = makeDrafts(updated, catalog)
+      setBase(updated)
+      setInitial(canonical)
+      setDrafts(canonical)
+      setMode(modeOf(updated))
+      const name = updated.mode === 'template' ? items.find((item) => item.id === updated.templateId)?.name : undefined
+      setSaved({ id: Date.now(), text: name ? `${name} 템플릿이 적용됐어요` : '승인된 디자인이 적용됐어요' })
+    }).catch(() => {
+      // 다음 저장에서 충돌로 최신 디자인을 확인한다
+    })
+  })
 
   async function loadLatest() {
     if (operation.current) return

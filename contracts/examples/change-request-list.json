@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "id": "0193a000-0000-7000-8000-0000000000e2",
+      "projectId": "0193a000-0000-7000-8000-0000000000a1",
+      "type": "outline_generation",
+      "state": "pending",
+      "payload": {
+        "expectedVersion": 3,
+        "sourceIds": [
+          "0193a000-0000-7000-8000-0000000000b1"
+        ]
+      },
+      "requestedBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d2",
+        "name": "팀원 2"
+      },
+      "decidedBy": null,
+      "result": null,
+      "error": null,
+      "createdAt": "2026-11-23T01:00:00.000000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "0193a000-0000-7000-8000-0000000000e1",
+      "projectId": "0193a000-0000-7000-8000-0000000000a1",
+      "type": "design_change",
+      "state": "approved",
+      "payload": {
+        "expectedVersion": 1,
+        "mode": "template",
+        "templateId": "0193a000-0000-7000-8000-0000000000c9",
+        "templateVersion": 1
+      },
+      "requestedBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d2",
+        "name": "팀원 2"
+      },
+      "decidedBy": {
+        "userId": "0193a000-0000-7000-8000-0000000000d1",
+        "name": "팀원 1"
+      },
+      "result": {
+        "designVersion": 2
+      },
+      "error": null,
+      "createdAt": "2026-11-23T01:00:00.000000Z",
+      "decidedAt": "2026-11-23T01:02:00.000000Z"
+    }
+  ]
+}

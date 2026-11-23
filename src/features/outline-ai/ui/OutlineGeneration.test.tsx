@@ -9,6 +9,13 @@ import { materialsApi } from '../../../entities/material/api.ts'
 import type { Job, MaterialSummary } from '../../../entities/material/model.ts'
 import OutlineGeneration from './OutlineGeneration.tsx'
 import { outlineGenerationApi } from '../api.ts'
+import { announceDecided, needsApproval, requestsApi } from '../../../entities/request/api.ts'
+import type { ChangeRequest } from '../../../entities/request/api.ts'
+
+vi.mock('../../../entities/request/api.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../../entities/request/api.ts')>(),
+  needsApproval: vi.fn(), requestsApi: { create: vi.fn(), list: vi.fn(), approve: vi.fn(), reject: vi.fn(), cancel: vi.fn() },
+}))
 
 const projectId = '10000000-0000-4000-8000-000000000001'
 const source: MaterialSummary = {
@@ -262,4 +269,30 @@ test('끝까지 읽은 뒤 한 페이지가 넘게 새 자료가 들어오면 �
   await vi.advanceTimersByTimeAsync(4000)
   expect(await form.findByRole('button', { name: '자료 더 보기' })).toBeTruthy()
   expect(form.getByRole('checkbox', { name: '새 자료 0' })).toBeTruthy()
+})
+
+test('팀원이 둘 이상이면 승인을 요청하고 다른 팀원이 승인하면 시작한 작업을 보여 준다', async () => {
+  vi.mocked(needsApproval).mockResolvedValue(true)
+  const create = vi.spyOn(outlineGenerationApi, 'create')
+  vi.mocked(requestsApi.create).mockImplementation(async () => request)
+  vi.spyOn(materialsApi, 'job').mockResolvedValue({ ...queued, status: 'running', progress: 40 })
+  const request: ChangeRequest = {
+    id: 'request-1', projectId, type: 'outline_generation', state: 'pending', payload: {},
+    requestedBy: { userId: 'me', name: '나' }, decidedBy: null, result: null, error: null, createdAt: '', decidedAt: null,
+  }
+  mount(true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
+  const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
+  fireEvent.click(await form.findByRole('checkbox', { name: source.title }))
+  fireEvent.click(form.getByRole('button', { name: '구성 만들기' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(create).not.toHaveBeenCalled()
+  expect(vi.mocked(requestsApi.create).mock.calls[0]?.slice(0, 3)).toEqual([projectId, 'outline_generation', { expectedVersion: 1, sourceIds: [source.id] }])
+
+  // 다른 프로젝트나 다른 종류의 승인은 무시한다
+  announceDecided({ ...request, projectId: 'other', state: 'approved', result: { jobId: queued.id } })
+  announceDecided({ ...request, type: 'design_change', state: 'approved', result: { designVersion: 2 } })
+  announceDecided({ ...request, state: 'approved', result: { jobId: queued.id } })
+  expect(await screen.findByRole('button', { name: '구성 생성 진행 보기' })).toBeTruthy()
+  expect(materialsApi.job).toHaveBeenCalledWith(queued.id)
 })

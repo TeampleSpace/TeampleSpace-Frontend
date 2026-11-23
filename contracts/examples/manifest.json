@@ -125,6 +125,21 @@
     "valid": true
   },
   {
+    "example": "change-request.json",
+    "schema": "api.schema.json#/$defs/ChangeRequest",
+    "valid": true
+  },
+  {
+    "example": "change-request-list.json",
+    "schema": "api.schema.json#/$defs/ChangeRequestList",
+    "valid": true
+  },
+  {
+    "example": "change-request-create.json",
+    "schema": "api.schema.json#/$defs/ChangeRequestCreate",
+    "valid": true
+  },
+  {
     "example": "material-comment.json",
     "schema": "api.schema.json#/$defs/MaterialComment",
     "valid": true

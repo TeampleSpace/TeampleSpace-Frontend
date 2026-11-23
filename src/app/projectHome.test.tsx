@@ -9,6 +9,7 @@ import { projectsApi } from '../entities/project/api.ts'
 import type { Project } from '../entities/project/model.ts'
 
 vi.mock('../entities/project/api.ts', () => ({ projectsApi: { list: vi.fn() } }))
+vi.mock('../features/requests/ui/RequestBanner.tsx', () => ({ RequestBanner: () => null }))
 const project: Project = { id: 'project-1', name: '팀 발표', topic: null, presentationConstraints: null,
   ownerId: 'owner', version: 1, memberCount: 2, createdAt: '2026-11-19T00:00:00Z', updatedAt: '2026-11-19T00:00:00Z' }
 beforeAll(() => {

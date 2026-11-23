@@ -26,6 +26,7 @@ import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema, materialNoteSchema,
   materialSchema, materialSourceSchema, materialSummarySchema, uploadTicketSchema,
 } from '../entities/material/model.ts'
+import { changeRequestListSchema, changeRequestSchema } from '../entities/request/api.ts'
 import { createMaterialsMock } from '../mocks/materials.ts'
 import { exampleSnapshot } from '../mocks/example.ts'
 import { createMockServer } from '../mocks/server.ts'
@@ -94,6 +95,8 @@ const frontendSchemas = [
   [stage2('MaterialSource'), materialSourceSchema],
   [stage2('UploadTicket'), uploadTicketSchema],
   ['stage-3.schema.json#/$defs/Outline', outlineSchema],
+  [api('ChangeRequest'), changeRequestSchema],
+  [api('ChangeRequestList'), changeRequestListSchema],
 ] as const
 
 test('프론트엔드 형식이 계약의 올바른 예제를 모두 받아들인다', () => {

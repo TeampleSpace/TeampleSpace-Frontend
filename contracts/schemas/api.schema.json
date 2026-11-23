@@ -230,6 +230,8 @@
         "material.note.updated",
         "material.comment.created",
         "material.comment.deleted",
+        "request.created",
+        "request.updated",
         "outline.updated",
         "design.updated",
         "presentation.replaced",
@@ -492,6 +494,60 @@
         "version": { "$ref": "#/$defs/Version" },
         "eventId": { "$ref": "#/$defs/EventCursor" }
       }
+    },
+    "ChangeRequestType": { "enum": ["outline_generation", "presentation_generation", "design_change"] },
+    "ChangeRequestCreate": {
+      "description": "payload는 type에 맞는 기존 요청 본문이다. outline_generation은 stage-3-generation의 OutlineJobRequest, presentation_generation은 PresentationGenerationRequest, design_change는 stage-3-design의 DesignSettingsPutRequest다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "payload"],
+      "properties": {
+        "type": { "$ref": "#/$defs/ChangeRequestType" },
+        "payload": { "type": "object" }
+      }
+    },
+    "ChangeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "projectId", "type", "state", "payload", "requestedBy", "decidedBy", "result", "error", "createdAt", "decidedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "type": { "$ref": "#/$defs/ChangeRequestType" },
+        "state": { "enum": ["pending", "approved", "failed", "rejected", "canceled"] },
+        "payload": { "type": "object" },
+        "requestedBy": { "$ref": "#/$defs/ChangeRequestPerson" },
+        "decidedBy": { "anyOf": [{ "$ref": "#/$defs/ChangeRequestPerson" }, { "type": "null" }] },
+        "result": {
+          "description": "승인해 실행한 결과. 생성 요청은 jobId, 디자인 변경은 designVersion이다",
+          "anyOf": [
+            { "type": "object", "additionalProperties": false, "required": ["jobId"], "properties": { "jobId": { "$ref": "#/$defs/Uuid" } } },
+            { "type": "object", "additionalProperties": false, "required": ["designVersion"], "properties": { "designVersion": { "$ref": "#/$defs/Version" } } },
+            { "type": "null" }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            { "type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } } },
+            { "type": "null" }
+          ]
+        },
+        "createdAt": { "$ref": "#/$defs/Timestamp" },
+        "decidedAt": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] }
+      }
+    },
+    "ChangeRequestPerson": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userId", "name"],
+      "properties": { "userId": { "$ref": "#/$defs/Uuid" }, "name": { "type": "string" } }
+    },
+    "ChangeRequestList": {
+      "description": "기다리는 요청을 먼저, 그다음 최근 요청부터 최대 50개를 담는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": { "items": { "type": "array", "items": { "$ref": "#/$defs/ChangeRequest" } } }
     },
     "MaterialComment": {
       "description": "자료에 팀원이 남긴 댓글",

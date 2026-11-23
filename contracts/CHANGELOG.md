@@ -5,6 +5,11 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-23 AI 작업과 디자인 변경 승인 요청 추가
+
+- 승인 요청 만들기, 목록, 승인, 거절, 취소 경로와 `ChangeRequest`, `ChangeRequestList`, `ChangeRequestCreate` 형식, 오류 코드 `REQUEST_NOT_PENDING`을 추가
+- 요청과 처리 결과를 `request.created`, `request.updated` 이벤트로 보낸다
+
 ## 2026-11-23 자료 댓글 추가
 
 - 자료 댓글 목록, 작성, 삭제 경로와 `MaterialComment`, `MaterialCommentList`, `MaterialCommentRequest`, `MaterialCommentDeleted` 형식을 추가

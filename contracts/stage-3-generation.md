@@ -25,3 +25,22 @@
 - 발행 직전 요청자의 접근 권한, 구성과 디자인 버전, 자료의 고정 개정, 발표 자료가 아직 없는지를 다시 검사한다. 바뀌었으면 `JOB_INPUT_STALE`, 권한이 회수됐으면 `JOB_PRESENTATION_ACCESS_REVOKED`로 끝내고 아무것도 저장하지 않는다
 - 성공하면 발표 자료와 슬라이드, 요소를 한 트랜잭션에서 만들고 `presentation.replaced` 이벤트를 보낸다. 이벤트의 `presentationVersion`과 `generation`은 1이다. [결과 참조](examples/presentation-job-result.json)의 발표 ID로 동기화 스냅샷을 다시 읽는다
 - `GET /v1/capabilities`의 `featureFlags.presentationGeneration`이 false인 환경의 신규 요청은 503을 반환한다
+
+## 승인 요청
+
+| 요청 | 본문 | 성공 응답 |
+| --- | --- | --- |
+| POST /v1/projects/{projectId}/requests | ChangeRequestCreate | 201 ChangeRequest |
+| GET /v1/projects/{projectId}/requests | 없음 | ChangeRequestList |
+| POST /v1/requests/{requestId}/approve | 없음 | ChangeRequest |
+| POST /v1/requests/{requestId}/reject | 없음 | ChangeRequest |
+| POST /v1/requests/{requestId}/cancel | 없음 | ChangeRequest |
+
+- AI 구성 만들기(`outline_generation`), PPT 만들기(`presentation_generation`), 디자인 변경(`design_change`)을 바로 실행하지 않고 팀원에게 승인을 요청한다. `payload`는 각 작업의 기존 요청 본문이다
+- 요청은 `Idempotency-Key`가 필수다. 같은 프로젝트에 같은 종류의 요청이 기다리고 있으면 `REQUEST_IN_PROGRESS`다
+- 요청자가 아닌 활성 팀원 한 명이 승인하면 요청자의 이름으로 기존 작업 등록이나 디자인 저장을 실행한다. 이때 기존 검사를 그대로 다시 하고, 요청 뒤에 구성이나 디자인이 바뀌었거나 다른 검사에 걸리면 요청은 `failed`가 되며 `error`에 이유를 남긴다. 성공하면 `approved`이고 `result`에 작업 `jobId`나 `designVersion`을 담는다
+- 요청자는 자기 요청을 승인하거나 거절할 수 없고 취소만 할 수 있다. 다른 팀원은 취소하지 못한다. 어기면 `FORBIDDEN`이다
+- 이미 처리된 요청이나 다른 사람이 승인하는 중인 요청을 다시 처리하면 `REQUEST_NOT_PENDING`이다. 승인하던 서버가 멈춰 2분 넘게 끝나지 않은 요청은 다시 승인할 수 있고, 같은 요청으로 실행해 두 번 실행되지 않는다. 20시간 넘게 멈춘 요청은 이미 실행됐는지 알 수 없어 다시 승인하면 `failed`로 닫는다
+- 기존 작업 등록과 디자인 저장 경로는 그대로 열려 있다. 팀원이 혼자인 프로젝트는 화면이 기존 경로로 바로 실행한다
+- 요청을 만들면 `request.created`, 처리하면 `request.updated` 이벤트를 보낸다. payload는 requestId, type, state이고 받은 화면은 요청 목록을 다시 읽는다
+

@@ -5,6 +5,7 @@
     { "code": "IDEMPOTENCY_KEY_REUSED", "httpStatus": 409, "retryable": false, "basis": "설계", "meaning": "같은 멱등키로 본문이 다른 요청을 보냈다" },
     { "code": "REQUEST_IN_PROGRESS", "httpStatus": 409, "retryable": true, "basis": "설계", "meaning": "같은 멱등키의 요청을 처리하는 중이다. Retry-After 뒤에 같은 요청으로 다시 보낸다" },
     { "code": "REGENERATION_NOT_ENABLED", "httpStatus": 409, "retryable": false, "basis": "설계", "meaning": "이미 발표 자료가 있어 다시 생성할 수 없다" },
+    { "code": "REQUEST_NOT_PENDING", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "승인, 거절, 취소하려는 요청이 이미 처리됐거나 다른 사람이 승인하는 중이다" },
     { "code": "PRESENTATION_NOT_READY", "httpStatus": 404, "retryable": false, "basis": "설계", "meaning": "아직 발표 자료를 생성하지 않았다" },
     { "code": "EDIT_GROUP_CLOSED", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "닫힌 편집 묶음을 다시 사용했다. 코드는 설계서에 있고 상태는 상태 충돌이라 409로 했다. currentVersions를 함께 돌려준다" },
     { "code": "CHANGE_NOT_FINALIZED", "httpStatus": 409, "retryable": false, "basis": "기술 선택", "meaning": "아직 열려 있는 변경 묶음을 승인하려 했다. 코드는 설계서에 있고 상태는 상태 충돌이라 409로 했다" },
