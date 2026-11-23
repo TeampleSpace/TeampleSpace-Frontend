@@ -46,3 +46,25 @@ test('Alt를 누르고 끌면 맞추지 않고 옮긴 그대로 저장한다', (
   fireEvent.pointerUp(hit, { pointerId: 1 })
   expect(onChange.mock.calls[0][1].geometry.x).toBe(Math.round(target.geometry.x + offCenter))
 })
+
+test('맞춤으로 이동 거리가 줄어도 끌어서 놓았으면 맞춘 위치를 저장한다', () => {
+  // 가운데에서 1만큼 벗어난 자리까지 Alt로 옮겨 둔 상태를 만든다
+  const { hit, onChange, unmount } = mount()
+  const nearCenter = presentation.canvas.width / 2 - (target.geometry.x + target.geometry.width / 2) - 1
+  fireEvent.pointerDown(hit, { clientX: 0, clientY: 0, pointerId: 1 })
+  fireEvent.pointerMove(hit, { clientX: nearCenter, clientY: 0, pointerId: 1, altKey: true })
+  fireEvent.pointerUp(hit, { pointerId: 1 })
+  const placed = onChange.mock.calls[0][1].geometry
+  unmount()
+
+  const moved = { ...slide, elements: slide.elements.map((element) => element.id === target.id ? { ...element, geometry: placed } : element) }
+  const save = vi.fn()
+  const view = render(<SlideStage canvas={presentation.canvas} slide={moved} scale={1} locked={() => false}
+    onSelect={vi.fn()} onEditingChange={vi.fn()} onChange={save} onCommit={vi.fn()} />)
+  const again = view.container.querySelector<HTMLElement>(`[data-element="${target.id}"]`)!
+  // 가운데 쪽으로 4만큼 끌면 맞춤으로 실제 이동은 1이다
+  fireEvent.pointerDown(again, { clientX: 0, clientY: 0, pointerId: 1 })
+  fireEvent.pointerMove(again, { clientX: 4, clientY: 0, pointerId: 1 })
+  fireEvent.pointerUp(again, { pointerId: 1 })
+  expect(save.mock.calls[0][1].geometry.x + target.geometry.width / 2).toBe(presentation.canvas.width / 2)
+})
