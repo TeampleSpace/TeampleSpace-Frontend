@@ -118,8 +118,21 @@
   background: transparent;
 }
 
+.button[aria-busy='true'] {
+  position: relative;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  opacity: 0;
+}
+
 .spinner {
-  flex: none;
+  position: absolute;
+  inset: 0;
+  margin: auto;
   width: 16px;
   height: 16px;
   border: 2px solid currentColor;
@@ -131,5 +144,12 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* 동작 줄이기에서도 진행 중임을 알 수 있게 느리게 돌린다 */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: spin 1.6s linear infinite !important;
   }
 }
