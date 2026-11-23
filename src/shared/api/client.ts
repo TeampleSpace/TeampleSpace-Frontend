@@ -19,6 +19,8 @@ export type RequestOptions = {
   headers?: Record<string, string>
   timeoutMs?: number
   signal?: AbortSignal
+  // 페이지를 닫는 중에도 끝까지 보낸다
+  keepalive?: boolean
 } & ({ body?: unknown; binaryBody?: never } | { body?: never; binaryBody: Blob })
 
 // 서버가 공통 오류 구조로 응답한 경우
@@ -133,6 +135,7 @@ export function createApiClient(
         credentials: 'same-origin',
         body: options.binaryBody ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
         signal,
+        keepalive: options.keepalive,
       })
     } catch (cause) {
       // 호출한 쪽에서 취소한 요청은 그대로 알린다
