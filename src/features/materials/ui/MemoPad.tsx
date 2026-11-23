@@ -61,6 +61,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
 
   useEffect(() => {
     const controller = new AbortController()
+    // 받은 본문은 조회를 시작할 때의 개정에 고정되니 처리 기준도 이때의 부모 개정으로 둔다
+    const parentAt = externalRef.current
     void latestOf(material.id, controller.signal)
       .then(([current, source]) => {
         if (controller.signal.aborted) return
@@ -70,7 +72,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
         setSettled((value) => value + 1)
         // 입력이 끝나면 다시 읽을 수 있게 둔다
         if (skip) { handled.current = undefined; return }
-        if (!wasReloading) handled.current = externalRef.current
+        if (!wasReloading) handled.current = parentAt
         const text = source.markdown ?? ''
         version.current = current.version
         shown.current = current.currentRevision?.id
