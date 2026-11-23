@@ -13,6 +13,7 @@ import type { MaterialsMock } from '../../../mocks/materials.ts'
 
 // PDF.js는 테스트 환경에서 돌지 않아 문서 열기만 바꾼다. 실제 PDF 표시는 브라우저에서 확인한다
 vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
+vi.mock('./MarkdownEditor.tsx', () => import('./MarkdownEditor.double.tsx'))
 const pdf = vi.hoisted(() => ({ opened: [] as string[], failOpen: 0, failRender: 0, rendered: [] as number[] }))
 vi.mock('../pdf.ts', () => ({
   openPdf: (url: string) => {
