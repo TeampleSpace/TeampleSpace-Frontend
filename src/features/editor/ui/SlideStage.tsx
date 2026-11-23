@@ -158,8 +158,11 @@ export function SlideStage({
     const geometry = byId(drag.id)?.geometry
     // 거의 움직이지 않았으면 클릭으로 본다. 맞춤으로 줄어든 이동은 그대로 저장한다
     if (!geometry || drag.moved < 2) return
-    const x = Math.round(geometry.x + drag.dx)
-    const y = Math.round(geometry.y + drag.dy)
+    // 맞춘 축은 계산한 좌표를 그대로 두고 나머지 축만 정수로 맞춘다. 홀수 크기 요소도 가운데에 놓인다
+    const place = (value: number, axis: Guide['axis']) =>
+      drag.guides.some((guide) => guide.axis === axis) ? Math.round(value * 100) / 100 : Math.round(value)
+    const x = place(geometry.x + drag.dx, 'x')
+    const y = place(geometry.y + drag.dy, 'y')
     if (x === geometry.x && y === geometry.y) return
     // 놓는 순간 한 번의 명령으로 저장한다. 좌표 항목은 통째로 보낸다
     onChange(drag.id, { geometry: { ...geometry, x, y } })
