@@ -16,6 +16,7 @@
   transition:
     background-color var(--motion-fast) ease-out,
     border-color var(--motion-fast) ease-out,
+    box-shadow var(--motion-fast) ease-out,
     color var(--motion-fast) ease-out;
 }
 
@@ -24,12 +25,13 @@
     transition:
       background-color var(--motion-fast) ease-out,
       border-color var(--motion-fast) ease-out,
+      box-shadow var(--motion-fast) ease-out,
       color var(--motion-fast) ease-out,
       transform var(--motion-fast) var(--motion-ease-out);
   }
 
   .button:not(:disabled, [aria-disabled='true']):active {
-    transform: translateY(1px);
+    transform: scale(0.98);
   }
 }
 
@@ -38,6 +40,8 @@
   font: var(--text-button);
   background: var(--color-primary);
   color: var(--color-on-primary);
+  /* 위쪽의 옅은 빛과 아래 그림자로 면을 살짝 띄운다 */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), var(--shadow-xs);
 }
 
 .primary:not(:disabled, [aria-disabled='true']):hover {
@@ -51,6 +55,11 @@
 .secondary {
   background: var(--color-surface);
   border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.secondary:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--color-border-strong);
 }
 
 .secondary:not(:disabled, [aria-disabled='true']):hover,
@@ -73,6 +82,7 @@
 .dangerOutline {
   background: var(--color-surface);
   border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
   color: var(--color-danger);
 }
 
@@ -94,6 +104,7 @@
 .button[aria-disabled='true'] {
   background: var(--color-muted);
   border-color: transparent;
+  box-shadow: none;
   color: var(--color-tertiary);
   cursor: not-allowed;
 }
