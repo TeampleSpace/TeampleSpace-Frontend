@@ -2,10 +2,10 @@
 :root {
   /* 색상 */
   --color-surface: #ffffff;
-  --color-canvas: #faf9f6;
-  --color-subtle: #f5f4f1;
-  --color-muted: #edece8;
-  --color-ink: #20242d;
+  --color-canvas: #f7f6f3;
+  --color-subtle: #f3f2ef;
+  --color-muted: #ebe9e5;
+  --color-ink: #1d2027;
   --color-secondary: #565d68;
   --color-tertiary: #5e6672;
   --color-primary: #285bdd;
@@ -16,7 +16,8 @@
   --color-accent: #b94e0c;
   --color-accent-soft: #fff0e3;
   --color-accent-bright: #f27c36;
-  --color-border: #e4e3df;
+  --color-border: #e6e4df;
+  --color-border-strong: #d6d3cd;
   /* 입력창처럼 경계를 분명히 보여야 하는 조작부 */
   --color-border-control: #7f8997;
   --color-danger: #b42332;
@@ -66,12 +67,24 @@
   --status-width: 640px;
 
   /* 모서리 */
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-full: 999px;
+
+  /* 그림자. 카드는 테두리만 쓰고 떠 있는 요소에만 옅은 그림자를 겹쳐 쓴다 */
+  --shadow-xs: 0 1px 2px rgb(29 32 39 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(29 32 39 / 0.04), 0 2px 8px rgb(29 32 39 / 0.05);
+  --shadow-popover: 0 0 0 1px rgb(29 32 39 / 0.04), 0 2px 4px rgb(29 32 39 / 0.04), 0 8px 24px rgb(29 32 39 / 0.08);
+  --shadow-dialog: 0 0 0 1px rgb(29 32 39 / 0.04), 0 4px 12px rgb(29 32 39 / 0.06), 0 24px 56px rgb(29 32 39 / 0.14);
+  --focus-ring: 0 0 0 3px rgb(40 91 221 / 0.18);
+
+  /* 큰 제목만 자간을 조금 좁힌다 */
+  --tracking-title: -0.4px;
 
   /* 움직임 */
-  --motion-fast: 120ms;
+  --motion-fast: 140ms;
   --motion-normal: 180ms;
   --motion-enter: 220ms;
   --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);

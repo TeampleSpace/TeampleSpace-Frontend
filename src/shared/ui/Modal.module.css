@@ -6,6 +6,7 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   color: var(--color-ink);
+  box-shadow: var(--shadow-dialog);
   overflow: hidden;
 }
 
@@ -29,7 +30,8 @@
 .invite .titles { gap: 4px; }
 
 .dialog::backdrop {
-  background: rgb(32 36 45 / 0.32);
+  background: rgb(29 32 39 / 0.28);
+  backdrop-filter: blur(2px);
 }
 
 .dialog[open] {
