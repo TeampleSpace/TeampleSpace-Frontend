@@ -28,6 +28,8 @@ type ChoicesFailure = { reason: unknown; cursor?: string }
 type ResultState = { jobId: string; status: 'applied' | 'deferred' }
 const maxSources = 20
 const maxInstructions = 1000
+const choicesRefreshMs = 4000
+const statusLabels: Record<string, string> = { processing: '분석 중', failed: '분석 실패' }
 
 function isActive(job: Job | undefined) {
   return job?.status === 'queued' || job?.status === 'running'
@@ -201,14 +203,19 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     return () => controller.abort()
   }, [completedJobId, resultApplied, dirty])
 
-  async function loadChoices(cursor?: string) {
+  // silent는 창을 열어 둔 동안 조용히 다시 읽는다. 로딩 표시와 오류 안내를 바꾸지 않는다
+  async function loadChoices(cursor?: string, silent = false) {
     if (choicesLock.current) return
     choicesLock.current = true
-    setChoicesLoading(true)
-    setChoicesError(undefined)
+    if (!silent) {
+      setChoicesLoading(true)
+      setChoicesError(undefined)
+    }
     try {
-      const next = await materialsApi.list(projectId, { status: 'ready', cursor })
-      const ready = next.items.filter((item) => item.status === 'ready')
+      // 분석 중이거나 실패한 자료도 보여 주고 선택은 준비된 자료만 받는다
+      const next = await materialsApi.list(projectId, { cursor })
+      const listed = next.items
+      const ready = listed.filter((item) => item.status === 'ready')
       if (!cursor) {
         // 첫 페이지에서 빠진 선택은 준비 여부를 따로 확인한다
         if (next.nextCursor) {
@@ -228,18 +235,37 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
         const readyIds = new Set(ready.map((item) => item.id))
         setSelected((ids) => ids.filter((id) => readyIds.has(id)))
       }
+      const shown = [...listed, ...ready.filter((item) => !listed.some((entry) => entry.id === item.id))]
       setChoices((current) => ({
         items: cursor && current ? [
           ...current.items,
-          ...ready.filter((item) => !current.items.some((previous) => previous.id === item.id)),
-        ] : ready,
-        nextCursor: next.nextCursor,
+          ...shown.filter((item) => !current.items.some((previous) => previous.id === item.id)),
+        ] : silent && current ? [
+          ...shown,
+          ...current.items.filter((item) => !shown.some((entry) => entry.id === item.id)),
+        ] : shown,
+        nextCursor: silent && current ? current.nextCursor : next.nextCursor,
       }))
     } catch (reason) {
-      setChoicesError({ reason, cursor })
-      reportAccess(reason, true)
-    } finally { choicesLock.current = false; setChoicesLoading(false) }
+      if (!silent) {
+        setChoicesError({ reason, cursor })
+        reportAccess(reason, true)
+      }
+    } finally {
+      choicesLock.current = false
+      if (!silent) setChoicesLoading(false)
+    }
   }
+
+  // 창을 열어 둔 동안 새로 추가되거나 분석이 끝난 자료를 반영한다
+  const refreshChoices = useEffectEvent(() => {
+    if (!writeLock.current) void loadChoices(undefined, true)
+  })
+  useEffect(() => {
+    if (view !== 'form' || pending) return
+    const timer = setInterval(refreshChoices, choicesRefreshMs)
+    return () => clearInterval(timer)
+  }, [view, pending])
 
   function openForm() {
     setView('form')
@@ -356,11 +382,13 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
             <legend>발표에 사용할 자료 {selected.length}개 선택</legend>
             {choices?.items.map((item) => <label key={item.id}>
               <input type="checkbox" checked={selected.includes(item.id)}
-                disabled={!selected.includes(item.id) && selected.length >= maxSources}
+                disabled={item.status !== 'ready' || (!selected.includes(item.id) && selected.length >= maxSources)}
                 onChange={(event) => setSelected((ids) => event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))} />
               {item.title}
+              {item.status !== 'ready' && <span className={styles.status}>{statusLabels[item.status]}</span>}
             </label>)}
-            {choices && !choices.items.length && !choices.nextCursor && <p>선택할 수 있는 준비된 자료가 없어요</p>}
+            {choices && !choices.items.length && !choices.nextCursor && <p>아직 추가한 자료가 없어요</p>}
+            {choices?.items.some((item) => item.status === 'processing') && <p className={styles.note}>분석 중인 자료는 분석이 끝나면 고를 수 있어요</p>}
           </fieldset>
           {choicesLoading && <StatusPanel kind="loading" title="자료를 불러오고 있어요" />}
           {choicesError && <RequestError error={choicesError.reason} action={<Button variant="secondary" disabled={freezeInput}

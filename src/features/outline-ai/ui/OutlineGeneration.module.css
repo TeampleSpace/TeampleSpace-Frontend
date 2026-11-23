@@ -52,6 +52,13 @@
   accent-color: var(--color-primary);
 }
 
+.status {
+  margin-left: auto;
+  color: var(--color-secondary);
+  font: var(--text-meta);
+  white-space: nowrap;
+}
+
 .note {
   color: var(--color-secondary);
   font: var(--text-body);
