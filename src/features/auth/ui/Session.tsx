@@ -42,7 +42,7 @@ export function RequireSession({ onboarding = false }: { onboarding?: boolean })
     const preview = takeBillingPreviewReturn()
     if (preview) void navigate(authDestination(user.onboardingStatus === 'pending', preview), { replace: true })
   }, [user, loading, error, location, navigate, onboarding])
-  if (loading || error) return <SessionStatus />
+  if (loading || error) return <SessionStatus standalone />
   const returnTo = safeReturnTo(location.pathname + location.search)
   if (!user) return <Navigate to={`/login?${new URLSearchParams({ returnTo })}`} replace />
   if (!onboarding && user.onboardingStatus === 'pending') return <Navigate to={`/onboarding?${new URLSearchParams({ returnTo })}`} replace />
