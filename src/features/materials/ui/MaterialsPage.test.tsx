@@ -261,6 +261,40 @@ test('팀 메모는 댓글처럼 남기고 다른 팀원의 메모를 새로고�
   vi.useRealTimers()
 })
 
+test('다른 팀원이 쓴 직후 내가 써도 그 사이 남의 메모를 건너뛰지 않고 더 보기 실패를 알린다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const id = mock.seed('file', '보고서.pdf')
+  mount()
+  const input = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
+  // 다음 주기 조회 전에 팀원이 먼저 쓰고 이어서 내가 쓴다
+  mock.commentAs(id, member, '팀원이 먼저 쓴 메모')
+  fireEvent.change(input, { target: { value: '내가 이어서 쓴 메모' } })
+  fireEvent.click(screen.getByRole('button', { name: '남기기' }))
+  expect(await screen.findByText('내가 이어서 쓴 메모')).toBeTruthy()
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(await screen.findByText('팀원이 먼저 쓴 메모')).toBeTruthy()
+  vi.useRealTimers()
+
+  // 50개가 넘어 더 보기가 실패하면 이유를 보여 준다
+  for (let index = 0; index < 51; index++) mock.commentAs(id, member, `쌓인 메모 ${index}`)
+  cleanup()
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '메모 더 보기' }))
+  await waitFor(() => expect(screen.getAllByText(/쌓인 메모/).length).toBeGreaterThan(0))
+  expect(screen.queryByRole('button', { name: '메모 더 보기' })).toBeNull()
+})
+
+test('메모 더 보기가 실패하면 목록 아래에 이유를 보여 준다', async () => {
+  const id = mock.seed('file', '보고서.pdf')
+  for (let index = 0; index < 51; index++) mock.commentAs(id, member, `쌓인 메모 ${index}`)
+  mount()
+  const more = await screen.findByRole('button', { name: '메모 더 보기' })
+  mock.faults.failNext = { match: 'GET /v1/materials', code: 'SERVICE_UNAVAILABLE' }
+  fireEvent.click(more)
+  expect(await screen.findByRole('alert')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '메모 더 보기' })).toBeTruthy()
+})
+
 test('메모 삭제 확인은 취소에 포커스를 두고 닫으면 원래 버튼이나 입력란으로 포커스를 돌려준다', async () => {
   const id = mock.seed('file', '보고서.pdf')
   mock.commentAs(id, mock.ownerId, '지울 메모')
