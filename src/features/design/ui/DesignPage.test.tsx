@@ -27,10 +27,9 @@ const template = {
 }
 const storedTemplate: DesignSettings = { ...initial, mode: 'template', version: 2, templateId: template.id, templateVersion: template.version }
 
-// 카드를 눌러 상세를 열고 상세에서 템플릿을 고른다
+// 카드를 누르면 바로 그 템플릿으로 저장한다
 async function choose(name: string) {
   fireEvent.click(await screen.findByRole('button', { name: `${name} 선택` }))
-  fireEvent.click(screen.getByRole('button', { name: '이 템플릿 선택' }))
 }
 
 function mount() {
@@ -55,7 +54,7 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   const editorial = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00003', key: 'editorial', name: '에디토리얼' }
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial], allowedFonts: ['Pretendard'] })
   const { container } = mount()
-  fireEvent.click(await screen.findByRole('button', { name: '에디토리얼 선택' }))
+  fireEvent.click(await screen.findByRole('button', { name: '에디토리얼 미리보기' }))
   const preview = screen.getByRole('dialog', { name: '에디토리얼' })
   expect(preview.querySelector('[data-template="editorial"]')).toBeTruthy()
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
@@ -78,15 +77,15 @@ test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 �
   vi.mocked(designApi.save).mockResolvedValue(storedTemplate)
   mount()
   await choose('클린 리포트')
+  await waitFor(() => expect(designApi.save).toHaveBeenCalledWith('project', {
+    expectedVersion: 1, mode: 'template', templateId: template.id, templateVersion: template.version,
+  }, expect.any(String), expect.any(AbortSignal)))
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
   fireEvent.click(screen.getByRole('button', { name: '세미나' }))
   expect(screen.queryByRole('button', { name: '클린 리포트 선택됨' })).toBeNull()
   expect(screen.getByRole('button', { name: '에디토리얼 선택' })).toBeTruthy()
   fireEvent.change(screen.getByRole('searchbox', { name: '템플릿 검색' }), { target: { value: '없는 디자인' } })
   expect(screen.getByText('조건에 맞는 템플릿이 없어요.')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
-  await waitFor(() => expect(designApi.save).toHaveBeenCalledWith('project', {
-    expectedVersion: 1, mode: 'template', templateId: template.id, templateVersion: template.version,
-  }, expect.any(String), expect.any(AbortSignal)))
   fireEvent.click(screen.getByRole('button', { name: '검색과 분류 초기화' }))
   expect(screen.getByRole('button', { name: '새 템플릿 선택' })).toBeTruthy()
   expect(screen.getByRole('button', { name: '클린 리포트 선택됨' })).toBeTruthy()
@@ -103,14 +102,13 @@ test('템플릿 저장 오류 안내를 닫으면 갤러리로 포커스가 돌�
   mount()
   await choose('클린 리포트')
   const gallery = screen.getByRole('region', { name: '템플릿 갤러리' })
-  const save = screen.getByRole('button', { name: '디자인 저장' })
-  save.focus()
-  fireEvent.click(save)
 
   const invalid = await screen.findByRole('dialog', { name: '디자인 설정을 확인해 주세요' })
   fireEvent.click(within(invalid).getByRole('button', { name: '설정으로 돌아가기' }))
 
   expect(document.activeElement).toBe(gallery.parentElement)
+  // 저장하지 못한 선택은 저장된 상태로 되돌린다
+  expect(screen.getByRole('button', { name: '클린 리포트 선택' }).getAttribute('aria-pressed')).toBe('false')
 })
 
 test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보기에 반영한다', async () => {
@@ -173,15 +171,17 @@ test('글꼴 업로드가 끝난 뒤 저장하고 기본 글꼴로 바꾸면 업
   expect(JSON.parse(JSON.stringify(submitted))).toEqual({ expectedVersion: 2, mode: 'custom', custom })
 })
 
-test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식만 저장한다', async () => {
+test('디자인 입력을 전환해도 직접 입력 초안을 유지하고 활성 방식만 저장한다', async () => {
+  vi.mocked(designApi.save).mockResolvedValueOnce(storedTemplate)
   mount()
   await choose('클린 리포트')
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
   fireEvent.click(screen.getByRole('button', { name: '직접 입력' }))
   fireEvent.change(screen.getByLabelText('템플릿 이름'), { target: { value: '팀 디자인' } })
   fireEvent.change(screen.getByLabelText('대표 색상'), { target: { value: '#xzzzzz' } })
   fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   const dialog = await screen.findByRole('dialog', { name: '디자인 설정을 확인해 주세요' })
-  expect(designApi.save).not.toHaveBeenCalled()
+  expect(designApi.save).toHaveBeenCalledTimes(1)
   fireEvent.click(within(dialog).getByRole('button', { name: '설정으로 돌아가기' }))
   fireEvent.click(screen.getByRole('button', { name: '템플릿 선택' }))
   expect(screen.getByRole('button', { name: '클린 리포트 선택됨' }).getAttribute('aria-pressed')).toBe('true')
@@ -190,10 +190,11 @@ test('디자인 입력을 전환해도 두 초안을 유지하고 활성 방식�
   expect((screen.getByLabelText('대표 색상') as HTMLInputElement).value).toBe('#xzzzzz')
   fireEvent.change(screen.getByLabelText('대표 색상'), { target: { value: '#aabbcc' } })
   const custom = { name: '팀 디자인', font: 'Pretendard', primaryColor: '#AABBCC', guidelines: '' }
-  vi.mocked(designApi.save).mockResolvedValue({ ...initial, mode: 'custom', custom, version: 2 })
+  vi.mocked(designApi.save).mockResolvedValue({ ...initial, mode: 'custom', custom, version: 3 })
   fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   await screen.findByText('디자인을 저장했어요')
-  expect(designApi.save).toHaveBeenCalledExactlyOnceWith('project', { expectedVersion: 1, mode: 'custom', custom }, expect.any(String), expect.any(AbortSignal))
+  expect(designApi.save).toHaveBeenCalledTimes(2)
+  expect(designApi.save).toHaveBeenLastCalledWith('project', { expectedVersion: 2, mode: 'custom', custom }, expect.any(String), expect.any(AbortSignal))
 })
 
 test('응답이 끊기면 같은 저장 요청을 재시도하고 충돌은 확인 뒤에 새 버전으로 저장한다', async () => {
@@ -206,7 +207,6 @@ test('응답이 끊기면 같은 저장 요청을 재시도하고 충돌은 확�
   vi.mocked(designApi.get).mockResolvedValueOnce(initial).mockResolvedValueOnce({ ...initial, version: 2 })
   mount()
   await choose('클린 리포트')
-  fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   fireEvent.click(await screen.findByRole('button', { name: '저장 다시 시도' }))
   fireEvent.click(await screen.findByRole('button', { name: '최신 디자인 확인' }))
   fireEvent.click(await screen.findByRole('button', { name: '내 입력 유지하기' }))
@@ -215,7 +215,7 @@ test('응답이 끊기면 같은 저장 요청을 재시도하고 충돌은 확�
   expect(save.mock.calls[1][1]).toEqual(save.mock.calls[0][1])
   expect(save.mock.calls[1][2]).toBe(save.mock.calls[0][2])
   fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
-  await screen.findByText('디자인을 저장했어요')
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
   expect(save.mock.calls[2][1].expectedVersion).toBe(2)
   expect(save.mock.calls[2][2]).not.toBe(save.mock.calls[0][2])
 })
@@ -229,7 +229,6 @@ test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으�
   save.mockResolvedValueOnce({ ...storedTemplate, version: 3, templateId: blue.id })
   mount()
   await choose('블루 포커스')
-  fireEvent.click(screen.getByRole('button', { name: '디자인 저장' }))
   const retry = await screen.findByRole('button', { name: '저장 다시 시도' })
   const previous = screen.getByRole<HTMLButtonElement>('button', { name: '클린 리포트 선택' })
   const directInput = screen.getByRole<HTMLButtonElement>('button', { name: '직접 입력' })
@@ -239,10 +238,35 @@ test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으�
   fireEvent.click(directInput)
   expect(screen.getByRole('button', { name: '블루 포커스 선택됨' }).getAttribute('aria-pressed')).toBe('true')
   fireEvent.click(retry)
-  await screen.findByText('디자인을 저장했어요')
+  await screen.findByText('블루 포커스 템플릿으로 저장했어요')
   expect(save).toHaveBeenCalledTimes(2)
   expect(save.mock.calls[1][1]).toEqual(save.mock.calls[0][1])
   expect(save.mock.calls[1][2]).toBe(save.mock.calls[0][2])
   expect(previous.disabled).toBe(false)
   expect(directInput.disabled).toBe(false)
+})
+
+test('템플릿을 연달아 누르면 매번 바로 저장하고 미리보기에서 고른 템플릿도 저장한다', async () => {
+  const blue = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00002', key: 'blue-focus', name: '블루 포커스' }
+  const save = vi.mocked(designApi.save)
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, blue], allowedFonts: ['Pretendard'] })
+  save.mockResolvedValueOnce(storedTemplate)
+    .mockResolvedValueOnce({ ...storedTemplate, version: 3, templateId: blue.id })
+    .mockResolvedValueOnce({ ...storedTemplate, version: 4 })
+  mount()
+  await choose('클린 리포트')
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
+  expect(screen.queryByRole('button', { name: '디자인 저장' })).toBeNull()
+  // 이미 저장된 템플릿을 다시 누르면 보내지 않는다
+  fireEvent.click(screen.getByRole('button', { name: '클린 리포트 선택됨' }))
+  expect(save).toHaveBeenCalledTimes(1)
+  await choose('블루 포커스')
+  await screen.findByText('블루 포커스 템플릿으로 저장했어요')
+  expect(save.mock.calls[1][1]).toEqual({ expectedVersion: 2, mode: 'template', templateId: blue.id, templateVersion: blue.version })
+  fireEvent.click(screen.getByRole('button', { name: '클린 리포트 미리보기' }))
+  const preview = screen.getByRole('dialog', { name: '클린 리포트' })
+  fireEvent.click(within(preview).getByRole('button', { name: '이 템플릿 선택' }))
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
+  expect(save.mock.calls[2][1]).toMatchObject({ expectedVersion: 3, templateId: template.id })
+  expect(screen.getByRole('button', { name: '클린 리포트 선택됨' }).getAttribute('aria-pressed')).toBe('true')
 })
