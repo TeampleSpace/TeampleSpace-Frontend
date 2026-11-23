@@ -322,6 +322,24 @@ test('고치는 중이 아닐 때 다른 팀원이 저장한 메모 본문으로
   expect(body.value).toBe('내가 고치는 중')
 })
 
+test('다른 팀원의 본문을 다시 읽는 동안 시작한 입력은 응답으로 덮어쓰지 않는다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
+  mock.editAs(id, '팀원이 바꾼 본문')
+  fireEvent(window, new Event('focus'))
+  // 자료가 새 개정으로 바뀐 뒤 본문을 다시 읽는 응답을 늦춘다
+  await waitFor(() => expect(mock.calls.some((call) => call.path.endsWith(`/materials/${id}`) && call.method === 'GET')).toBe(true))
+  mock.faults.delayMs = 800
+  await waitFor(() => expect(mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length).toBeGreaterThan(1), { timeout: 3000 })
+  fireEvent.change(body, { target: { value: '다시 읽는 중에 쓴 내용' } })
+  await new Promise((resolve) => setTimeout(resolve, 1200))
+  mock.faults.delayMs = 0
+  expect(body.value).toBe('다시 읽는 중에 쓴 내용')
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
