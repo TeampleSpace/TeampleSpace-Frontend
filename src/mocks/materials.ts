@@ -15,6 +15,7 @@ type Stored = {
   createdBy: string; createdAt: string; updatedAt: string; deleted: boolean
   fileId: string | null; fileName: string | null; sizeBytes: number | null; url: string | null
   revisions: Revision[]; jobIds: string[]; note: MaterialNote
+  comments: { id: string; body: string; authorId: string; createdAt: string; deleted: boolean }[]
 }
 type Upload = {
   id: string; userId: string; fileName: string; mimeType: string; sizeBytes: number; checksum: string
@@ -66,6 +67,11 @@ export function createMaterialsMock(options: {
   const calls: { method: string; path: string; key: string | null; body: unknown; headers: Record<string, string> }[] = []
 
   const iso = (ms = now()) => new Date(ms).toISOString().replace(/\.(\d{3})Z$/, '.$1000Z')
+  // 서버처럼 댓글의 작성 순서와 시각 순서를 같게 둔다
+  const commentAt = (target: Stored) => {
+    const last = target.comments.at(-1)
+    return iso(Math.max(now(), last ? Date.parse(last.createdAt) + 1 : 0))
+  }
   const nextRequestId = () => `req_mock_${(requestSeq += 1)}`
   function json(status: number, body: unknown) {
     const inBody = (body as { requestId?: unknown } | null)?.requestId
@@ -160,6 +166,7 @@ export function createMaterialsMock(options: {
       id, kind, title, description: null, status: 'processing', version: 1, createdBy: actorId, createdAt: iso(), updatedAt: iso(),
       deleted: false, fileId: null, fileName: null, sizeBytes: null, url: null, revisions: [], jobIds: [],
       note: { materialId: id, markdown: '', version: 0, updatedBy: null, updatedByName: null, updatedAt: null },
+      comments: [],
       ...fields,
     }
     materials.set(id, item)
@@ -227,6 +234,40 @@ export function createMaterialsMock(options: {
         }
       }
       return json(200, publicJob(job))
+    }
+    const commentMatch = path.match(/^\/v1\/materials\/([^/]+)\/comments(?:\/([^/]+))?$/)
+    if (commentMatch) {
+      const target = materials.get(commentMatch[1])
+      if (!target) return fail('NOT_FOUND')
+      if (target.deleted) return fail('MATERIAL_DELETED')
+      const view = (comment: Stored['comments'][number]) => ({ id: comment.id, materialId: target.id, body: comment.body,
+        author: { userId: comment.authorId, name: person(comment.authorId).name }, createdAt: comment.createdAt })
+      const commentId = commentMatch[2]
+      if (!commentId && method === 'GET') {
+        const live = target.comments.filter((comment) => !comment.deleted)
+        const after = url.searchParams.get('cursor')
+        const start = after ? target.comments.findIndex((comment) => comment.id === after) + 1 : 0
+        if (after && start === 0) return fail('INVALID_CURSOR')
+        const rest = target.comments.slice(start).filter((comment) => live.includes(comment))
+        return json(200, { items: rest.slice(0, 50).map(view), nextCursor: rest.length > 50 ? rest[49].id : null })
+      }
+      if (!commentId && method === 'POST') {
+        return idempotent(actorId, method, path, key, body, () => {
+          const text = typeof body.body === 'string' ? body.body.trim() : ''
+          if (!text || text.length > 2000) return invalid('body')
+          const comment = { id: crypto.randomUUID(), body: text, authorId: actorId, createdAt: commentAt(target), deleted: false }
+          target.comments.push(comment)
+          return json(201, view(comment))
+        })
+      }
+      const comment = target.comments.find((entry) => entry.id === commentId)
+      if (commentId && method === 'DELETE') {
+        if (!comment) return fail('NOT_FOUND')
+        if (comment.authorId !== actorId) return fail('FORBIDDEN')
+        comment.deleted = true
+        return json(200, { id: comment.id, materialId: target.id, deleted: true })
+      }
+      return fail('NOT_FOUND')
     }
     const match = path.match(/^\/v1\/materials\/([^/]+)(?:\/(source|reprocess|note))?$/)
     const item = match && materials.get(match[1])
@@ -452,6 +493,11 @@ export function createMaterialsMock(options: {
     saveNoteAs(materialId: string, actorId: string, markdown: string) {
       const item = materials.get(materialId)!
       item.note = { materialId, markdown, version: item.note.version + 1, updatedBy: actorId, updatedByName: person(actorId).name, updatedAt: iso() }
+    },
+    // 다른 팀원이 댓글을 남긴 상태를 만든다
+    commentAs(materialId: string, actorId: string, body: string) {
+      const target = materials.get(materialId)!
+      target.comments.push({ id: crypto.randomUUID(), body, authorId: actorId, createdAt: commentAt(target), deleted: false })
     },
     renameAs(materialId: string, title: string) {
       const item = materials.get(materialId)!

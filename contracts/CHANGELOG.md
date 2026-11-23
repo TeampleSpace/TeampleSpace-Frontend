@@ -5,6 +5,15 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-23 자료 댓글 추가
+
+- 자료 댓글 목록, 작성, 삭제 경로와 `MaterialComment`, `MaterialCommentList`, `MaterialCommentRequest`, `MaterialCommentDeleted` 형식을 추가
+- 댓글 작성과 삭제는 `material.comment.created`, `material.comment.deleted` 이벤트를 보낸다. 받은 화면은 댓글 목록을 다시 읽는다
+
+## 2026-11-23 팀원을 내보내면 초대 링크 무효화
+
+- 소유자가 팀원을 내보내면 활성 초대 링크를 무효로 한다. 다음 초대 조회는 새 링크를 돌려주고, 내보낸 사람은 새 링크로 다시 참여할 수 있다. 스키마와 예제는 바뀌지 않았다
+
 ## 2026-11-22 첫 발표 자료 생성 작업 추가
 
 - 발표 자료 생성 작업 등록과 고정 입력, 결과 참조 형식, `featureFlags.presentationGeneration`을 추가

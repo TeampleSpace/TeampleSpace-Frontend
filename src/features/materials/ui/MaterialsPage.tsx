@@ -18,7 +18,7 @@ import type { ManageAction } from './MaterialDetail.tsx'
 import { MaterialCreateDialog } from './MaterialCreateDialog.tsx'
 import type { InputType } from './MaterialCreateDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
-import { MaterialNote } from './MaterialNote.tsx'
+import { TeamComments } from './TeamComments.tsx'
 import { MemoPad } from './MemoPad.tsx'
 import { MaterialJob } from './MaterialJob.tsx'
 import { MaterialAiSummary } from './MaterialAiSummary.tsx'
@@ -359,7 +359,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
             {visible.kind === 'memo' && <MemoPad key={visible.id} material={visible} onSaved={apply} onDirtyChange={setMemoDirty} onError={onError} />}
             <MaterialAiSummary key={visible.currentRevision.id} material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />
           </>}>
-          <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
+          <TeamComments key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}
         {!visible && selectedId && gone && <div className={styles.guidance}>
           <p>{detailError?.reason instanceof ApiError && detailError.reason.code === 'MATERIAL_DELETED' ? '삭제된 자료예요' : '자료를 찾을 수 없어요'}</p>
