@@ -216,7 +216,16 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
       const next = await materialsApi.list(projectId, { cursor })
       const listed = next.items
       const ready = listed.filter((item) => item.status === 'ready')
-      if (!cursor) {
+      // 조용히 다시 읽을 때는 고른 자료를 건드리지 않고, 첫 페이지 밖에 보이는 분석 중 자료만 따로 다시 확인한다
+      const updated = new Map<string, MaterialSummary>()
+      if (silent) {
+        const waiting = (choices?.items ?? []).filter((item) => item.status !== 'ready' && !listed.some((entry) => entry.id === item.id))
+        const results = await Promise.allSettled(waiting.map((item) => materialsApi.get(item.id)))
+        for (const [index, result] of results.entries()) {
+          if (result.status === 'fulfilled') updated.set(waiting[index].id, { ...waiting[index], status: result.value.status, title: result.value.title })
+        }
+      }
+      if (!cursor && !silent) {
         // 첫 페이지에서 빠진 선택은 준비 여부를 따로 확인한다
         if (next.nextCursor) {
           const missing = selected.filter((id) => !ready.some((item) => item.id === id))
@@ -242,7 +251,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           ...shown.filter((item) => !current.items.some((previous) => previous.id === item.id)),
         ] : silent && current ? [
           ...shown,
-          ...current.items.filter((item) => !shown.some((entry) => entry.id === item.id)),
+          ...current.items.filter((item) => !shown.some((entry) => entry.id === item.id)).map((item) => updated.get(item.id) ?? item),
         ] : shown,
         nextCursor: silent && current ? current.nextCursor : next.nextCursor,
       }))
