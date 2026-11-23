@@ -138,7 +138,8 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const [saving, setSaving] = useState(false)
   const [uploadingFont, setUploadingFont] = useState(false)
   const [pending, setPending] = useState<SaveAttempt | null>(null)
-  const [saved, setSaved] = useState(false)
+  // 저장할 때마다 안내를 새로 보여 준다
+  const [saved, setSaved] = useState<{ id: number; text: string }>()
   const [error, setError] = useState<unknown>()
   const [inputErrors, setInputErrors] = useState<InputErrors>({})
   const [invalid, setInvalid] = useState(false)
@@ -193,26 +194,31 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   function chooseMode(value: Mode) {
     setMode(value)
     setInputErrors({})
-    setSaved(false)
+    setSaved(undefined)
   }
 
+  // 템플릿은 누르면 바로 저장한다. 이미 저장된 템플릿이면 다시 보내지 않는다
   function chooseTemplate(value: DesignTemplate) {
-    setDrafts((draft) => ({ ...draft, template: selectionOf(value) }))
-    chooseMode('template')
     setDetail(null)
+    if (operation.current || uploadingFont || pending || conflict || waitingUntil) return
+    const selection = selectionOf(value)
+    setDrafts((draft) => ({ ...draft, template: selection }))
+    chooseMode('template')
+    if (base.mode === 'template' && same(selection, makeDrafts(base, catalog).template)) return
+    void save({ expectedVersion: base.version, mode: 'template', ...selection })
   }
 
   function changeCustom(field: keyof CustomDesign, value: string) {
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, [field]: value } }))
     setInputErrors((current) => ({ ...current, [field]: undefined }))
-    setSaved(false)
+    setSaved(undefined)
   }
 
   function changeFont({ font, fontAssetId }: Pick<CustomDesign, 'font' | 'fontAssetId'>) {
     setPreviewFont(undefined)
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, font, fontAssetId } }))
     setInputErrors((current) => ({ ...current, font: undefined }))
-    setSaved(false)
+    setSaved(undefined)
   }
 
   function showInvalid(errors: InputErrors) {
@@ -221,9 +227,9 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     setInvalid(true)
   }
 
-  async function save() {
-    if (operation.current || uploadingFont || (!pending && !readyToSave) || conflict || waitingUntil) return
-    const body: DesignInput | null = pending?.body ?? (mode === 'template'
+  async function save(chosen?: DesignInput) {
+    if (operation.current || uploadingFont || (!pending && !chosen && !readyToSave) || conflict || waitingUntil) return
+    const body: DesignInput | null = pending?.body ?? chosen ?? (mode === 'template'
       ? drafts.template && { expectedVersion: base.version, mode, ...drafts.template }
       : { expectedVersion: base.version, mode, custom: configuredCustom })
     if (!body) return
@@ -238,7 +244,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     const controller = new AbortController()
     operation.current = controller
     setSaving(true)
-    setSaved(false)
+    setSaved(undefined)
     try {
       const updated = await designApi.save(projectId, attempt.body, attempt.key, controller.signal)
       if (controller.signal.aborted) return
@@ -248,11 +254,16 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       setBase(updated)
       setInitial((current) => ({ ...current, [savedMode]: canonical[savedMode] }))
       setDrafts((current) => ({ ...current, [savedMode]: canonical[savedMode] }))
-      setSaved(true)
+      const name = updated.mode === 'template' ? items.find((item) => item.id === updated.templateId)?.name : undefined
+      setSaved({ id: Date.now(), text: name ? `${name} 템플릿으로 저장했어요` : '디자인을 저장했어요' })
     } catch (reason) {
       if (controller.signal.aborted) return
       const uncertain = reason instanceof TransportError || (reason instanceof ApiError && (reason.status >= 500 || reason.code === 'REQUEST_IN_PROGRESS'))
       setPending(uncertain ? attempt : null)
+      // 저장하지 못한 템플릿 선택은 저장된 템플릿으로 되돌린다. 충돌은 확인 뒤에 고를 수 있게 남긴다
+      if (!uncertain && attempt.body.mode === 'template' && !(reason instanceof ApiError && reason.code === 'VERSION_CONFLICT')) {
+        setDrafts((current) => ({ ...current, template: makeDrafts(base, catalog).template }))
+      }
       if (accessLost(reason)) {
         onAccessError(reason)
         return
@@ -323,11 +334,11 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   return <>
     <header className={styles.header}>
       <div><h1 id="design-title">디자인 설정</h1><p>{mode === 'template'
-        ? '발표에 어울리는 디자인을 고르세요. 템플릿을 누르면 자세히 볼 수 있어요.'
+        ? '발표에 어울리는 디자인을 고르세요. 템플릿을 누르면 바로 적용돼요.'
         : '글꼴과 색상, 지침을 직접 입력해 발표 디자인을 정하세요.'}</p></div>
       {mode === 'custom' && saveButton}
     </header>
-    {saved && <p className={`${styles.notice} motion-feedback`} role="status">디자인을 저장했어요</p>}
+    {saved && <p key={saved.id} className={`${styles.notice} motion-feedback`} role="status">{saved.text}</p>}
     {conflict ? <div className={styles.notice} role="status">
       <p>다른 곳에서 디자인을 저장했어요. 입력한 내용은 그대로 있어요.</p>
       {latest ? <>
@@ -348,8 +359,9 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
           {drafts.template && !template && <p className={styles.notice}>버전 {drafts.template.templateVersion} 템플릿이 저장되어 있어요. 현재 목록에서 해당 버전을 미리 볼 수 없어요.</p>}
           {!items.length && <p className={styles.notice}>선택할 수 있는 템플릿이 없어요. 직접 입력으로 디자인을 설정할 수 있어요.</p>}
           <div id={`${formId}-template`} tabIndex={-1} role="group" aria-label="템플릿 선택">
-            <TemplateGallery items={items} selected={template} disabled={inputLocked} projectName={projectName}
-              modes={modes} action={saveButton} onDetail={setDetail} />
+            <TemplateGallery items={items} selected={template} disabled={inputLocked || uploadingFont || conflict || !!waitingUntil}
+              projectName={projectName} modes={modes} onSelect={chooseTemplate} onDetail={setDetail}
+              action={pending || readyToSave ? saveButton : null} />
           </div>
           {inputErrors.template && <p className={styles.fieldError}>{inputErrors.template}</p>}
           <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
@@ -392,7 +404,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       </section>}
     </div>
     {detail && <Modal open title={detail.name} size="preview" onClose={() => setDetail(null)}
-      footer={<Button disabled={inputLocked} onClick={() => chooseTemplate(detail)}>이 템플릿 선택</Button>}>
+      footer={<Button disabled={inputLocked || conflict || !!waitingUntil} onClick={() => chooseTemplate(detail)}>이 템플릿 선택</Button>}>
       <div className={styles.detailPreviews}>
         {templateCovers[detail.key] ? <TemplateCover templateKey={detail.key} />
           : <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />}
