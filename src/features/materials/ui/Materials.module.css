@@ -8,7 +8,7 @@
 
 .workspace { display: flex; align-items: flex-start; gap: var(--space-column-gap); }
 .list { width: 264px; flex: none; display: flex; flex-direction: column; gap: var(--space-16); }
-.search { display: flex; align-items: center; gap: var(--space-8); height: 40px; padding: var(--space-8) var(--space-12); border: 1px solid var(--color-border-control); border-radius: var(--radius-md); background: var(--color-surface); transition: border-color var(--motion-fast) ease-out; }
+.search { display: flex; align-items: center; gap: var(--space-8); height: 40px; padding: var(--space-8) var(--space-12); border: 1px solid var(--color-border-control); box-shadow: var(--shadow-xs); border-radius: var(--radius-md); background: var(--color-surface); transition: border-color var(--motion-fast) ease-out; }
 .search:focus-within { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: var(--text-body); }
 .search input::placeholder { color: var(--color-tertiary); }
@@ -25,7 +25,7 @@
 .listNote { color: var(--color-secondary); }
 .failed { color: var(--color-danger); }
 
-.detail { flex: 1; min-width: 0; min-height: 420px; display: flex; flex-direction: column; gap: var(--space-20); padding: var(--space-20) var(--space-24); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.detail { flex: 1; min-width: 0; min-height: 420px; display: flex; flex-direction: column; gap: var(--space-20); padding: var(--space-20) var(--space-24); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-xs); }
 .detailHeader { display: flex; flex-direction: column; gap: var(--space-8); }
 .titleRow { display: flex; align-items: center; gap: var(--space-16); }
 .titleRow h2 { flex: 1; min-width: 0; font: var(--text-modal-title); letter-spacing: -0.24px; overflow-wrap: anywhere; }
@@ -69,7 +69,7 @@
 /* 자료 관리 메뉴 */
 .menu { position: relative; flex: none; }
 .menu > button { font: var(--text-button); }
-.menuList { position: absolute; z-index: 1; top: calc(100% + 4px); right: 0; min-width: 200px; display: flex; flex-direction: column; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: 0 8px 24px rgb(32 36 45 / 0.12); animation: var(--motion-page-enter); }
+.menuList { position: absolute; z-index: 1; top: calc(100% + 4px); right: 0; min-width: 200px; display: flex; flex-direction: column; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-popover); animation: var(--motion-page-enter); }
 .menuList button { justify-content: flex-start; }
 .menuList p { padding: 0 var(--space-16) var(--space-8); font: var(--text-meta); color: var(--color-secondary); }
 .dangerText { color: var(--color-danger); }
