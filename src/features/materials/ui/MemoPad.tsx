@@ -16,6 +16,13 @@ const statusLabels: Record<Status, string> = {
   saved: '저장됨', waiting: '저장 대기', saving: '저장 중', failed: '저장하지 못했어요', conflict: '확인이 필요해요',
 }
 
+// 자료를 먼저 읽고 그 자료의 현재 개정으로 원문을 읽어 버전과 본문이 같은 시점을 가리키게 한다
+async function latestOf(id: string, signal?: AbortSignal) {
+  const current = await materialsApi.get(id, signal)
+  const source = await materialsApi.source(id, current.currentRevision?.id, signal)
+  return [current, source] as const
+}
+
 // 메모 자료의 본문을 바로 보여 주고 그 자리에서 고친다. 저장할 때마다 새 원문 개정이 생긴다
 export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   material: Material; onSaved: (next: Material) => void
@@ -42,7 +49,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
 
   useEffect(() => {
     const controller = new AbortController()
-    void Promise.all([materialsApi.get(material.id, controller.signal), materialsApi.source(material.id, undefined, controller.signal)])
+    void latestOf(material.id, controller.signal)
       .then(([current, source]) => {
         if (controller.signal.aborted) return
         const text = source.markdown ?? ''
@@ -57,7 +64,9 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   }, [material.id, revision, onError])
   useEffect(() => () => clearTimeout(timer.current), [])
 
-  const dirty = draft !== undefined && draft !== saved
+  // 보내는 중인 저장이 끝날 때까지도 저장하지 않은 것으로 본다
+  const [sending, setSending] = useState(false)
+  const dirty = draft !== undefined && (draft !== saved || sending)
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
@@ -76,6 +85,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     const value = (document.getElementById(fieldId) as HTMLTextAreaElement | null)?.value ?? draft ?? ''
     if (value === savedRef.current) { setStatus('saved'); return }
     saving.current = true
+    setSending(true)
     setStatus('saving')
     setError(undefined)
     try {
@@ -87,7 +97,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
           const conflicted = reason instanceof ApiError && reason.code === 'VERSION_CONFLICT'
           if (!conflicted && !isUncertain(reason)) throw reason
           // 최신 본문과 비교한다. 같으면 저장된 것이고, 본문이 그대로면 이름만 바뀐 것이라 다시 보낸다
-          const [current, source] = await Promise.all([materialsApi.get(material.id), materialsApi.source(material.id)])
+          const [current, source] = await latestOf(material.id)
           const text = source.markdown ?? ''
           if (text === value) { done(current, value); break }
           if (text === savedRef.current && attempt === 0) { version.current = current.version; continue }
@@ -107,7 +117,10 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
       setError(reason)
       setStatus('failed')
       onError(reason)
-    } finally { saving.current = false }
+    } finally {
+      saving.current = false
+      setSending(false)
+    }
   }
 
   function change(value: string) {
