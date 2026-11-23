@@ -38,6 +38,10 @@
   animation: dialog-enter var(--motion-normal) var(--motion-ease-out);
 }
 
+.dialog[open]::backdrop {
+  animation: backdrop-enter var(--motion-normal) ease-out;
+}
+
 /* 닫기와 포커스 복귀는 즉시 처리하고 화면에서 사라지는 전환만 유지한다 */
 @supports (transition-behavior: allow-discrete) {
   .dialog {
@@ -58,12 +62,8 @@
   }
 }
 
-.dialog[open]::backdrop {
-  animation: backdrop-enter var(--motion-normal) ease-out;
-}
-
 @keyframes dialog-enter {
-  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 
