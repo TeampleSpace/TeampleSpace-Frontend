@@ -4,13 +4,21 @@ import { Field } from '../../../shared/ui/Field.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { useSession } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
-import { isUncertain } from '../../../entities/material/errors.ts'
+import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
 import { formatWhen, limits } from '../../../entities/material/model.ts'
 import type { MaterialComment, MaterialNote } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
 // ponytail: 5초마다 새 댓글을 읽는다. 자료 화면이 이벤트 구독을 열면 그때 바꾼다
 export const commentRefreshMs = 5000
+
+// 서버와 같이 작성 시각, 같으면 식별자 순서로 합친다. 내가 쓴 댓글과 나중에 읽은 댓글이 섞여도 순서를 지킨다
+function merge(current: MaterialComment[] | undefined, incoming: MaterialComment[]) {
+  const byId = new Map((current ?? []).map((item) => [item.id, item]))
+  for (const item of incoming) byId.set(item.id, item)
+  return [...byId.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    || a.createdAt.localeCompare(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
 
 // 자료에 팀원이 짧게 남기는 메모. 예전에 함께 쓰던 팀 메모가 있으면 맨 위에 보여 준다
 export function TeamComments({ materialId, onDirtyChange, onError }: {
@@ -65,9 +73,10 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     try {
       const page = await materialsApi.comments(materialId, seen.current)
       if (page.items.length) seen.current = page.items.at(-1)?.id
-      setItems((current) => current && [...current, ...page.items.filter((item) => !current.some((entry) => entry.id === item.id))])
-    } catch {
-      // 다음 주기에 다시 읽는다
+      setItems((current) => current && merge(current, page.items))
+    } catch (reason) {
+      // 접근을 잃었거나 자료가 사라졌으면 알린다. 잠깐 끊긴 것은 다음 주기에 다시 읽는다
+      if (isAccessLoss(reason) || isGone(reason)) onError(reason)
     }
   })
   useEffect(() => {
@@ -84,7 +93,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     lock.current = true
     try {
       const page = await materialsApi.comments(materialId, nextCursor)
-      setItems((current) => [...(current ?? []), ...page.items.filter((item) => !current?.some((entry) => entry.id === item.id))])
+      setItems((current) => merge(current, page.items))
       if (page.items.length) seen.current = page.items.at(-1)?.id
       setNextCursor(page.nextCursor)
       setLoadError(undefined)
@@ -101,7 +110,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     setSendError(undefined)
     try {
       const created = await materialsApi.addComment(materialId, command.body, command.key)
-      setItems((current) => current?.some((item) => item.id === created.id) ? current : [...(current ?? []), created])
+      setItems((current) => merge(current, [created]))
       setPending(undefined)
       setDraft((value) => value.trim() === command.body ? '' : value)
     } catch (reason) {
