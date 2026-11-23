@@ -91,7 +91,7 @@ export default function Account() {
       {notice && <p className="motion-feedback" role="status">{notice}</p>}
       {!modal && <RequestError error={error} action={<Button variant="text" onClick={() => void act(async () => { const next = await refresh(); if (next) setName(next.name) })}>최신 정보 다시 불러오기</Button>} />}
       <section className={account.providers}><h2>로그인 수단</h2>
-        <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider}>{providerNames[provider]} {user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</li>)}</ul>
+        <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider} data-connected={user.identities.some((identity) => identity.provider === provider)}>{providerNames[provider]} <span>{user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</span></li>)}</ul>
       </section>
       {import.meta.env.DEV && <section className={page.section} aria-labelledby="account-subscription">
         <h2 id="account-subscription">구독 및 결제</h2>

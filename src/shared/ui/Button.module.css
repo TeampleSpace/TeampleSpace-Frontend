@@ -12,6 +12,8 @@
   color: var(--color-ink);
   font: var(--text-button-secondary);
   text-align: center;
+  /* 링크에 버튼 모양을 입혀도 밑줄이 생기지 않게 한다 */
+  text-decoration: none;
   cursor: pointer;
   transition:
     background-color var(--motion-fast) ease-out,
