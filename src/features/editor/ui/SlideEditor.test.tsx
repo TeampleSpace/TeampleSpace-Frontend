@@ -275,7 +275,7 @@ test('프로젝트에 접근할 수 없게 되면 편집 화면 대신 안내를
   expect(screen.getByRole('link', { name: '프로젝트 목록으로' })).toBeTruthy()
 })
 
-test('슬라이드 목록 폭을 방향키로 조절하고 범위 안에서 기억한다', async () => {
+test('슬라이드 목록과 요소 편집 패널 폭을 방향키로 조절하고 범위 안에서 기억한다', async () => {
   localStorage.removeItem('teamplespace.slideListWidth')
   const { server } = setup()
   mount(open(server.fetchAs(userA)))
@@ -287,4 +287,13 @@ test('슬라이드 목록 폭을 방향키로 조절하고 범위 안에서 기�
   for (let i = 0; i < 20; i++) fireEvent.keyDown(handle, { key: 'ArrowLeft' })
   expect(handle.getAttribute('aria-valuenow')).toBe('120')
   expect(localStorage.getItem('teamplespace.slideListWidth')).toBe('120')
+
+  // 오른쪽 패널은 왼쪽 방향키로 넓어진다
+  localStorage.removeItem('teamplespace.inspectorWidth')
+  const panel = screen.getByRole('separator', { name: '요소 편집 패널 폭' })
+  expect(panel.getAttribute('aria-valuenow')).toBe('240')
+  fireEvent.keyDown(panel, { key: 'ArrowLeft' })
+  expect(panel.getAttribute('aria-valuenow')).toBe('256')
+  for (let i = 0; i < 20; i++) fireEvent.keyDown(panel, { key: 'ArrowLeft' })
+  expect(localStorage.getItem('teamplespace.inspectorWidth')).toBe('420')
 })
