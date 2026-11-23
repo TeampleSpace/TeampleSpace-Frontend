@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useBeforeUnload, useBlocker } from 'react-router'
 import type { BlockerFunction } from 'react-router'
 import { Button } from './Button.tsx'
@@ -7,6 +7,10 @@ import { Modal } from './Modal.tsx'
 // when을 주면 미저장 내용을 잃는 이동만 골라서 막는다
 export function UnsavedGuard({ dirty, when }: { dirty: boolean; when?: BlockerFunction }) {
   const blocker = useBlocker(when ? (args) => dirty && when(args) : dirty)
+  // 확인을 기다리는 동안 저장이 끝나 잃을 내용이 없어지면 그대로 이동한다
+  useEffect(() => {
+    if (blocker.state === 'blocked' && !dirty) blocker.proceed()
+  }, [blocker, dirty])
   useBeforeUnload(useCallback((event: BeforeUnloadEvent) => {
     if (dirty) { event.preventDefault(); event.returnValue = '' }
   }, [dirty]))

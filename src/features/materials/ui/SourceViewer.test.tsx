@@ -185,15 +185,13 @@ test('접근 권한이 사라지면 원문과 자료 화면을 함께 가린다'
   expect(screen.queryByText('보고서.pdf')).toBeNull()
 })
 
-test('마크다운과 링크 자료는 원문 팝업에서 본문을 보여 준다', async () => {
+test('링크 자료는 원문 팝업에서, 메모 자료는 상세에서 바로 본문을 보여 준다', async () => {
   const link = mock.seed('link', '감축 사례', { text: '여러 대학이 반납함을 늘렸다.' })
   mock.seed('memo', '인터뷰 메모', { createdBy: member, markdown: '## 확인한 점\n\n- 반납함이 멀다' })
   mount()
-  const popup = await openViewer()
-  expect(await popup.findByRole('heading', { level: 2, name: '확인한 점' })).toBeTruthy()
-  expect(popup.getByText('메모 · 팀원 2 님 작성 · 개정 1')).toBeTruthy()
-  expect(popup.queryByRole('button', { name: '전체 PDF 보기' })).toBeNull()
-  fireEvent.click(popup.getByRole('button', { name: '닫기' }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.value).toBe('## 확인한 점\n\n- 반납함이 멀다'))
+  expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
   cleanup()
   mount(`?material=${link}`)
   const next = await openViewer()
