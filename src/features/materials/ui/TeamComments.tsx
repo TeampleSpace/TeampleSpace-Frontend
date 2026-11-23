@@ -9,7 +9,7 @@ import { formatWhen, limits } from '../../../entities/material/model.ts'
 import type { MaterialComment, MaterialNote } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
-// ponytail: 5초마다 새 댓글을 읽는다. 자료 화면이 이벤트 구독을 열면 그때 바꾼다
+// ponytail: 5초마다 댓글 전체를 다시 읽어 새 댓글과 삭제를 반영한다. 댓글이 많아지거나 자료 화면이 이벤트 구독을 열면 그때 바꾼다
 export const commentRefreshMs = 5000
 
 // 서버와 같이 작성 시각, 같으면 식별자 순서로 합친다. 내가 쓴 댓글과 나중에 읽은 댓글이 섞여도 순서를 지킨다
@@ -39,8 +39,10 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>()
   const lock = useRef(false)
-  // 서버에서 받아 본 마지막 댓글. 내가 방금 쓴 댓글은 여기에 넣지 않아 그 사이 남의 댓글을 건너뛰지 않는다
-  const seen = useRef<string>(undefined)
+  // 내가 지운 댓글. 지우기 전에 시작한 조회 응답에 남아 있어도 다시 보이지 않게 한다
+  const removed = useRef(new Set<string>())
+  // 내가 쓴 댓글을 받은 시각. 쓰기 전에 시작한 조회 응답에 없어도 목록에서 빼지 않는다
+  const sentAt = useRef(new Map<string, number>())
   const inputId = useId()
   // 삭제 확인을 닫은 뒤 포커스를 돌려줄 곳
   const focusAfter = useRef<string>(undefined)
@@ -58,7 +60,6 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
       .then(([page, note]) => {
         if (controller.signal.aborted) return
         setItems(page.items)
-        seen.current = page.items.at(-1)?.id
         setNextCursor(page.nextCursor)
         setLegacy(note.markdown.trim() ? note : null)
         setLoadError(undefined)
@@ -67,13 +68,20 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     return () => controller.abort()
   }, [materialId, revision, onError])
 
-  // 다 읽은 상태면 서버에서 받아 본 마지막 댓글 다음부터 새 댓글을 이어 붙인다
+  // 다 읽은 상태면 처음부터 다시 읽어 서버 목록으로 바꾼다
   const refresh = useEffectEvent(async () => {
     if (!items || nextCursor) return
+    const began = performance.now()
     try {
-      const page = await materialsApi.comments(materialId, seen.current)
-      if (page.items.length) seen.current = page.items.at(-1)?.id
-      setItems((current) => current && merge(current, page.items))
+      const all: MaterialComment[] = []
+      let cursor: string | undefined
+      do {
+        const page = await materialsApi.comments(materialId, cursor)
+        all.push(...page.items)
+        cursor = page.nextCursor ?? undefined
+      } while (cursor)
+      setItems((current) => current && merge(current.filter((item) => (sentAt.current.get(item.id) ?? 0) > began), all)
+        .filter((item) => !removed.current.has(item.id)))
     } catch (reason) {
       // 접근을 잃었거나 자료가 사라졌으면 알린다. 잠깐 끊긴 것은 다음 주기에 다시 읽는다
       if (isAccessLoss(reason) || isGone(reason)) onError(reason)
@@ -93,8 +101,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     lock.current = true
     try {
       const page = await materialsApi.comments(materialId, nextCursor)
-      setItems((current) => merge(current, page.items))
-      if (page.items.length) seen.current = page.items.at(-1)?.id
+      setItems((current) => merge(current, page.items).filter((item) => !removed.current.has(item.id)))
       setNextCursor(page.nextCursor)
       setLoadError(undefined)
     } catch (reason) { setLoadError(reason); onError(reason) }
@@ -110,6 +117,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     setSendError(undefined)
     try {
       const created = await materialsApi.addComment(materialId, command.body, command.key)
+      sentAt.current.set(created.id, performance.now())
       setItems((current) => merge(current, [created]))
       setPending(undefined)
       setDraft((value) => value.trim() === command.body ? '' : value)
@@ -127,6 +135,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     setDeleteError(undefined)
     try {
       await materialsApi.deleteComment(materialId, commentId)
+      removed.current.add(commentId)
       setItems((current) => current?.filter((item) => item.id !== commentId))
       focusAfter.current = 'input'
       setConfirming(undefined)
