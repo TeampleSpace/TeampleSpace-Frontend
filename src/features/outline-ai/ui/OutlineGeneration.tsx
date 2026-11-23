@@ -81,6 +81,8 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const [retryUntil, setRetryUntil] = useState<number>()
   const [cancelDeniedFor, setCancelDeniedFor] = useState<string>()
   const choicesLock = useRef(false)
+  // 조용히 다시 읽는 동안에도 사용자가 누른 조회와 생성은 막지 않는다
+  const refreshLock = useRef(false)
   const writeLock = useRef(false)
   const hintId = useId()
 
@@ -205,8 +207,9 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
 
   // silent는 창을 열어 둔 동안 조용히 다시 읽는다. 로딩 표시와 오류 안내를 바꾸지 않는다
   async function loadChoices(cursor?: string, silent = false) {
-    if (choicesLock.current) return
-    choicesLock.current = true
+    const lock = silent ? refreshLock : choicesLock
+    if (choicesLock.current || lock.current) return
+    lock.current = true
     if (!silent) {
       setChoicesLoading(true)
       setChoicesError(undefined)
@@ -253,7 +256,10 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           ...shown,
           ...current.items.filter((item) => !shown.some((entry) => entry.id === item.id)).map((item) => updated.get(item.id) ?? item),
         ] : shown,
-        nextCursor: silent && current ? current.nextCursor : next.nextCursor,
+        // 끝까지 읽은 뒤 한 페이지가 넘게 새로 들어왔으면 남은 자료를 이어서 볼 수 있게 한다
+        nextCursor: silent && current
+          ? current.nextCursor ?? (listed.every((item) => !current.items.some((previous) => previous.id === item.id)) ? next.nextCursor : null)
+          : next.nextCursor,
       }))
     } catch (reason) {
       if (!silent) {
@@ -261,7 +267,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
         reportAccess(reason, true)
       }
     } finally {
-      choicesLock.current = false
+      lock.current = false
       if (!silent) setChoicesLoading(false)
     }
   }
