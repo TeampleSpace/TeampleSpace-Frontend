@@ -2,23 +2,6 @@
   display: contents;
 }
 
-.progressDialog dialog h2 {
-  color: var(--color-accent);
-}
-
-.details {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-16);
-  border-radius: var(--radius-lg);
-  background: var(--color-subtle);
-}
-
-.progress {
-  width: 100%;
-  accent-color: var(--color-primary);
-}
-
 .choices {
   display: grid;
   gap: var(--space-8);
@@ -65,5 +48,4 @@
 }
 
 /* 움직임 */
-.details { animation: var(--motion-feedback-enter); }
 .choices label { transition: border-color var(--motion-fast) var(--motion-ease-out); }

@@ -9,6 +9,7 @@ import { useSession } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
 import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
 import type { Job, MaterialSummary } from '../../../entities/material/model.ts'
+import { JobProgress } from '../../../entities/material/JobProgress.tsx'
 import { outlineGenerationApi, outlineResultSchema } from '../api.ts'
 import { needsApproval, requestsApi, useRequestApproved } from '../../../entities/request/api.ts'
 import type { GenerationInput } from '../api.ts'
@@ -394,10 +395,10 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
       {active ? '구성 생성 진행 보기' : 'AI로 구성 만들기'}
     </Button>
     {!active && hint && <span className={styles.note} id={hintId}>{hint}</span>}
-    <div className={`${styles.dialogSlot} ${showProgress ? styles.progressDialog : ''}`}>
+    <div className={styles.dialogSlot}>
       <Modal size={view === 'job' ? 'confirm' : 'form'} open={Boolean(view)}
         title={showProgress ? '발표 구성을 만들고 있어요' : view === 'job' ? '발표 구성 생성 결과' : 'AI로 구성 만들기'}
-        description={showProgress ? '자료의 핵심 내용을 순서대로 정리합니다.' : undefined}
+        description={showProgress ? '자료의 핵심 내용을 순서대로 정리하고 있어요.' : undefined}
         onClose={() => setView(null)} footer={view === 'job' ? <>
           <Button onClick={() => setView(null)}>닫기</Button>
           {canCancel && <Button variant="dangerOutline" disabled={Boolean(retryUntil)} loading={write === 'cancel'} onClick={() => void cancel()}>생성 취소</Button>}
@@ -411,9 +412,9 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
         {view === 'form' && <>
           {(outlineHasItems || job?.status === 'failed') && <p className={styles.note}>
             {job?.error?.code === 'JOB_INPUT_STALE' && '발표 구성이나 자료가 바뀌었어요. 최신 내용을 확인하고 다시 시도해 주세요. '}
-            {outlineHasItems && '생성이 완료되면 저장된 발표 구성이 새 결과로 바뀝니다.'}
+            {outlineHasItems && '생성이 끝나면 저장된 발표 구성이 새 결과로 바뀌어요.'}
           </p>}
-          <p className={styles.note}>선택한 자료의 제목과 일부 원문, 생성 지시가 AI 서비스에 전달됩니다.</p>
+          <p className={styles.note}>선택한 자료의 제목과 일부 원문, 생성 지시가 AI 서비스에 전달돼요.</p>
           <fieldset className={styles.choices} disabled={freezeInput}>
             <legend>발표에 사용할 자료 {selected.length}개 선택</legend>
             {choices?.items.map((item) => <label key={item.id}>
@@ -438,11 +439,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           <RequestError error={jobError} />
         </>}
         {view === 'job' && job && <>
-          {active && <div className={styles.details}>
-            <p>자료 확인, 목차 구성, 근거 연결</p>
-            <p role="status">{job.cancelRequestedAt ? '취소 요청을 확인하고 있어요' : `${job.status === 'queued' ? '생성 대기 중' : '생성 중'} ${job.progress}%`}</p>
-            <progress className={styles.progress} max={100} value={job.progress} aria-label="발표 구성 생성 진행률" />
-          </div>}
+          {active && <JobProgress job={job} label="발표 구성 생성 진행률" />}
           {job.status === 'succeeded' && (resultWaiting || !jobError) && <p role="status">
             {resultWaiting ? '편집을 마치면 생성한 발표 구성을 불러올 수 있어요'
               : resultApplied ? '발표 구성을 만들었어요' : '생성한 발표 구성을 불러오고 있어요'}
