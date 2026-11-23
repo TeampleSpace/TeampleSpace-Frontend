@@ -310,3 +310,23 @@ test('같은 종류의 승인 요청이 이미 있으면 이유를 보여 주고
   expect(await screen.findByText('기다리는 디자인 변경 요청이 있어요')).toBeTruthy()
   expect(screen.queryByText('저장 결과를 확인하면 디자인을 다시 수정할 수 있어요.')).toBeNull()
 })
+
+test('승인으로 디자인을 다시 읽는 동안 바꾼 입력은 응답으로 덮어쓰지 않는다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
+  let resolve: (value: DesignSettings) => void = () => {}
+  vi.mocked(designApi.get).mockReturnValue(new Promise((done) => { resolve = done }))
+  announceDecided({
+    id: 'request-1', projectId: 'project', type: 'design_change', state: 'approved', payload: {},
+    requestedBy: { userId: 'other', name: '팀원' }, decidedBy: { userId: 'third', name: '승인자' },
+    result: { designVersion: 2 }, error: null, createdAt: '', decidedAt: '',
+  })
+  await waitFor(() => expect(designApi.get).toHaveBeenCalledTimes(2))
+  const name = screen.getByLabelText('템플릿 이름') as HTMLInputElement
+  fireEvent.change(name, { target: { value: '우리 팀 스타일' } })
+  resolve(storedTemplate)
+  await new Promise((done) => setTimeout(done, 50))
+  expect(name.value).toBe('우리 팀 스타일')
+  expect(screen.getByRole('button', { name: '직접 입력' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByText('클린 리포트 템플릿이 적용됐어요')).toBeNull()
+})

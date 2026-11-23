@@ -202,3 +202,23 @@ test('팀원이 둘 이상이면 승인을 요청하고 다른 팀원이 승인�
   await waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(1))
   expect(screen.getByRole('button', { name: '생성 결과 보기' })).toBeTruthy()
 })
+
+test('같은 종류의 승인 요청이 이미 있으면 이유를 보여 주고 다시 열 때 최신 구성과 디자인으로 확인한다', async () => {
+  vi.mocked(needsApproval).mockResolvedValue(true)
+  vi.mocked(requestsApi.create).mockRejectedValue(new ApiError(409, {
+    error: { code: 'REQUEST_IN_PROGRESS', message: '기다리는 PPT 만들기 요청이 있어요', retryable: false }, requestId: 'request',
+  }))
+  mount()
+  fireEvent.click(screen.getByRole('button', { name: 'PPT 만들기' }))
+  const confirm = await screen.findByRole('dialog', { name: 'PPT 초안 만들기' })
+  await within(confirm).findByText('클린 리포트')
+  fireEvent.click(within(confirm).getByRole('button', { name: '초안 생성' }))
+  expect(await within(confirm).findByText('기다리는 PPT 만들기 요청이 있어요')).toBeTruthy()
+  expect(within(confirm).getByRole('button', { name: '초안 생성' })).toBeTruthy()
+  expect(outlineApi.get).toHaveBeenCalledTimes(1)
+
+  fireEvent.click(within(confirm).getByRole('button', { name: '닫기' }))
+  fireEvent.click(screen.getByRole('button', { name: 'PPT 만들기' }))
+  await waitFor(() => expect(outlineApi.get).toHaveBeenCalledTimes(2))
+  expect(designApi.get).toHaveBeenCalledTimes(2)
+})
