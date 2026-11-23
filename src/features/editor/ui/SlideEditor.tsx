@@ -121,7 +121,7 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
         dirty={state.pending}
         when={({ nextLocation }) => !nextLocation.pathname.startsWith(base) && session.flush()}
       />
-      <header className={layout.header}>
+      <header className={`${layout.header} ${styles.header}`}>
         <div className={styles.title}>
           <h1>{projectName}</h1>
           <p role="status">
