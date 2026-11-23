@@ -10,6 +10,7 @@ import { materialsApi } from '../../../entities/material/api.ts'
 import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
 import type { Job, MaterialSummary } from '../../../entities/material/model.ts'
 import { outlineGenerationApi, outlineResultSchema } from '../api.ts'
+import { needsApproval, requestsApi, useRequestApproved } from '../../../entities/request/api.ts'
 import type { GenerationInput } from '../api.ts'
 import styles from './OutlineGeneration.module.css'
 
@@ -22,7 +23,8 @@ type Props = {
   onAccessError: (reason: unknown) => void
 }
 
-type Request = { body: GenerationInput; key: string }
+// request는 팀원 승인을 받아 실행하는지다. 정하기 전이면 비워 둔다
+type Request = { body: GenerationInput; key: string; request?: boolean }
 type Choices = { items: MaterialSummary[]; nextCursor: string | null }
 type ChoicesFailure = { reason: unknown; cursor?: string }
 type ResultState = { jobId: string; status: 'applied' | 'deferred' }
@@ -127,6 +129,15 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     })
     return () => controller.abort()
   }, [enabled, projectId])
+
+  // 다른 팀원이 승인해 시작한 작업을 이어서 보여 준다
+  useRequestApproved(projectId, 'outline_generation', (request) => {
+    if (!enabled || !request.result || !('jobId' in request.result)) return
+    void materialsApi.job(request.result.jobId).then((found) => {
+      const entry = confirmJob(found, projectId)
+      if (shouldResume(entry)) setJob((current) => isActive(current) ? current : entry)
+    }).catch((reason: unknown) => reportAccess(reason))
+  })
 
   useEffect(() => {
     if (!retryUntil) return
@@ -290,7 +301,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   async function start() {
     if (writeLock.current || choicesLock.current || active || !enabled || dirty || isConflictError || retryUntil || !selected.length) return
     const instruction = instructions.trim()
-    const command = pending ?? {
+    let command: Request = pending ?? {
       key: crypto.randomUUID(),
       body: { expectedVersion: version, sourceIds: selected, ...(instruction ? { instructions: instruction } : {}) },
     }
@@ -299,6 +310,13 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     setWrite('create')
     setWriteError(undefined)
     try {
+      if (command.request === undefined) setPending(command = { ...command, request: await needsApproval(projectId) })
+      if (command.request) {
+        await requestsApi.create(projectId, 'outline_generation', command.body, command.key)
+        setPending(undefined)
+        setView(null)
+        return
+      }
       const result = confirmJob(await outlineGenerationApi.create(projectId, command.body, command.key), projectId)
       setJob(result)
       setJobError(undefined)
@@ -307,7 +325,10 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     } catch (reason) {
       reportAccess(reason, true)
       pauseWrites(reason)
-      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS') {
+      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS' && command.request) {
+        // 같은 종류의 승인 요청이 이미 기다리고 있다
+        setPending(undefined)
+      } else if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS') {
         try {
           const found = await outlineGenerationApi.latest(projectId)
           if (found && shouldResume(found)) {

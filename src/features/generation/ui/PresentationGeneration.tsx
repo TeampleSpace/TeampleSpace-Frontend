@@ -14,6 +14,7 @@ import { outlineApi } from '../../outline/api.ts'
 import { designApi } from '../../design/api.ts'
 import type { DesignSettings } from '../../design/api.ts'
 import { presentationGenerationApi, presentationResultSchema } from '../api.ts'
+import { needsApproval, requestsApi, useRequestApproved } from '../../../entities/request/api.ts'
 import type { GenerationRequest } from '../api.ts'
 import styles from './PresentationGeneration.module.css'
 
@@ -70,7 +71,8 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
   const [job, setJob] = useState<Job>()
   const [jobError, setJobError] = useState<unknown>()
   const [writeError, setWriteError] = useState<unknown>()
-  const [pending, setPending] = useState<{ body: GenerationRequest; key: string }>()
+  // request는 팀원 승인을 받아 실행하는지다. 정하기 전이면 비워 둔다
+  const [pending, setPending] = useState<{ body: GenerationRequest; key: string; request?: boolean }>()
   const [write, setWrite] = useState<'create' | 'cancel' | null>(null)
   const [readAttempt, setReadAttempt] = useState(0)
   const writeLock = useRef(false)
@@ -95,6 +97,17 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
     })
     return () => controller.abort()
   }, [enabled, projectId])
+
+  // 다른 팀원이 승인해 시작한 작업을 이어서 보여 준다
+  useRequestApproved(projectId, 'presentation_generation', (request) => {
+    if (!enabled || !request.result || !('jobId' in request.result)) return
+    void materialsApi.job(request.result.jobId).then((found) => {
+      const entry = confirmJob(found, projectId)
+      if (isActive(entry) || entry.status === 'succeeded') setJob((current) => isActive(current) ? current : entry)
+    }).catch(() => {
+      // 다시 들어오면 최근 작업으로 이어서 보여 준다
+    })
+  })
 
   useEffect(() => {
     const id = activeJobId
@@ -178,19 +191,26 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
 
   async function start() {
     if (writeLock.current || !summary || summary.blocker || !enabled) return
-    const command = pending ?? { body: summary.request, key: crypto.randomUUID() }
+    let command = pending ?? { body: summary.request, key: crypto.randomUUID() }
     setPending(command)
     writeLock.current = true
     setWrite('create')
     setWriteError(undefined)
     try {
+      if (command.request === undefined) setPending(command = { ...command, request: await needsApproval(projectId) })
+      if (command.request) {
+        await requestsApi.create(projectId, 'presentation_generation', command.body, command.key)
+        setPending(undefined)
+        setView(null)
+        return
+      }
       const created = confirmJob(await presentationGenerationApi.create(projectId, command.body, command.key), projectId)
       setPending(undefined)
       setJob(created)
       setJobError(undefined)
       setView('job')
     } catch (reason) {
-      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS') {
+      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS' && !command.request) {
         const found = await presentationGenerationApi.latest(projectId).catch(() => undefined)
         if (found && isActive(found) && found.projectId?.toLowerCase() === projectId.toLowerCase()) {
           setPending(undefined)
