@@ -230,6 +230,12 @@ test('서버가 삭제를 거절하면 이유를 알리고 자료를 남긴다',
   expect(mock.get(id)?.deleted).toBe(false)
 })
 
+// 남긴 메모 목록에 보이는 본문 순서
+function shownComments() {
+  const list = screen.getByRole('list', { name: '남긴 메모' })
+  return within(list).getAllByRole('listitem').map((item) => item.querySelector('p:last-of-type')?.textContent)
+}
+
 test('팀 메모는 댓글처럼 남기고 다른 팀원의 메모를 새로고침 없이 보여 주며 내 메모만 지운다', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   const id = mock.seed('file', '보고서.pdf')
@@ -273,15 +279,36 @@ test('다른 팀원이 쓴 직후 내가 써도 그 사이 남의 메모를 건�
   expect(await screen.findByText('내가 이어서 쓴 메모')).toBeTruthy()
   await vi.advanceTimersByTimeAsync(5000)
   expect(await screen.findByText('팀원이 먼저 쓴 메모')).toBeTruthy()
+  // 나중에 읽었어도 먼저 쓴 메모가 앞에 온다
+  expect(shownComments()).toEqual(['팀원이 먼저 쓴 메모', '내가 이어서 쓴 메모'])
   vi.useRealTimers()
 
   // 50개가 넘어 더 보기가 실패하면 이유를 보여 준다
   for (let index = 0; index < 51; index++) mock.commentAs(id, member, `쌓인 메모 ${index}`)
   cleanup()
   mount()
+  // 남은 페이지를 읽기 전에 쓴 내 메모는 나중에 읽은 메모들보다 뒤에 둔다
+  const next = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
+  fireEvent.change(next, { target: { value: '더 보기 전에 쓴 메모' } })
+  fireEvent.click(screen.getByRole('button', { name: '남기기' }))
+  expect(await screen.findByText('더 보기 전에 쓴 메모')).toBeTruthy()
   fireEvent.click(await screen.findByRole('button', { name: '메모 더 보기' }))
-  await waitFor(() => expect(screen.getAllByText(/쌓인 메모/).length).toBeGreaterThan(0))
+  await waitFor(() => expect(screen.getByText('쌓인 메모 50')).toBeTruthy())
   expect(screen.queryByRole('button', { name: '메모 더 보기' })).toBeNull()
+  expect(shownComments().slice(-2)).toEqual(['쌓인 메모 50', '더 보기 전에 쓴 메모'])
+})
+
+test('주기적으로 메모를 읽다가 접근 권한을 잃으면 자료와 메모를 가린다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const id = mock.seed('file', '보고서.pdf')
+  mock.commentAs(id, member, '가려야 할 메모')
+  mount()
+  expect(await screen.findByText('가려야 할 메모')).toBeTruthy()
+  mock.faults.failNext = { match: `GET /v1/materials/${id}/comments`, code: 'ACCESS_DENIED' }
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(await screen.findByText('이 프로젝트에 더 이상 접근할 수 없습니다')).toBeTruthy()
+  expect(screen.queryByText('가려야 할 메모')).toBeNull()
+  vi.useRealTimers()
 })
 
 test('메모 더 보기가 실패하면 목록 아래에 이유를 보여 준다', async () => {

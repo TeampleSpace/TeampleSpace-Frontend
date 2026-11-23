@@ -67,6 +67,11 @@ export function createMaterialsMock(options: {
   const calls: { method: string; path: string; key: string | null; body: unknown; headers: Record<string, string> }[] = []
 
   const iso = (ms = now()) => new Date(ms).toISOString().replace(/\.(\d{3})Z$/, '.$1000Z')
+  // 서버처럼 댓글의 작성 순서와 시각 순서를 같게 둔다
+  const commentAt = (target: Stored) => {
+    const last = target.comments.at(-1)
+    return iso(Math.max(now(), last ? Date.parse(last.createdAt) + 1 : 0))
+  }
   const nextRequestId = () => `req_mock_${(requestSeq += 1)}`
   function json(status: number, body: unknown) {
     const inBody = (body as { requestId?: unknown } | null)?.requestId
@@ -250,7 +255,7 @@ export function createMaterialsMock(options: {
         return idempotent(actorId, method, path, key, body, () => {
           const text = typeof body.body === 'string' ? body.body.trim() : ''
           if (!text || text.length > 2000) return invalid('body')
-          const comment = { id: crypto.randomUUID(), body: text, authorId: actorId, createdAt: iso(), deleted: false }
+          const comment = { id: crypto.randomUUID(), body: text, authorId: actorId, createdAt: commentAt(target), deleted: false }
           target.comments.push(comment)
           return json(201, view(comment))
         })
@@ -491,7 +496,8 @@ export function createMaterialsMock(options: {
     },
     // 다른 팀원이 댓글을 남긴 상태를 만든다
     commentAs(materialId: string, actorId: string, body: string) {
-      materials.get(materialId)!.comments.push({ id: crypto.randomUUID(), body, authorId: actorId, createdAt: iso(), deleted: false })
+      const target = materials.get(materialId)!
+      target.comments.push({ id: crypto.randomUUID(), body, authorId: actorId, createdAt: commentAt(target), deleted: false })
     },
     renameAs(materialId: string, title: string) {
       const item = materials.get(materialId)!
