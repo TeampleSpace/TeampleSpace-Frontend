@@ -229,3 +229,37 @@ test('다시 읽는 동안 추가 페이지의 분석 상태를 갱신하고 그
   expect(materialsApi.get).toHaveBeenCalledWith('pdf')
   expect(form.getByRole('checkbox', { name: later.title })).toHaveProperty('checked', true)
 })
+
+test('조용히 다시 읽는 동안 누른 구성 만들기를 바로 처리한다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const counts = { all: 1, file: 0, link: 0, memo: 1 }
+  vi.mocked(materialsApi.list).mockReset()
+    .mockResolvedValueOnce({ items: [source], nextCursor: null, counts })
+    .mockReturnValue(new Promise(() => undefined))
+  const create = vi.spyOn(outlineGenerationApi, 'create').mockResolvedValue(queued)
+  mount(true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
+  const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
+  fireEvent.click(await form.findByRole('checkbox', { name: source.title }))
+  await vi.advanceTimersByTimeAsync(4000)
+  expect(materialsApi.list).toHaveBeenCalledTimes(2)
+  fireEvent.click(form.getByRole('button', { name: '구성 만들기' }))
+  await waitFor(() => expect(create).toHaveBeenCalled())
+})
+
+test('끝까지 읽은 뒤 한 페이지가 넘게 새 자료가 들어오면 자료 더 보기를 다시 보여 준다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const counts = { all: 31, file: 0, link: 0, memo: 31 }
+  const added = Array.from({ length: 30 }, (_, index) => ({ ...source, id: `new-${index}`, title: `새 자료 ${index}` }))
+  vi.mocked(materialsApi.list).mockReset()
+    .mockResolvedValueOnce({ items: [source], nextCursor: null, counts })
+    .mockResolvedValue({ items: added, nextCursor: 'page-2', counts })
+  mount(true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
+  const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
+  await form.findByRole('checkbox', { name: source.title })
+  expect(form.queryByRole('button', { name: '자료 더 보기' })).toBeNull()
+  await vi.advanceTimersByTimeAsync(4000)
+  expect(await form.findByRole('button', { name: '자료 더 보기' })).toBeTruthy()
+  expect(form.getByRole('checkbox', { name: '새 자료 0' })).toBeTruthy()
+})
