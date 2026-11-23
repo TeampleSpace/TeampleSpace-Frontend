@@ -56,7 +56,6 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
 
   const [memoTitle, setMemoTitle] = useState(edit?.material.title ?? '')
   const [markdown, setMarkdown] = useState(edit?.markdown ?? '')
-  const [mode, setMode] = useState<'write' | 'preview'>('write')
   // 수정 중에 다른 사람이 먼저 저장한 최신 자료
   const [conflict, setConflict] = useState<{ material: Material; markdown: string } | null>(null)
   const [base, setBase] = useState(edit)
@@ -97,7 +96,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
     if (type === 'memo' && memoDirty) setPending(next); else setType(next)
   }
   function discardMemo(next: InputType) {
-    setMemoTitle(''); setMarkdown(''); setMode('write'); setError(undefined)
+    setMemoTitle(''); setMarkdown(''); setError(undefined)
     lastField.current = null
     setType(next); setPending(null)
   }
@@ -153,7 +152,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
   const submitMemo = () => {
     // 한글 조합이 끝난 실제 입력값을 읽는다
     const title = ((document.getElementById(ids.memoTitle) as HTMLInputElement | null)?.value ?? memoTitle).trim()
-    const text = (document.getElementById(ids.markdown) as HTMLTextAreaElement | null)?.value ?? markdown
+    const text = markdown
     if (!title || !text.trim()) return
     if (!base) {
       const body = { title, markdown: text }
@@ -233,10 +232,10 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
         <Field id={ids.memoTitle} label="메모 제목" maxLength={limits.title} value={memoTitle} disabled={busy} error={fieldErrors.title}
           onChange={(event) => setMemoTitle(event.target.value)} onBlur={remember} />
         <div onBlur={(event) => { if (event.target instanceof HTMLTextAreaElement) rememberField(event.target) }}>
-          <MarkdownEditor id={ids.markdown} value={markdown} mode={mode} disabled={busy} onChange={setMarkdown} onModeChange={setMode} />
+          <MarkdownEditor id={ids.markdown} value={markdown} disabled={busy} onChange={setMarkdown} />
         </div>
         {fieldErrors.markdown && <p className={styles.fieldError} role="alert">{fieldErrors.markdown}</p>}
-        <p className={styles.hintText}>마크다운 지원 · ## 제목  /  **굵게**  /  - 목록  /  [텍스트](링크)</p>
+        <p className={styles.hintText}>## 제목, **굵게**, - 목록처럼 마크다운으로 입력하면 바로 서식이 적용돼요</p>
         {conflict && <div className={styles.conflict} role="alert">
           <p>{conflict.material.title} 자료를 다른 팀원이 먼저 수정했어요. 내 입력은 그대로 있어요</p>
           <p className={styles.plain}>{conflict.markdown}</p>

@@ -1,54 +1,71 @@
-import { lazy, Suspense } from 'react'
+import { useEffect, useRef } from 'react'
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
+import type { Editor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { Markdown } from '@tiptap/markdown'
+import { Placeholder } from '@tiptap/extensions'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { limits } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
-const Markdown = lazy(() => import('./Markdown.tsx'))
-
-type Tool = { label: string; before: string; after?: string; line?: boolean; sample: string }
+type Tool = { label: string; active: (editor: Editor) => boolean; run: (editor: Editor) => void }
 const tools: Tool[] = [
-  { label: '제목', before: '## ', line: true, sample: '제목' },
-  { label: '굵게', before: '**', after: '**', sample: '굵게' },
-  { label: '목록', before: '- ', line: true, sample: '항목' },
-  { label: '링크', before: '[', after: '](https://)', sample: '텍스트' },
-  { label: '인용', before: '> ', line: true, sample: '인용' },
-  { label: '코드', before: '`', after: '`', sample: '코드' },
+  { label: '제목', active: (e) => e.isActive('heading', { level: 2 }), run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run() },
+  { label: '굵게', active: (e) => e.isActive('bold'), run: (e) => e.chain().focus().toggleBold().run() },
+  { label: '목록', active: (e) => e.isActive('bulletList'), run: (e) => e.chain().focus().toggleBulletList().run() },
+  { label: '링크', active: (e) => e.isActive('link'), run: (e) => {
+    if (e.isActive('link')) { e.chain().focus().unsetLink().run(); return }
+    const href = window.prompt('연결할 주소를 입력해 주세요', 'https://')?.trim()
+    if (href) e.chain().focus().extendMarkRange('link').setLink({ href }).run()
+  } },
+  { label: '인용', active: (e) => e.isActive('blockquote'), run: (e) => e.chain().focus().toggleBlockquote().run() },
+  { label: '코드', active: (e) => e.isActive('code'), run: (e) => e.chain().focus().toggleCode().run() },
 ]
 
-// 마크다운 작성과 미리보기. 미리보기로 바꿔도 입력란은 그대로 두어 커서를 잃지 않는다
-export function MarkdownEditor({ id, value, mode, disabled, onChange, onModeChange }: {
-  id: string; value: string; mode: 'write' | 'preview'; disabled?: boolean
-  onChange: (value: string) => void; onModeChange: (mode: 'write' | 'preview') => void
+// 쓰는 자리에서 서식이 바로 보이는 마크다운 편집기. 바깥에는 마크다운 문자열만 주고받는다
+export function MarkdownEditor({ id, value, disabled, onChange }: {
+  id: string; value: string; disabled?: boolean; onChange: (value: string) => void
 }) {
-  function insert(tool: Tool) {
-    const area = document.getElementById(id) as HTMLTextAreaElement | null
-    if (!area) return
-    const { selectionStart: start, selectionEnd: end } = area
-    const selected = value.slice(start, end) || tool.sample
-    // 줄 단위 도구는 줄 맨 앞에 붙인다
-    const at = tool.line ? value.lastIndexOf('\n', start - 1) + 1 : start
-    const next = tool.line
-      ? value.slice(0, at) + tool.before + value.slice(at)
-      : value.slice(0, start) + tool.before + selected + (tool.after ?? '') + value.slice(end)
-    onChange(next.slice(0, limits.markdown))
-    const from = tool.line ? start + tool.before.length : start + tool.before.length
-    const to = tool.line ? end + tool.before.length : from + selected.length
-    requestAnimationFrame(() => { area.focus(); area.setSelectionRange(from, to) })
-  }
-  return <div className={styles.editor}>
-    <div className={styles.editorModes} role="tablist" aria-label="편집 방식">
-      <Button variant="text" role="tab" aria-selected={mode === 'write'} onClick={() => onModeChange('write')}>작성</Button>
-      <Button variant="text" role="tab" aria-selected={mode === 'preview'} onClick={() => onModeChange('preview')}>미리보기</Button>
+  // 편집기에서 마지막으로 내보낸 값. 같은 값이 다시 들어오면 내용을 덮어쓰지 않는다
+  const emitted = useRef(value)
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange })
+
+  const editor = useEditor({
+    extensions: [StarterKit.configure({ underline: false, link: { openOnClick: false, autolink: true } }), Markdown,
+      Placeholder.configure({ placeholder: '쓰는 대로 서식이 바로 적용돼요. 샵과 공백을 입력하면 제목이 돼요', emptyNodeClass: 'isEmpty' })],
+    content: value,
+    contentType: 'markdown',
+    editable: !disabled,
+    editorProps: {
+      attributes: { id, class: styles.editorInput, role: 'textbox', 'aria-multiline': 'true', 'aria-label': '메모 내용' },
+    },
+    onUpdate: ({ editor }) => {
+      const next = editor.getMarkdown()
+      // ponytail: 길이 제한은 넘친 입력을 되돌리는 방식이다. 붙여넣기 한 번에 크게 넘치면 그 입력 전체가 취소된다
+      if (next.length > limits.markdown) { editor.commands.undo(); return }
+      emitted.current = next
+      onChangeRef.current(next)
+    },
+  })
+
+  // 충돌 해결이나 다른 팀원의 저장으로 값이 바뀌면 편집기 내용을 맞춘다
+  useEffect(() => {
+    if (!editor || value === emitted.current) return
+    emitted.current = value
+    editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false })
+  }, [editor, value])
+
+  useEffect(() => { editor?.setEditable(!disabled) }, [editor, disabled])
+
+  const active = useEditorState({ editor, selector: ({ editor }) => editor ? tools.map((tool) => tool.active(editor)) : [] })
+
+  return <div className={styles.editor} data-disabled={disabled || undefined}>
+    <div className={styles.editorTools} role="toolbar" aria-label="마크다운 서식">
+      {tools.map((tool, index) => <Button key={tool.label} variant="text" disabled={disabled || !editor}
+        aria-pressed={active?.[index] ?? false} onMouseDown={(event) => event.preventDefault()}
+        onClick={() => editor && tool.run(editor)}>{tool.label}</Button>)}
     </div>
-    <div className={styles.editorTools} role="toolbar" aria-label="마크다운 서식" hidden={mode !== 'write'}>
-      {tools.map((tool) => <Button key={tool.label} variant="text" disabled={disabled} onClick={() => insert(tool)}>{tool.label}</Button>)}
-    </div>
-    <textarea id={id} className={styles.editorInput} aria-label="메모 내용" hidden={mode !== 'write'} disabled={disabled}
-      maxLength={limits.markdown} value={value} onChange={(event) => onChange(event.target.value)} />
-    {mode === 'preview' && <div className={styles.editorPreview} aria-label="미리보기">
-      {value.trim()
-        ? <Suspense fallback={<p className={styles.plain}>{value}</p>}><Markdown>{value}</Markdown></Suspense>
-        : <p className={styles.listNote}>미리 볼 내용이 없어요</p>}
-    </div>}
+    <EditorContent editor={editor} />
   </div>
 }

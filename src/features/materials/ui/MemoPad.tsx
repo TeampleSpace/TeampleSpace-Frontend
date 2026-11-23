@@ -31,7 +31,6 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const fieldId = useId()
   const [draft, setDraft] = useState<string>()
   const [saved, setSaved] = useState('')
-  const [mode, setMode] = useState<'write' | 'preview'>('write')
   const [status, setStatus] = useState<Status>('saved')
   const [error, setError] = useState<unknown>()
   const [loadError, setLoadError] = useState<unknown>()
@@ -54,6 +53,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const [settled, setSettled] = useState(0)
   const version = useRef(material.version)
   const composing = useRef(false)
+  // 편집기에 보이는 최신 본문. 한글 조합이 끝난 값을 저장할 때 읽는다
+  const typed = useRef('')
   // 충돌을 고르기 전에는 저장하지 않는다
   const blocked = useRef(false)
   const saving = useRef(false)
@@ -79,6 +80,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
         savedRef.current = text
         setSaved(text)
         setDraft(text)
+        typed.current = text
         setLoadError(undefined)
       })
       .catch((reason) => {
@@ -124,8 +126,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   async function save() {
     clearTimeout(timer.current)
     if (saving.current || composing.current || blocked.current) return
-    // 한글 조합이 끝난 실제 입력값을 읽는다
-    const value = (document.getElementById(fieldId) as HTMLTextAreaElement | null)?.value ?? draft ?? ''
+    const value = typed.current
     if (value === savedRef.current) { setStatus('saved'); return }
     saving.current = true
     setSending(true)
@@ -151,8 +152,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
           return
         }
       }
-      const now = (document.getElementById(fieldId) as HTMLTextAreaElement | null)?.value
-      if (now !== undefined && now !== savedRef.current) {
+      if (typed.current !== savedRef.current) {
         setStatus('waiting')
         timer.current = setTimeout(() => void save(), memoSaveDelayMs)
       } else setStatus('saved')
@@ -167,6 +167,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   }
 
   function change(value: string) {
+    typed.current = value
     editedSince.current = true
     setDraft(value)
     if (blocked.current) return
@@ -191,6 +192,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     if (!latest) return
     done(latest.material, latest.markdown)
     blocked.current = false
+    typed.current = latest.markdown
     setDraft(latest.markdown)
     setLatest(undefined)
     setStatus('saved')
@@ -209,9 +211,9 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
       <span role="status">{statusLabels[status]}</span>
     </div>
     <div onCompositionStart={() => { composing.current = true }}
-      onCompositionEnd={() => { composing.current = false; change((document.getElementById(fieldId) as HTMLTextAreaElement | null)?.value ?? '') }}
+      onCompositionEnd={() => { composing.current = false; change(typed.current) }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) void save() }}>
-      <MarkdownEditor id={fieldId} value={draft} mode={mode} disabled={status === 'conflict'} onChange={change} onModeChange={setMode} />
+      <MarkdownEditor id={fieldId} value={draft} disabled={status === 'conflict'} onChange={change} />
     </div>
     {latest && <div className={styles.conflict} role="alert">
       <p>다른 팀원이 먼저 메모를 고쳤어요. 내 입력은 그대로 있어요</p>
