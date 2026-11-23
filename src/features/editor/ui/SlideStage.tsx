@@ -9,11 +9,16 @@ import type {
 } from '../../../entities/presentation/schema.ts'
 import { deltaToDoc } from '../coords.ts'
 import { describeElement } from '../describe.ts'
+import { snap } from '../snap.ts'
+import type { Guide } from '../snap.ts'
 import { textStyle } from '../textStyle.ts'
 import { SlideRenderer } from './SlideRenderer.tsx'
 import styles from './SlideStage.module.css'
 
-type Drag = { id: string; startX: number; startY: number; dx: number; dy: number }
+type Drag = { id: string; startX: number; startY: number; dx: number; dy: number; guides: Guide[] }
+
+// 이 거리 안으로 가까워지면 기준선에 붙인다. 화면 픽셀 단위다
+const snapDistance = 6
 
 // 한글 조합 입력을 받는 글상자. 조합 중인지 함께 알린다
 function TextEditor({
@@ -127,14 +132,22 @@ export function SlideStage({
     onSelect(id)
     if (locked(id)) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0 })
+    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0, guides: [] })
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!drag) return
     // 화면에서 움직인 거리를 현재 배율로 나눠 문서 좌표로 바꾼다
     const delta = deltaToDoc(event.clientX - drag.startX, event.clientY - drag.startY, scale)
-    setDrag({ ...drag, dx: delta.x, dy: delta.y })
+    const geometry = byId(drag.id)?.geometry
+    // Alt를 누르고 끌면 맞추지 않고 그대로 옮긴다
+    if (!geometry || event.altKey) {
+      setDrag({ ...drag, dx: delta.x, dy: delta.y, guides: [] })
+      return
+    }
+    const others = elements.filter((element) => element.id !== drag.id).map((element) => element.geometry)
+    const fit = snap({ ...geometry, x: geometry.x + delta.x, y: geometry.y + delta.y }, others, canvas, snapDistance / scale)
+    setDrag({ ...drag, dx: delta.x + fit.dx, dy: delta.y + fit.dy, guides: fit.guides })
   }
 
   function onPointerUp() {
@@ -221,6 +234,22 @@ export function SlideStage({
             />
           )
         })}
+        {drag?.guides.map((guide) => (
+          <div
+            key={`${guide.axis}${guide.at}`}
+            className={guide.axis === 'x' ? styles.guideX : styles.guideY}
+            data-guide={guide.axis}
+            style={
+              {
+                left: guide.axis === 'x' ? guide.at : 0,
+                top: guide.axis === 'y' ? guide.at : 0,
+                width: guide.axis === 'y' ? canvas.width : 0,
+                height: guide.axis === 'x' ? canvas.height : 0,
+                '--stage-scale': scale,
+              } as CSSProperties
+            }
+          />
+        ))}
         {editing?.type === 'text' && (
           <TextEditor
             key={editing.id}

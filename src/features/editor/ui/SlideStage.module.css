@@ -16,6 +16,16 @@
   outline-offset: calc(2px / var(--stage-scale));
 }
 
+/* 끄는 동안 붙은 기준선 */
+.guideX,
+.guideY {
+  position: absolute;
+  pointer-events: none;
+}
+
+.guideX { border-left: calc(1px / var(--stage-scale)) solid var(--color-accent-bright); }
+.guideY { border-top: calc(1px / var(--stage-scale)) solid var(--color-accent-bright); }
+
 .textEditor {
   position: absolute;
   margin: 0;

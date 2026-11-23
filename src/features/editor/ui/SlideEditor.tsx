@@ -275,7 +275,7 @@ function Workspace({
           />
         </div>
         <div className={styles.stageFoot}>
-          <p>요소를 클릭해 선택하고 더블클릭해 글을 수정해요. 방향키로도 옮길 수 있어요</p>
+          <p>요소를 클릭해 선택하고 더블클릭해 글을 수정해요. 끌면 다른 요소와 가운데에 맞춰지고 Alt를 누르면 그대로 옮겨요</p>
           <label>
             배율
             <select value={zoom} onChange={(event) => setZoom(Number(event.target.value))}>
