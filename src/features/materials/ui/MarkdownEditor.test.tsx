@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MarkdownEditor } from './MarkdownEditor.tsx'
 
 afterEach(cleanup)
+
+// jsdom에는 화면 배치가 없어 편집기가 커서 위치로 스크롤할 때 쓰는 함수를 빈 값으로 채운다
+beforeAll(() => {
+  Range.prototype.getClientRects = () => [] as unknown as DOMRectList
+  Range.prototype.getBoundingClientRect = () => new DOMRect()
+})
 
 test('마크다운을 서식이 적용된 모습으로 보여 주고 서식 도구로 바꾼 결과를 마크다운으로 내보낸다', async () => {
   const onChange = vi.fn()
