@@ -457,6 +457,11 @@ export function createMaterialsMock(options: {
       const item = materials.get(materialId)!
       item.title = title; item.version += 1
     },
+    // 다른 팀원이 메모 본문을 먼저 고친 상태를 만든다
+    editAs(materialId: string, markdown: string) {
+      const item = materials.get(materialId)!
+      addRevision(item, '0193a000-0000-7000-8000-0000000000d2', markdown); item.version += 1
+    },
     removeMember(userId: string) { removed.add(userId) },
     get: (materialId: string) => materials.get(materialId),
     count: () => [...materials.values()].filter((item) => !item.deleted).length,
