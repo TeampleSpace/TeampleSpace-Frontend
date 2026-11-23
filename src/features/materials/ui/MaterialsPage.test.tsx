@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import MaterialsPage from './MaterialsPage.tsx'
+import { materialsApi } from '../../../entities/material/api.ts'
 import { projectsApi } from '../../../entities/project/api.ts'
 import type { Project } from '../../../entities/project/model.ts'
 import { SessionContext } from '../../../entities/session/sessionContext.ts'
@@ -296,6 +297,32 @@ test('다른 팀원이 쓴 직후 내가 써도 그 사이 남의 메모를 건�
   await waitFor(() => expect(screen.getByText('쌓인 메모 50')).toBeTruthy())
   expect(screen.queryByRole('button', { name: '메모 더 보기' })).toBeNull()
   expect(shownComments().slice(-2)).toEqual(['쌓인 메모 50', '더 보기 전에 쓴 메모'])
+})
+
+test('다른 팀원이 지운 메모는 다음 조회에서 빠지고 내가 지운 메모는 늦게 온 조회 응답에도 다시 보이지 않는다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const id = mock.seed('file', '보고서.pdf')
+  mock.commentAs(id, member, '팀원이 지울 메모')
+  mock.commentAs(id, mock.ownerId, '내가 지울 메모')
+  mount()
+  expect(await screen.findByText('팀원이 지울 메모')).toBeTruthy()
+  mock.get(id)!.comments.find((comment) => comment.body === '팀원이 지울 메모')!.deleted = true
+  await vi.advanceTimersByTimeAsync(5000)
+  await waitFor(() => expect(screen.queryByText('팀원이 지울 메모')).toBeNull())
+
+  // 지우기 전에 시작한 조회 응답이 삭제 응답보다 늦게 온다
+  const stale = await materialsApi.comments(id)
+  let release: () => void = () => {}
+  vi.spyOn(materialsApi, 'comments').mockImplementationOnce(() => new Promise((done) => { release = () => done(stale) }))
+  await vi.advanceTimersByTimeAsync(5000)
+  const mine = screen.getAllByRole('listitem').find((item) => item.textContent?.includes('내가 지울 메모'))!
+  fireEvent.click(within(mine).getByRole('button', { name: '삭제' }))
+  fireEvent.click(within(mine).getByRole('button', { name: '삭제' }))
+  await waitFor(() => expect(screen.queryByText('내가 지울 메모')).toBeNull())
+  release()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(screen.queryByText('내가 지울 메모')).toBeNull()
+  vi.useRealTimers()
 })
 
 test('주기적으로 메모를 읽다가 접근 권한을 잃으면 자료와 메모를 가린다', async () => {
