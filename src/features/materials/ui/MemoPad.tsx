@@ -40,6 +40,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const [latest, setLatest] = useState<{ material: Material; markdown: string }>()
   // 타이머와 응답에서 바로 쓰는 값은 ref로 둔다
   const savedRef = useRef('')
+  // 지금 편집기에 보이는 본문의 개정
+  const shown = useRef<string>(undefined)
   const version = useRef(material.version)
   const composing = useRef(false)
   // 충돌을 고르기 전에는 저장하지 않는다
@@ -54,6 +56,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
         if (controller.signal.aborted) return
         const text = source.markdown ?? ''
         version.current = current.version
+        shown.current = current.currentRevision?.id
         savedRef.current = text
         setSaved(text)
         setDraft(text)
@@ -68,10 +71,20 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const [sending, setSending] = useState(false)
   const dirty = draft !== undefined && (draft !== saved || sending)
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
+
+  // 입력 중이 아니면 다른 사람이 저장한 새 개정의 본문을 다시 읽는다
+  const external = material.currentRevision?.id
+  useEffect(() => {
+    if (!external || shown.current === undefined || external === shown.current) return
+    if (dirty || blocked.current || saving.current) return
+    shown.current = external
+    queueMicrotask(() => setRevision((value) => value + 1))
+  }, [external, dirty])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
   function done(next: Material, text: string) {
     version.current = next.version
+    shown.current = next.currentRevision?.id
     savedRef.current = text
     setSaved(text)
     onSaved(next)
