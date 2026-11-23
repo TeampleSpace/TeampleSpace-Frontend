@@ -68,3 +68,17 @@ test('맞춤으로 이동 거리가 줄어도 끌어서 놓았으면 맞춘 위�
   fireEvent.pointerUp(again, { pointerId: 1 })
   expect(save.mock.calls[0][1].geometry.x + target.geometry.width / 2).toBe(presentation.canvas.width / 2)
 })
+
+test('폭이 홀수인 요소도 가운데에 맞춘 소수 좌표 그대로 저장한다', () => {
+  const odd = { ...slide, elements: slide.elements.map((element) => element.id === target.id
+    ? { ...element, geometry: { ...element.geometry, width: 201 } } : element) }
+  const save = vi.fn()
+  const view = render(<SlideStage canvas={presentation.canvas} slide={odd} scale={1} locked={() => false}
+    onSelect={vi.fn()} onEditingChange={vi.fn()} onChange={save} onCommit={vi.fn()} />)
+  const hit = view.container.querySelector<HTMLElement>(`[data-element="${target.id}"]`)!
+  const distance = presentation.canvas.width / 2 - (target.geometry.x + 201 / 2) + 3
+  fireEvent.pointerDown(hit, { clientX: 0, clientY: 0, pointerId: 1 })
+  fireEvent.pointerMove(hit, { clientX: distance, clientY: 0, pointerId: 1 })
+  fireEvent.pointerUp(hit, { pointerId: 1 })
+  expect(save.mock.calls[0][1].geometry.x).toBe(539.5)
+})
