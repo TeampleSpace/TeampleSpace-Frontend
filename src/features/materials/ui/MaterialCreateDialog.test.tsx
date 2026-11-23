@@ -340,6 +340,30 @@ test('다른 팀원의 본문을 다시 읽는 동안 시작한 입력은 응답
   expect(body.value).toBe('다시 읽는 중에 쓴 내용')
 })
 
+test('다른 팀원의 본문을 다시 읽지 못하면 이유를 보여 주고 다시 불러오면 최신 본문으로 바꾼다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const before = body.value
+  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
+  mock.editAs(id, '팀원이 바꾼 본문')
+  mock.faults.failNext = { match: `GET /v1/materials/${id}/source`, code: 'SERVICE_UNAVAILABLE' }
+  fireEvent(window, new Event('focus'))
+  const retry = await screen.findByRole('button', { name: '다시 불러오기' })
+  expect(body.value).toBe(before)
+  // 창으로 다시 돌아와도 실패한 개정을 반복해 읽지 않는다
+  const sourceReads = () => mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length
+  const reads = sourceReads()
+  fireEvent(window, new Event('focus'))
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  expect(sourceReads()).toBe(reads)
+  fireEvent.click(retry)
+  await waitFor(() => expect(body.value).toBe('팀원이 바꾼 본문'))
+  expect(screen.queryByRole('button', { name: '다시 불러오기' })).toBeNull()
+  expect(screen.getByText('저장됨')).toBeTruthy()
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
