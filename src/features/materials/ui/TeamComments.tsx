@@ -31,6 +31,8 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>()
   const lock = useRef(false)
+  // 서버에서 받아 본 마지막 댓글. 내가 방금 쓴 댓글은 여기에 넣지 않아 그 사이 남의 댓글을 건너뛰지 않는다
+  const seen = useRef<string>(undefined)
   const inputId = useId()
   // 삭제 확인을 닫은 뒤 포커스를 돌려줄 곳
   const focusAfter = useRef<string>(undefined)
@@ -48,6 +50,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
       .then(([page, note]) => {
         if (controller.signal.aborted) return
         setItems(page.items)
+        seen.current = page.items.at(-1)?.id
         setNextCursor(page.nextCursor)
         setLegacy(note.markdown.trim() ? note : null)
         setLoadError(undefined)
@@ -56,12 +59,12 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     return () => controller.abort()
   }, [materialId, revision, onError])
 
-  // 다 읽은 상태면 마지막 댓글 다음부터 새 댓글을 이어 붙인다
+  // 다 읽은 상태면 서버에서 받아 본 마지막 댓글 다음부터 새 댓글을 이어 붙인다
   const refresh = useEffectEvent(async () => {
     if (!items || nextCursor) return
-    const last = items.at(-1)?.id
     try {
-      const page = await materialsApi.comments(materialId, last)
+      const page = await materialsApi.comments(materialId, seen.current)
+      if (page.items.length) seen.current = page.items.at(-1)?.id
       setItems((current) => current && [...current, ...page.items.filter((item) => !current.some((entry) => entry.id === item.id))])
     } catch {
       // 다음 주기에 다시 읽는다
@@ -82,7 +85,9 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     try {
       const page = await materialsApi.comments(materialId, nextCursor)
       setItems((current) => [...(current ?? []), ...page.items.filter((item) => !current?.some((entry) => entry.id === item.id))])
+      if (page.items.length) seen.current = page.items.at(-1)?.id
       setNextCursor(page.nextCursor)
+      setLoadError(undefined)
     } catch (reason) { setLoadError(reason); onError(reason) }
     finally { lock.current = false }
   }
@@ -151,6 +156,7 @@ export function TeamComments({ materialId, onDirtyChange, onError }: {
     </ul>}
     {items.length === 0 && !legacy && <p className={styles.noteBody}>아직 남긴 메모가 없어요. 팀원에게 첫 메모를 남겨 보세요.</p>}
     {nextCursor && <Button variant="text" onClick={() => void more()}>메모 더 보기</Button>}
+    <RequestError error={loadError} />
     <RequestError error={deleteError} />
     <form className={styles.commentForm} onSubmit={(event) => { event.preventDefault(); void send() }}>
       <Field id={inputId} label="메모 남기기" multiline rows={2} maxLength={limits.comment} value={pending ? pending.body : draft}
