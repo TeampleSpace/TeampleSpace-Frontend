@@ -274,3 +274,17 @@ test('프로젝트에 접근할 수 없게 되면 편집 화면 대신 안내를
   expect((await screen.findByRole('alert')).textContent).toContain('이 프로젝트에 더 이상 접근할 수 없습니다')
   expect(screen.getByRole('link', { name: '프로젝트 목록으로' })).toBeTruthy()
 })
+
+test('슬라이드 목록 폭을 방향키로 조절하고 범위 안에서 기억한다', async () => {
+  localStorage.removeItem('teamplespace.slideListWidth')
+  const { server } = setup()
+  mount(open(server.fetchAs(userA)))
+
+  const handle = await screen.findByRole('separator', { name: '슬라이드 목록 폭' })
+  expect(handle.getAttribute('aria-valuenow')).toBe('144')
+  fireEvent.keyDown(handle, { key: 'ArrowRight' })
+  expect(handle.getAttribute('aria-valuenow')).toBe('160')
+  for (let i = 0; i < 20; i++) fireEvent.keyDown(handle, { key: 'ArrowLeft' })
+  expect(handle.getAttribute('aria-valuenow')).toBe('120')
+  expect(localStorage.getItem('teamplespace.slideListWidth')).toBe('120')
+})
