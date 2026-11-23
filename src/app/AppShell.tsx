@@ -10,6 +10,15 @@ import styles from './AppShell.module.css'
 export default function AppShell() {
   const [currentProject, setCurrentProject] = useState<CurrentProject>(null)
   const match = useMatch('/projects/:projectId/*')
+  // 슬라이드 편집 화면은 캔버스를 넓게 쓰도록 사이드바를 기본으로 접는다. 직접 접거나 펴면 그 선택을 따른다
+  const editor = useMatch('/projects/:projectId/slides/*')
+  const [folded, setFolded] = useState<boolean>()
+  const collapsed = folded ?? !!editor
+  // 누른 단추가 사라지므로 반대 단추로 포커스를 옮긴다
+  function toggle(next: boolean) {
+    setFolded(next)
+    requestAnimationFrame(() => document.getElementById(next ? 'app-sidebar-open' : 'app-sidebar-close')?.focus())
+  }
   const account = useMatch('/account/*')
   const billingReturn = useMatch('/billing/return')
   const location = useLocation()
@@ -63,9 +72,12 @@ export default function AppShell() {
     } catch { if (request === generation.current) setError(true) }
     finally { moreLock.current = false; setLoading(false) }
   }
-  return <div className={styles.shell}>
-    <aside className={styles.sidebar}>
-      <NavLink className={styles.brand} to="/"><span>t</span>TeamPleSpace</NavLink>
+  return <div className={styles.shell} data-collapsed={collapsed || undefined} data-editor={editor ? '' : undefined}>
+    <aside id="app-sidebar" className={styles.sidebar} hidden={collapsed}>
+      <div className={styles.sidebarHead}>
+        <NavLink className={styles.brand} to="/"><span>t</span>TeamPleSpace</NavLink>
+        <button type="button" className={styles.fold} aria-label="메뉴 접기" id="app-sidebar-close" aria-controls="app-sidebar" aria-expanded="true" onClick={() => toggle(true)}><span aria-hidden="true" /></button>
+      </div>
       <nav aria-label="주 메뉴" className={styles.navigation}>
         <NavLink to="/" end><img src="/assets/navigation/home.svg" alt="" />홈</NavLink>
         <Link to="/?search=1" className={styles.search}><img src="/assets/navigation/search.svg" alt="" />프로젝트 검색</Link>
@@ -102,6 +114,7 @@ export default function AppShell() {
       </div>
     </aside>
     <div className={styles.workspace}>
+      {collapsed && <button type="button" className={styles.unfold} aria-label="메뉴 펼치기" id="app-sidebar-open" aria-controls="app-sidebar" aria-expanded="false" onClick={() => toggle(false)}><span aria-hidden="true" /></button>}
       {match?.params.projectId && <RequestBanner key={match.params.projectId} projectId={match.params.projectId} />}
       <Outlet context={{ setCurrentProject }} />
     </div>

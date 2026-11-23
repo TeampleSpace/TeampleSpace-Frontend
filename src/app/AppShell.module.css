@@ -34,3 +34,17 @@
 }
 @media (max-width: 800px) { .shell { flex-direction: column; } .sidebar { width: 100%; height: auto; position: static; gap: var(--space-12); border-right: 0; border-bottom: 1px solid var(--color-border); } .navigation { flex-direction: row; flex-wrap: wrap; gap: var(--space-8); } .account { margin-top: 0; } .workspace { padding: var(--space-20); } }
 @media (max-width: 800px) { .management, .managementLinks { flex-direction: row; flex-wrap: wrap; gap: 8px; } .explorer { max-height: 240px; overflow-y: auto; } .management { margin-top: 0; } }
+
+/* 사이드바 접기. 펼치기 단추는 작업 영역 왼쪽 위에 둔다 */
+.sidebarHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.fold, .unfold { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--color-secondary); cursor: pointer; transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
+.fold:hover, .unfold:hover { background: var(--color-muted); color: var(--color-ink); }
+.unfold { position: absolute; top: 12px; left: 12px; z-index: 5; border-color: var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-xs); }
+.fold span, .unfold span { width: 18px; height: 18px; background: currentColor; mask: url('/assets/navigation/chevron-down.svg') center / contain no-repeat; rotate: 90deg; }
+.unfold span { rotate: -90deg; }
+.sidebar[hidden] { display: none; }
+.workspace { position: relative; }
+/* 슬라이드 편집 화면은 바깥 여백을 줄여 캔버스에 폭을 더 준다 */
+.shell[data-editor] .workspace { padding: var(--space-20) var(--space-24); }
+.shell[data-collapsed] .workspace { padding-left: 60px; }
+@media (max-width: 800px) { .shell[data-collapsed] .workspace { padding-top: 56px; padding-left: var(--space-20); } }
