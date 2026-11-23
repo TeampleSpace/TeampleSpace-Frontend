@@ -7,7 +7,7 @@ import type {
   Slide,
   TextElement,
 } from '../../../entities/presentation/schema.ts'
-import { deltaToDoc } from '../coords.ts'
+import { clientToDoc, deltaToDoc } from '../coords.ts'
 import { describeElement } from '../describe.ts'
 import { snap } from '../snap.ts'
 import type { Guide } from '../snap.ts'
@@ -16,6 +16,17 @@ import { SlideRenderer } from './SlideRenderer.tsx'
 import styles from './SlideStage.module.css'
 
 // moved는 맞춤 전 포인터가 움직인 거리로, 클릭과 끌기를 가른다
+// 같은 슬라이드를 보는 다른 팀원의 커서. 좌표는 문서 좌표다
+export type StageCursor = { userId: string; name: string; x: number; y: number }
+
+// 팀원마다 고정된 색. 흰 글자가 읽히는 진한 색만 쓴다
+const cursorColors = ['#d9480f', '#2f6fdb', '#2b8a3e', '#ae3ec9', '#c2255c', '#0b7285']
+function colorOf(userId: string) {
+  let hash = 0
+  for (const char of userId) hash = (hash * 31 + char.charCodeAt(0)) | 0
+  return cursorColors[Math.abs(hash) % cursorColors.length]
+}
+
 type Drag = { id: string; startX: number; startY: number; dx: number; dy: number; moved: number; guides: Guide[] }
 
 // 이 거리 안으로 가까워지면 기준선에 붙인다. 화면 픽셀 단위다
@@ -84,6 +95,9 @@ type Props = {
   onChange: (elementId: string, patch: ElementPatch, input?: { composing?: boolean }) => void
   // 끌어 놓기나 글 수정처럼 한 번의 조작이 끝났다
   onCommit: (elementId: string) => void
+  cursors?: StageCursor[]
+  // 내 포인터의 문서 좌표. 캔버스를 벗어나면 null이다
+  onPointer?: (point: { x: number; y: number } | null) => void
 }
 
 const arrows: Record<string, [number, number]> = {
@@ -105,6 +119,8 @@ export function SlideStage({
   onEditingChange,
   onChange,
   onCommit,
+  cursors = [],
+  onPointer,
 }: Props) {
   const [drag, setDrag] = useState<Drag>()
   const stage = useRef<HTMLDivElement>(null)
@@ -200,7 +216,15 @@ export function SlideStage({
   const editing = editingId ? byId(editingId) : undefined
 
   return (
-    <div ref={stage} onPointerDown={() => onSelect(undefined)}>
+    <div
+      ref={stage}
+      onPointerDown={() => onSelect(undefined)}
+      onPointerMove={(event) => {
+        const frame = stage.current?.firstElementChild?.getBoundingClientRect()
+        if (frame) onPointer?.(clientToDoc(event.clientX, event.clientY, frame, scale))
+      }}
+      onPointerLeave={() => onPointer?.(null)}
+    >
       <SlideRenderer canvas={canvas} slide={shown} scale={scale} hiddenElementId={editingId}>
         {elements.map(moved).map((element) => {
           const { x, y, width, height, rotation } = element.geometry
@@ -252,6 +276,24 @@ export function SlideStage({
               } as CSSProperties
             }
           />
+        ))}
+        {cursors.map((cursor) => (
+          <div
+            key={cursor.userId}
+            className={styles.cursor}
+            data-cursor={cursor.userId}
+            style={
+              {
+                transform: `translate(${cursor.x}px, ${cursor.y}px) scale(${1 / scale})`,
+                '--cursor-color': colorOf(cursor.userId),
+              } as CSSProperties
+            }
+          >
+            <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">
+              <path d="M1.5 1.5 L16 9.2 L9.3 10.6 L6.1 17.8 Z" />
+            </svg>
+            <span>{cursor.name}</span>
+          </div>
         ))}
         {editing?.type === 'text' && (
           <TextEditor

@@ -272,6 +272,10 @@ function Workspace({
             onEditingChange={(id) => (id ? startEditing(id) : setEditingId(undefined))}
             onChange={(id, patch, input) => session.edit(id, patch, input)}
             onCommit={(id) => session.endEdit(id)}
+            cursors={state.cursors
+              .filter((cursor) => cursor.slideId === slide.id)
+              .map((cursor) => ({ ...cursor, name: state.memberNames[cursor.userId] ?? '팀원' }))}
+            onPointer={(point) => (point ? session.movePointer(slide.id, point.x, point.y) : session.movePointer(null))}
           />
         </div>
         <div className={styles.stageFoot}>

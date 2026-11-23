@@ -42,3 +42,37 @@
   overflow-wrap: anywhere;
   letter-spacing: 0;
 }
+
+/* 다른 팀원의 커서. 위치가 띄엄띄엄 와도 부드럽게 따라가게 한다 */
+.cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+  transform-origin: top left;
+  transition: transform 260ms var(--motion-ease-out);
+  animation: var(--motion-fade-enter);
+}
+
+.cursor svg {
+  flex: none;
+  fill: var(--cursor-color);
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.2));
+}
+
+.cursor span {
+  margin: 14px 0 0 -4px;
+  padding: 2px 8px;
+  border-radius: 999px 999px 999px 4px;
+  background: var(--cursor-color);
+  color: #ffffff;
+  font: 600 12px/18px var(--font-body);
+  white-space: nowrap;
+  box-shadow: var(--shadow-xs);
+}
