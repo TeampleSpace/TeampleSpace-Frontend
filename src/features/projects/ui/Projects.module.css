@@ -46,7 +46,7 @@
 .projectTitle > .greeting { flex: 1; min-width: 0; }
 .projectTitle > a { flex-shrink: 0; }
 .projectCard:has(.nextAction) { min-height: 312px; }
-.nextAction { min-height: 72px; display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--color-accent-soft); color: var(--color-accent); border-radius: 8px; white-space: pre-wrap; }
+.nextAction { min-height: 72px; display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--color-subtle); color: var(--color-secondary); border-radius: 8px; white-space: pre-wrap; }
 .projectCard a { text-decoration: none; }
 .searchPage { display: flex; flex-direction: column; gap: 32px; }
 .searchContent { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: 24px; }
