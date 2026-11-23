@@ -45,8 +45,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   // 다른 팀원의 저장으로 다시 읽는 중에 입력이 생기면 응답으로 덮어쓰지 않는다
   const reloading = useRef(false)
   const editedSince = useRef(false)
-  // 다시 읽지 못한 개정. 다시 불러오기를 누르기 전에는 같은 개정을 반복해 읽지 않는다
-  const failedFor = useRef<string>(undefined)
+  // 이미 반응한 부모 자료의 개정. 본문 조회가 부모보다 최신 개정을 받았거나 읽지 못했어도 같은 개정으로 반복해 읽지 않는다
+  const handled = useRef<string>(undefined)
   const external = material.currentRevision?.id
   const externalRef = useRef(external)
   useEffect(() => { externalRef.current = external })
@@ -64,14 +64,16 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     void latestOf(material.id, controller.signal)
       .then(([current, source]) => {
         if (controller.signal.aborted) return
-        const skip = reloading.current && editedSince.current
+        const wasReloading = reloading.current
+        const skip = wasReloading && editedSince.current
         reloading.current = false
         setSettled((value) => value + 1)
-        if (skip) return
+        // 입력이 끝나면 다시 읽을 수 있게 둔다
+        if (skip) { handled.current = undefined; return }
+        if (!wasReloading) handled.current = externalRef.current
         const text = source.markdown ?? ''
         version.current = current.version
         shown.current = current.currentRevision?.id
-        failedFor.current = undefined
         savedRef.current = text
         setSaved(text)
         setDraft(text)
@@ -79,7 +81,6 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
       })
       .catch((reason) => {
         if (controller.signal.aborted) return
-        if (reloading.current) failedFor.current = externalRef.current
         reloading.current = false
         setLoadError(reason)
         onError(reason)
@@ -96,13 +97,13 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
 
   // 입력 중이 아니면 다른 사람이 저장한 새 개정의 본문을 다시 읽는다. 표시 개정은 읽기에 성공한 뒤에 바꾼다
   useEffect(() => {
-    if (!external || shown.current === undefined || external === shown.current) return
-    if (dirty || blocked.current || saving.current || reloading.current || failedFor.current === external) return
+    if (!external || shown.current === undefined || external === shown.current || external === handled.current) return
+    if (dirty || blocked.current || saving.current || reloading.current) return
     reload()
   }, [external, dirty, settled])
 
   function reload() {
-    failedFor.current = undefined
+    handled.current = externalRef.current
     reloading.current = true
     editedSince.current = false
     queueMicrotask(() => setRevision((value) => value + 1))
