@@ -53,7 +53,7 @@ beforeEach(() => {
     nextCursor: null, counts: { all: 2, file: 0, link: 0, memo: 2 },
   })
 })
-afterEach(() => { cleanup(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers() })
 
 test('기능이 비활성이면 생성과 작업 확인을 요청하지 않는다', () => {
   mount(false)
@@ -143,7 +143,7 @@ test('생성에 사용할 수 없어진 자료만 제외하고 입력과 나머�
   fireEvent.click(form.getByRole('button', { name: '구성 만들기' }))
   await waitFor(() => expect(form.queryByRole('checkbox', { name: source.title })).toBeNull())
   expect(materialsApi.list).toHaveBeenCalledTimes(2)
-  expect(materialsApi.list).toHaveBeenLastCalledWith(projectId, { status: 'ready', cursor: undefined })
+  expect(materialsApi.list).toHaveBeenLastCalledWith(projectId, { cursor: undefined })
   expect(form.getByRole('checkbox', { name: kept.title })).toHaveProperty('checked', true)
   expect(form.getByLabelText('생성 지시')).toHaveProperty('value', '발표 시간을 고려해 주세요')
 })
@@ -181,4 +181,27 @@ test.each([[429, 'RATE_LIMITED'], [409, 'REQUEST_IN_PROGRESS']])('응답 %s의 �
   await waitFor(() => expect(retry).toHaveProperty('disabled', true))
   fireEvent.click(retry)
   expect(create).toHaveBeenCalledTimes(1)
+})
+
+test('분석 중인 자료는 고를 수 없게 보여 주고 창을 열어 둔 동안 새 자료와 분석 결과를 반영한다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const pdf: MaterialSummary = { ...source, id: 'pdf', title: '설문 결과 PDF', kind: 'file', status: 'processing' }
+  const added: MaterialSummary = { ...source, id: 'added', title: '새로 추가한 메모' }
+  const counts = { all: 2, file: 1, link: 0, memo: 1 }
+  vi.mocked(materialsApi.list).mockReset()
+    .mockResolvedValueOnce({ items: [pdf, source], nextCursor: null, counts })
+    .mockResolvedValue({ items: [added, { ...pdf, status: 'ready' }, source], nextCursor: null, counts: { ...counts, all: 3, memo: 2 } })
+  mount(true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
+  const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
+  const processing = await form.findByRole('checkbox', { name: /설문 결과 PDF/ })
+  expect(processing).toHaveProperty('disabled', true)
+  expect(form.getByText('분석 중')).toBeTruthy()
+  fireEvent.click(form.getByRole('checkbox', { name: source.title }))
+
+  await vi.advanceTimersByTimeAsync(4000)
+  expect(await form.findByRole('checkbox', { name: added.title })).toHaveProperty('disabled', false)
+  expect(form.getByRole('checkbox', { name: '설문 결과 PDF' })).toHaveProperty('disabled', false)
+  expect(form.queryByText('분석 중')).toBeNull()
+  expect(form.getByRole('checkbox', { name: source.title })).toHaveProperty('checked', true)
 })
