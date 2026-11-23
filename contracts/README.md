@@ -162,7 +162,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - 요소 변경 이벤트의 `payload`는 요소 수정 응답과 같은 항목을 쓴다. 응답과 이벤트 중 어느 쪽이 먼저 와도 같은 `clientMutationId`와 버전으로 한 번만 반영한다. 이미 가진 것보다 오래된 요소 버전은 버린다
 - 문서 버전을 올리는 이벤트는 `presentationVersion`과 `generation`을 싣는다. 받은 `presentationVersion`이 알고 있는 값보다 2 이상 크면 중간 변경을 놓친 것이므로 동기화 스냅샷을 다시 읽는다
 - 변경 묶음 이벤트의 `payload`는 `changeId`와 `groupState`다
-- `presence.updated`는 일시적인 접속 표시이며 다시 받을 수 있다고 보장하지 않는다
+- `presence.updated`는 일시적인 커서 표시라 SSE `id` 없이 오고 다시 받을 수 있다고 보장하지 않는다. `data`는 `PresenceUpdated` 형식으로 나를 뺀 팀원의 현재 커서 전체 목록이며, 목록이 바뀔 때만 온다. 목록에 없는 팀원의 커서는 지운다
 
 ### 다시 연결할 때
 
@@ -187,6 +187,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | --- | --- | --- | --- | --- |
 | 요소 수정 | `PATCH /v1/slides/{slideId}/elements/{elementId}` | `ElementPatchRequest`, `MutationResponse` | 구현. 버전 충돌과 닫힌 묶음은 `currentVersions`를 담은 409로 응답하고 같은 멱등키에는 같은 응답을 돌려준다. 요소 종류에 맞지 않는 내용과 스타일은 `VALIDATION_FAILED`다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
+| 커서 위치 | `POST /v1/projects/{projectId}/presence` | `PresenceUpdateRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 10초 동안 새 위치가 없거나 `slideId`가 null이면 목록에서 빠진다. 같은 사람의 여러 탭은 마지막 위치 하나다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | `scope=editor`만 구현. 그 밖의 값은 `VALIDATION_FAILED`다. 요소가 자료를 참조하기 전이라 `materials`는 비어 있다 | 4단계 |
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |

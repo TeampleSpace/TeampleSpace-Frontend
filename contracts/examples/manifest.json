@@ -573,5 +573,15 @@
     "example": "material-summary-job-request.json",
     "schema": "stage-2.schema.json#/$defs/MaterialSummaryJobRequest",
     "valid": true
+  },
+  {
+    "example": "presence-update-request.json",
+    "schema": "api.schema.json#/$defs/PresenceUpdateRequest",
+    "valid": true
+  },
+  {
+    "example": "event-presence-updated.json",
+    "schema": "api.schema.json#/$defs/PresenceUpdated",
+    "valid": true
   }
 ]
