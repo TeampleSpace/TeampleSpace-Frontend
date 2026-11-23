@@ -228,6 +228,8 @@
         "material.updated",
         "material.deleted",
         "material.note.updated",
+        "material.comment.created",
+        "material.comment.deleted",
         "outline.updated",
         "design.updated",
         "presentation.replaced",
@@ -489,6 +491,55 @@
         "materialId": { "$ref": "#/$defs/Uuid" },
         "version": { "$ref": "#/$defs/Version" },
         "eventId": { "$ref": "#/$defs/EventCursor" }
+      }
+    },
+    "MaterialComment": {
+      "description": "자료에 팀원이 남긴 댓글",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "materialId", "body", "author", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "body": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["userId", "name"],
+          "properties": {
+            "userId": { "$ref": "#/$defs/Uuid" },
+            "name": { "type": "string" }
+          }
+        },
+        "createdAt": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "MaterialCommentList": {
+      "description": "오래된 댓글부터 담는다. nextCursor는 다음 페이지가 없으면 null이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextCursor"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/MaterialComment" } },
+        "nextCursor": { "type": ["string", "null"] }
+      }
+    },
+    "MaterialCommentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body"],
+      "properties": {
+        "body": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "MaterialCommentDeleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "materialId", "deleted"],
+      "properties": {
+        "id": { "$ref": "#/$defs/Uuid" },
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "deleted": { "const": true }
       }
     },
 

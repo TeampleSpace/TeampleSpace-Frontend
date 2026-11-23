@@ -125,6 +125,26 @@
     "valid": true
   },
   {
+    "example": "material-comment.json",
+    "schema": "api.schema.json#/$defs/MaterialComment",
+    "valid": true
+  },
+  {
+    "example": "material-comment-list.json",
+    "schema": "api.schema.json#/$defs/MaterialCommentList",
+    "valid": true
+  },
+  {
+    "example": "material-comment-request.json",
+    "schema": "api.schema.json#/$defs/MaterialCommentRequest",
+    "valid": true
+  },
+  {
+    "example": "material-comment-deleted.json",
+    "schema": "api.schema.json#/$defs/MaterialCommentDeleted",
+    "valid": true
+  },
+  {
     "example": "sync-snapshot-editor.json",
     "schema": "api.schema.json#/$defs/SyncSnapshot",
     "valid": true
