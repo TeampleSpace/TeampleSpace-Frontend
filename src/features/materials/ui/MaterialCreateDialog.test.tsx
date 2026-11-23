@@ -276,6 +276,33 @@ test('메모를 고친 직후 다른 자료로 옮기면 저장을 마친 뒤 �
   expect(mock.get(id)!.revisions.at(-1)?.markdown).toBe('옮기기 직전에 쓴 내용')
 })
 
+test('메모 원문은 읽은 자료의 현재 개정으로 읽는다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const read = calls('/source')
+  expect(read.length).toBeGreaterThan(0)
+  expect(read.every((call) => call.path.includes('revisionId='))).toBe(true)
+})
+
+test('저장 요청이 끝나기 전에 저장된 내용으로 되돌려도 이동하기 전에 확인한다', async () => {
+  const router = mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const original = body.value
+  mock.faults.delayMs = 2000
+  fireEvent.change(body, { target: { value: '잠깐 바꾼 내용' } })
+  fireEvent.blur(body)
+  await screen.findByText('저장 중')
+  fireEvent.change(body, { target: { value: original } })
+  // 다른 화면으로 떠나려 한다
+  void router.navigate(`/projects/${mock.projectId}`)
+  expect(await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있어요' })).toBeTruthy()
+  mock.faults.delayMs = 0
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
