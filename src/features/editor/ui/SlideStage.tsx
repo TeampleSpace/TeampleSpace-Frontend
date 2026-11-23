@@ -15,7 +15,8 @@ import { textStyle } from '../textStyle.ts'
 import { SlideRenderer } from './SlideRenderer.tsx'
 import styles from './SlideStage.module.css'
 
-type Drag = { id: string; startX: number; startY: number; dx: number; dy: number; guides: Guide[] }
+// moved는 맞춤 전 포인터가 움직인 거리로, 클릭과 끌기를 가른다
+type Drag = { id: string; startX: number; startY: number; dx: number; dy: number; moved: number; guides: Guide[] }
 
 // 이 거리 안으로 가까워지면 기준선에 붙인다. 화면 픽셀 단위다
 const snapDistance = 6
@@ -132,7 +133,7 @@ export function SlideStage({
     onSelect(id)
     if (locked(id)) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0, guides: [] })
+    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0, moved: 0, guides: [] })
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
@@ -140,29 +141,28 @@ export function SlideStage({
     // 화면에서 움직인 거리를 현재 배율로 나눠 문서 좌표로 바꾼다
     const delta = deltaToDoc(event.clientX - drag.startX, event.clientY - drag.startY, scale)
     const geometry = byId(drag.id)?.geometry
+    const moved = Math.abs(delta.x) + Math.abs(delta.y)
     // Alt를 누르고 끌면 맞추지 않고 그대로 옮긴다
     if (!geometry || event.altKey) {
-      setDrag({ ...drag, dx: delta.x, dy: delta.y, guides: [] })
+      setDrag({ ...drag, dx: delta.x, dy: delta.y, moved, guides: [] })
       return
     }
     const others = elements.filter((element) => element.id !== drag.id).map((element) => element.geometry)
     const fit = snap({ ...geometry, x: geometry.x + delta.x, y: geometry.y + delta.y }, others, canvas, snapDistance / scale)
-    setDrag({ ...drag, dx: delta.x + fit.dx, dy: delta.y + fit.dy, guides: fit.guides })
+    setDrag({ ...drag, dx: delta.x + fit.dx, dy: delta.y + fit.dy, moved, guides: fit.guides })
   }
 
   function onPointerUp() {
     if (!drag) return
     setDrag(undefined)
     const geometry = byId(drag.id)?.geometry
-    if (!geometry || Math.abs(drag.dx) + Math.abs(drag.dy) < 2) return
+    // 거의 움직이지 않았으면 클릭으로 본다. 맞춤으로 줄어든 이동은 그대로 저장한다
+    if (!geometry || drag.moved < 2) return
+    const x = Math.round(geometry.x + drag.dx)
+    const y = Math.round(geometry.y + drag.dy)
+    if (x === geometry.x && y === geometry.y) return
     // 놓는 순간 한 번의 명령으로 저장한다. 좌표 항목은 통째로 보낸다
-    onChange(drag.id, {
-      geometry: {
-        ...geometry,
-        x: Math.round(geometry.x + drag.dx),
-        y: Math.round(geometry.y + drag.dy),
-      },
-    })
+    onChange(drag.id, { geometry: { ...geometry, x, y } })
     onCommit(drag.id)
   }
 
