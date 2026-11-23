@@ -28,6 +28,8 @@ type ChoicesFailure = { reason: unknown; cursor?: string }
 type ResultState = { jobId: string; status: 'applied' | 'deferred' }
 const maxSources = 20
 const maxInstructions = 1000
+const choicesRefreshMs = 4000
+const statusLabels: Record<string, string> = { processing: '분석 중', failed: '분석 실패' }
 
 function isActive(job: Job | undefined) {
   return job?.status === 'queued' || job?.status === 'running'
@@ -79,6 +81,8 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const [retryUntil, setRetryUntil] = useState<number>()
   const [cancelDeniedFor, setCancelDeniedFor] = useState<string>()
   const choicesLock = useRef(false)
+  // 조용히 다시 읽는 동안에도 사용자가 누른 조회와 생성은 막지 않는다
+  const refreshLock = useRef(false)
   const writeLock = useRef(false)
   const hintId = useId()
 
@@ -201,15 +205,30 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     return () => controller.abort()
   }, [completedJobId, resultApplied, dirty])
 
-  async function loadChoices(cursor?: string) {
-    if (choicesLock.current) return
-    choicesLock.current = true
-    setChoicesLoading(true)
-    setChoicesError(undefined)
+  // silent는 창을 열어 둔 동안 조용히 다시 읽는다. 로딩 표시와 오류 안내를 바꾸지 않는다
+  async function loadChoices(cursor?: string, silent = false) {
+    const lock = silent ? refreshLock : choicesLock
+    if (choicesLock.current || lock.current) return
+    lock.current = true
+    if (!silent) {
+      setChoicesLoading(true)
+      setChoicesError(undefined)
+    }
     try {
-      const next = await materialsApi.list(projectId, { status: 'ready', cursor })
-      const ready = next.items.filter((item) => item.status === 'ready')
-      if (!cursor) {
+      // 분석 중이거나 실패한 자료도 보여 주고 선택은 준비된 자료만 받는다
+      const next = await materialsApi.list(projectId, { cursor })
+      const listed = next.items
+      const ready = listed.filter((item) => item.status === 'ready')
+      // 조용히 다시 읽을 때는 고른 자료를 건드리지 않고, 첫 페이지 밖에 보이는 분석 중 자료만 따로 다시 확인한다
+      const updated = new Map<string, MaterialSummary>()
+      if (silent) {
+        const waiting = (choices?.items ?? []).filter((item) => item.status !== 'ready' && !listed.some((entry) => entry.id === item.id))
+        const results = await Promise.allSettled(waiting.map((item) => materialsApi.get(item.id)))
+        for (const [index, result] of results.entries()) {
+          if (result.status === 'fulfilled') updated.set(waiting[index].id, { ...waiting[index], status: result.value.status, title: result.value.title })
+        }
+      }
+      if (!cursor && !silent) {
         // 첫 페이지에서 빠진 선택은 준비 여부를 따로 확인한다
         if (next.nextCursor) {
           const missing = selected.filter((id) => !ready.some((item) => item.id === id))
@@ -228,18 +247,40 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
         const readyIds = new Set(ready.map((item) => item.id))
         setSelected((ids) => ids.filter((id) => readyIds.has(id)))
       }
+      const shown = [...listed, ...ready.filter((item) => !listed.some((entry) => entry.id === item.id))]
       setChoices((current) => ({
         items: cursor && current ? [
           ...current.items,
-          ...ready.filter((item) => !current.items.some((previous) => previous.id === item.id)),
-        ] : ready,
-        nextCursor: next.nextCursor,
+          ...shown.filter((item) => !current.items.some((previous) => previous.id === item.id)),
+        ] : silent && current ? [
+          ...shown,
+          ...current.items.filter((item) => !shown.some((entry) => entry.id === item.id)).map((item) => updated.get(item.id) ?? item),
+        ] : shown,
+        // 끝까지 읽은 뒤 한 페이지가 넘게 새로 들어왔으면 남은 자료를 이어서 볼 수 있게 한다
+        nextCursor: silent && current
+          ? current.nextCursor ?? (listed.every((item) => !current.items.some((previous) => previous.id === item.id)) ? next.nextCursor : null)
+          : next.nextCursor,
       }))
     } catch (reason) {
-      setChoicesError({ reason, cursor })
-      reportAccess(reason, true)
-    } finally { choicesLock.current = false; setChoicesLoading(false) }
+      if (!silent) {
+        setChoicesError({ reason, cursor })
+        reportAccess(reason, true)
+      }
+    } finally {
+      lock.current = false
+      if (!silent) setChoicesLoading(false)
+    }
   }
+
+  // 창을 열어 둔 동안 새로 추가되거나 분석이 끝난 자료를 반영한다
+  const refreshChoices = useEffectEvent(() => {
+    if (!writeLock.current) void loadChoices(undefined, true)
+  })
+  useEffect(() => {
+    if (view !== 'form' || pending) return
+    const timer = setInterval(refreshChoices, choicesRefreshMs)
+    return () => clearInterval(timer)
+  }, [view, pending])
 
   function openForm() {
     setView('form')
@@ -356,11 +397,13 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
             <legend>발표에 사용할 자료 {selected.length}개 선택</legend>
             {choices?.items.map((item) => <label key={item.id}>
               <input type="checkbox" checked={selected.includes(item.id)}
-                disabled={!selected.includes(item.id) && selected.length >= maxSources}
+                disabled={item.status !== 'ready' || (!selected.includes(item.id) && selected.length >= maxSources)}
                 onChange={(event) => setSelected((ids) => event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))} />
               {item.title}
+              {item.status !== 'ready' && <span className={styles.status}>{statusLabels[item.status]}</span>}
             </label>)}
-            {choices && !choices.items.length && !choices.nextCursor && <p>선택할 수 있는 준비된 자료가 없어요</p>}
+            {choices && !choices.items.length && !choices.nextCursor && <p>아직 추가한 자료가 없어요</p>}
+            {choices?.items.some((item) => item.status === 'processing') && <p className={styles.note}>분석 중인 자료는 분석이 끝나면 고를 수 있어요</p>}
           </fieldset>
           {choicesLoading && <StatusPanel kind="loading" title="자료를 불러오고 있어요" />}
           {choicesError && <RequestError error={choicesError.reason} action={<Button variant="secondary" disabled={freezeInput}
