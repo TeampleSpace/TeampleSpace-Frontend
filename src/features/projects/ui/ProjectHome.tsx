@@ -56,7 +56,7 @@ export default function ProjectHome() {
   }
   const empty = visible?.items.length === 0
   return <div className={searching ? styles.searchPage : styles.home}>
-    {searching ? <header className={page.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text}`} to="/">돌아가기</Link></header>
+    {searching ? <header className={page.header}><h1>프로젝트</h1><Link className={`${buttons.button} ${buttons.text} ${page.back}`} to="/">돌아가기</Link></header>
       : <header className={styles.header}><h1>내 프로젝트</h1>
         {visible && !empty && <Button onClick={() => setModal('create')}>새 프로젝트</Button>}</header>}
     <div className={searching ? styles.searchContent : styles.homeContent}>

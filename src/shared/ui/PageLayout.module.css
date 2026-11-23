@@ -1,8 +1,8 @@
 /* 화면 본문의 공통 머리글과 본문 폭 */
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-16); min-height: 40px; }
 .header > a { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--color-secondary); font: var(--text-nav); text-decoration: none; min-height: 40px; padding: 8px 14px 8px 10px; border-radius: 8px; transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
-/* 돌아가기 앞에 왼쪽 방향 표시를 둔다 */
-.header > a::before { content: ''; width: 18px; height: 18px; background: currentColor; mask: url('/assets/navigation/chevron-down.svg') center / contain no-repeat; rotate: 90deg; }
+/* 돌아가기 링크에만 왼쪽 방향 표시를 둔다 */
+.back::before { content: ''; width: 18px; height: 18px; background: currentColor; mask: url('/assets/navigation/chevron-down.svg') center / contain no-repeat; rotate: 90deg; }
 .header > a:hover, .header > a:active { background: var(--color-muted); color: var(--color-ink); }
 .content { width: 760px; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); }
 .section { border-top: 1px solid var(--color-border); padding-top: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }

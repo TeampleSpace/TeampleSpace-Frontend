@@ -77,7 +77,7 @@ export default function Account() {
   }
 
   return <>
-    <header className={page.header}><h1>내 계정</h1><Link to="/">돌아가기</Link></header>
+    <header className={page.header}><h1>내 계정</h1><Link className={page.back} to="/">돌아가기</Link></header>
     <div className={page.content}>
       <form className={account.form} onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const next = await authApi.update(name.trim(), activeUser.version); setUser(next); setName(next.name); setNotice('이름을 저장했어요')
