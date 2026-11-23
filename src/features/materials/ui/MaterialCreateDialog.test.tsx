@@ -386,6 +386,21 @@ test('부모가 읽은 뒤 본문을 읽기 전에 개정이 또 바뀌어도 �
   expect(sourceReads()).toBe(reads)
 })
 
+test('처음 본문을 읽는 동안 다른 팀원이 저장하면 그 본문을 다시 읽는다', async () => {
+  mount()
+  const link = await screen.findByRole('link', { name: /기존 메모/ })
+  const id = new URL(link.getAttribute('href')!, 'http://local').searchParams.get('material')!
+  // 처음 원문 응답을 늦추고 그 사이 화면이 새 개정을 받게 한다
+  mock.faults.delayMs = 400
+  fireEvent.click(link)
+  await waitFor(() => expect(mock.calls.some((call) => call.path.includes(`/materials/${id}/source`))).toBe(true), { timeout: 3000 })
+  mock.faults.delayMs = 0
+  mock.editAs(id, '처음 읽는 동안 바뀐 본문')
+  fireEvent(window, new Event('focus'))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.value).toBe('처음 읽는 동안 바뀐 본문'), { timeout: 3000 })
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
