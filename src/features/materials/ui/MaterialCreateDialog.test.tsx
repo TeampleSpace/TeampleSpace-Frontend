@@ -303,6 +303,25 @@ test('저장 요청이 끝나기 전에 저장된 내용으로 되돌려도 이�
   mock.faults.delayMs = 0
 })
 
+test('고치는 중이 아닐 때 다른 팀원이 저장한 메모 본문으로 바꾸고 고치는 중이면 그대로 둔다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
+  mock.editAs(id, '팀원이 바꾼 본문')
+  fireEvent(window, new Event('focus'))
+  await waitFor(() => expect(body.value).toBe('팀원이 바꾼 본문'))
+  expect(screen.getByText('저장됨')).toBeTruthy()
+
+  // 고치는 중에는 덮어쓰지 않는다
+  fireEvent.change(body, { target: { value: '내가 고치는 중' } })
+  mock.editAs(id, '팀원이 또 바꾼 본문')
+  fireEvent(window, new Event('focus'))
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  expect(body.value).toBe('내가 고치는 중')
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
