@@ -12,12 +12,13 @@
 .banner button, .banner a { flex-shrink: 0; }
 
 /* 왼쪽 목록, 가운데 캔버스, 오른쪽 요소 정보 */
-.editor { display: grid; grid-template-columns: var(--list-width, 144px) minmax(0, 1fr) 240px; align-items: start; gap: var(--space-20); animation: var(--motion-content-enter); }
+.editor { display: grid; grid-template-columns: var(--list-width, 144px) minmax(0, 1fr) var(--inspector-width, 240px); align-items: start; gap: var(--space-20); animation: var(--motion-content-enter); }
 
 .slides { position: relative; display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
 /* 목록 오른쪽 경계를 끌어 폭을 바꾼다 */
 .resizer { position: absolute; top: 0; bottom: 0; right: -14px; width: 8px; border-radius: var(--radius-full); cursor: col-resize; touch-action: none; }
 .resizer::after { content: ''; position: absolute; inset: 0 3px; border-radius: inherit; background: var(--color-border-strong); opacity: 0; transition: opacity var(--motion-fast) ease-out; }
+.resizer[data-side='left'] { right: auto; left: -14px; }
 .resizer:hover::after, .resizer:active::after, .resizer:focus-visible::after { opacity: 1; }
 .slides h2, .inspector h2 { font: 500 18px/28px var(--font-body); }
 .slides ol { display: flex; flex-direction: column; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
@@ -37,7 +38,7 @@
 .stageFoot label { display: flex; align-items: center; gap: var(--space-8); flex-shrink: 0; }
 .stageFoot select { min-height: 32px; color: var(--color-ink); }
 
-.inspector { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
+.inspector { position: relative; display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .inspector > p { font: var(--text-body); color: var(--color-secondary); }
 .inspector h3 { margin-top: var(--space-8); font: var(--text-meta); color: var(--color-secondary); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
@@ -64,6 +65,7 @@
 @media (max-width: 1100px) {
   .editor { grid-template-columns: var(--list-width, 144px) minmax(0, 1fr); }
   .inspector { grid-column: 1 / -1; }
+  .inspectorResizer { display: none; }
 }
 @media (max-width: 800px) {
   .editor { grid-template-columns: minmax(0, 1fr); }

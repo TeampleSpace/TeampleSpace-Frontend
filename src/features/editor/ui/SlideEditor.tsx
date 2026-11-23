@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { Element, Presentation, Slide } from '../../../entities/presentation/schema.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
@@ -36,32 +36,37 @@ const rejectionMessages: Record<number, string> = {
 }
 
 // 가장 큰 글자의 첫 줄을 슬라이드 이름으로 쓴다
-const LIST_MIN = 120
-const LIST_MAX = 360
-const LIST_KEY = 'teamplespace.slideListWidth'
+type ResizerProps = { label: string; storageKey: string; cssVar: string; min: number; max: number; initial: number; side: 'left' | 'right'; className?: string }
 
-// 슬라이드 목록 폭은 이 브라우저에만 기억한다
-function useListWidth() {
-  const [listWidth, setListWidth] = useState(() => {
+// 칸 경계를 끌거나 방향키로 폭을 바꾸고 이 브라우저에만 기억한다. 폭은 편집 격자의 CSS 변수로 넘긴다
+function Resizer({ label, storageKey, cssVar, min, max, initial, side, className }: ResizerProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(() => {
     try {
-      const saved = Number(localStorage.getItem(LIST_KEY))
-      return saved >= LIST_MIN && saved <= LIST_MAX ? saved : 144
+      const saved = Number(localStorage.getItem(storageKey))
+      return saved >= min && saved <= max ? saved : initial
     } catch {
-      return 144
+      return initial
     }
   })
-  const resizeList = (width: number) => {
-    const next = Math.round(Math.min(LIST_MAX, Math.max(LIST_MIN, width)))
-    setListWidth(next)
-    try { localStorage.setItem(LIST_KEY, String(next)) } catch { /* 저장이 막혀도 이번 화면에서는 유지한다 */ }
+  useEffect(() => {
+    const grid = ref.current?.closest<HTMLElement>('[data-resizable]')
+    grid?.style.setProperty(cssVar, `${width}px`)
+  }, [cssVar, width])
+  const resize = (next: number) => {
+    const clamped = Math.round(Math.min(max, Math.max(min, next)))
+    setWidth(clamped)
+    try { localStorage.setItem(storageKey, String(clamped)) } catch { /* 저장이 막혀도 이번 화면에서는 유지한다 */ }
   }
+  // 오른쪽 칸은 왼쪽으로 끌거나 왼쪽 방향키를 누를 때 넓어진다
+  const grow = side === 'right' ? 1 : -1
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     const handle = event.currentTarget
     handle.focus()
-    const left = handle.parentElement!.getBoundingClientRect().left
+    const box = handle.parentElement!.getBoundingClientRect()
     handle.setPointerCapture(event.pointerId)
-    const move = (moved: PointerEvent) => resizeList(moved.clientX - left)
+    const move = (moved: PointerEvent) => resize(side === 'right' ? moved.clientX - box.left : box.right - moved.clientX)
     const end = () => {
       handle.removeEventListener('pointermove', move)
       handle.removeEventListener('pointerup', end)
@@ -71,7 +76,27 @@ function useListWidth() {
     handle.addEventListener('pointerup', end)
     handle.addEventListener('pointercancel', end)
   }
-  return { listWidth, resizeList, startResize }
+  return (
+    <div
+      ref={ref}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={width}
+      tabIndex={0}
+      className={`${styles.resizer} ${className ?? ''}`}
+      data-side={side}
+      onPointerDown={startResize}
+      onKeyDown={(event) => {
+        const step = event.key === 'ArrowLeft' ? -16 : event.key === 'ArrowRight' ? 16 : 0
+        if (!step) return
+        event.preventDefault()
+        resize(width + step * grow)
+      }}
+    />
+  )
 }
 
 function slideName(slide: Slide, index: number): string {
@@ -111,7 +136,6 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const base = `/projects/${projectId}/slides`
   const view = state.view
-  const { listWidth, resizeList, startResize } = useListWidth()
   useProjectFonts(projectId, view?.slides.flatMap((slide) =>
     slide.elements.flatMap((element) => element.type === 'text' ? [element.style.fontFamily] : [])) ?? [])
 
@@ -190,25 +214,9 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
         </div>
       )}
 
-      <div className={styles.editor} style={{ '--list-width': `${listWidth}px` } as CSSProperties}>
+      <div className={styles.editor} data-resizable>
         <nav aria-label="슬라이드 목록" className={styles.slides}>
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="슬라이드 목록 폭"
-            aria-valuemin={LIST_MIN}
-            aria-valuemax={LIST_MAX}
-            aria-valuenow={listWidth}
-            tabIndex={0}
-            className={styles.resizer}
-            onPointerDown={startResize}
-            onKeyDown={(event) => {
-              const step = event.key === 'ArrowLeft' ? -16 : event.key === 'ArrowRight' ? 16 : 0
-              if (!step) return
-              event.preventDefault()
-              resizeList(listWidth + step)
-            }}
-          />
+          <Resizer label="슬라이드 목록 폭" storageKey="teamplespace.slideListWidth" cssVar="--list-width" min={120} max={360} initial={144} side="right" />
           <h2>슬라이드 {view.slides.length}</h2>
           <ol>
             {view.slides.map((candidate, position) => (
@@ -361,6 +369,7 @@ function Workspace({
       </section>
 
       <aside aria-label="요소 정보" className={styles.inspector}>
+        <Resizer label="요소 편집 패널 폭" storageKey="teamplespace.inspectorWidth" cssVar="--inspector-width" min={200} max={420} initial={240} side="left" className={styles.inspectorResizer} />
         {!online ? (
           <>
             <h2>슬라이드 요소 편집</h2>
