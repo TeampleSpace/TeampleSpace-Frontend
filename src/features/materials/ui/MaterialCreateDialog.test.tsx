@@ -364,6 +364,28 @@ test('다른 팀원의 본문을 다시 읽지 못하면 이유를 보여 주고
   expect(screen.getByText('저장됨')).toBeTruthy()
 })
 
+test('부모가 읽은 뒤 본문을 읽기 전에 개정이 또 바뀌어도 본문 조회를 반복하지 않는다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.disabled).toBe(false))
+  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
+  const materialReads = () => mock.calls.filter((call) => call.method === 'GET' && call.path.split('?')[0] === `/v1/materials/${id}`).length
+  const sourceReads = () => mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length
+  // 화면이 자료를 읽은 뒤, 메모 본문이 자료를 다시 읽기 전에 한 번 더 바뀐다
+  mock.faults.delayMs = 300
+  mock.editAs(id, '팀원이 처음 바꾼 본문')
+  const before = materialReads()
+  fireEvent(window, new Event('focus'))
+  await waitFor(() => expect(materialReads()).toBeGreaterThanOrEqual(before + 2), { timeout: 3000 })
+  mock.editAs(id, '팀원이 또 바꾼 본문')
+  mock.faults.delayMs = 0
+  await waitFor(() => expect(body.value).toBe('팀원이 또 바꾼 본문'), { timeout: 3000 })
+  const reads = sourceReads()
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  expect(sourceReads()).toBe(reads)
+})
+
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
   const router = mount()
   await openAdd('메모')
