@@ -14,6 +14,7 @@ import { sha256Hex } from '../upload.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 파일 처리와 서버 연동 검증이 아니다
 vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
+vi.mock('./MarkdownEditor.tsx', () => import('./MarkdownEditor.double.tsx'))
 
 let mock: MaterialsMock
 const capabilities = capabilitiesExample as AuthCapabilities
@@ -179,10 +180,6 @@ test('메모를 쓰다가 유형을 바꾸면 확인하고 계속 작성하면 �
   fireEvent.change(dialog().getByLabelText('메모 제목'), { target: { value: '인터뷰 메모' } })
   const body = dialog().getByLabelText('메모 내용') as HTMLTextAreaElement
   fireEvent.change(body, { target: { value: '반납함이 멀다는 답이 많았다' } })
-  // 작성과 미리보기 전환은 이탈로 보지 않는다
-  fireEvent.click(dialog().getByRole('tab', { name: '미리보기' }))
-  expect(await within(dialog().getByLabelText('미리보기')).findByText('반납함이 멀다는 답이 많았다')).toBeTruthy()
-  fireEvent.click(dialog().getByRole('tab', { name: '작성' }))
   expect(body.value).toBe('반납함이 멀다는 답이 많았다')
   body.focus(); body.setSelectionRange(3, 5)
   fireEvent.blur(body)

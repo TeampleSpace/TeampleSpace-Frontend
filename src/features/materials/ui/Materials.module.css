@@ -16,11 +16,14 @@
 .filters a { color: var(--color-secondary); text-decoration: none; border-radius: 4px; transition: color var(--motion-fast) ease-out; }
 .filters a:hover, .filters a[aria-current='true'] { color: var(--color-primary); }
 .rows { display: flex; flex-direction: column; gap: 4px; list-style: none; margin: 0; padding: 0; }
-.row { display: flex; flex-direction: column; gap: 2px; padding: var(--space-8) var(--space-12); border-radius: var(--radius-md); color: var(--color-ink); text-decoration: none; overflow-wrap: anywhere; transition: background-color var(--motion-fast) ease-out; }
+.row { display: flex; flex-direction: column; gap: 2px; padding: var(--space-8) var(--space-12) 10px; border-radius: var(--radius-md); color: var(--color-ink); text-decoration: none; overflow-wrap: anywhere; transition: background-color var(--motion-fast) ease-out; }
 .row:hover { background: var(--color-subtle); }
-.row[aria-current='true'] { background: var(--color-primary-soft); box-shadow: inset 2px 0 var(--color-primary); }
+/* 선택은 장식 없이 중립 면과 제목 굵기로만 구분한다 */
+.row[aria-current='true'] { background: var(--color-muted); }
+.row[aria-current='true'] .rowTitle { font-weight: 600; }
 .row:focus-visible { outline-offset: 1px; }
-.rowMeta { font: var(--text-meta); color: var(--color-secondary); }
+.rowMeta { font: var(--text-meta); color: var(--color-tertiary); }
+.rowMeta:last-child { margin-top: 2px; }
 .rowTitle { font: var(--text-nav); }
 .listNote { color: var(--color-secondary); }
 .failed { color: var(--color-danger); }
@@ -85,6 +88,7 @@
 .noteAuthor { font: var(--text-meta); color: var(--color-tertiary); }
 .memoPad { display: flex; flex-direction: column; gap: var(--space-12); }
 .memoPad .editorInput { min-height: 320px; }
+.editorInput[contenteditable='false'] { color: var(--color-secondary); }
 .conflict { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-accent-soft); animation: var(--motion-page-enter); }
 .conflict > p:first-child { color: var(--color-accent); }
 
@@ -127,16 +131,29 @@
 .steps li[data-state='done'] { color: var(--color-ink); }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.editor { min-height: 292px; display: flex; flex-direction: column; border-radius: var(--radius-lg); background: var(--color-subtle); overflow: hidden; }
-.editorModes { display: flex; gap: 4px; background: var(--color-surface); }
-.editorModes button, .editorTools button { font: var(--text-button); }
-.editorModes button[aria-selected='true'] { color: var(--color-primary); }
-.editorTools { display: flex; flex-wrap: wrap; }
-.editorTools[hidden] { display: none; }
-.editorInput { flex: 1; min-height: 172px; width: 100%; padding: var(--space-16); border: 0; background: transparent; color: var(--color-ink); font: var(--text-body); resize: vertical; }
-.editorInput:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-.editorTools:not([hidden]), .editorInput:not([hidden]) { animation: var(--motion-feedback-enter); }
-.editorPreview { flex: 1; min-height: 212px; padding: var(--space-16); animation: var(--motion-page-enter); }
+.editor { min-height: 292px; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-xs); overflow: hidden; transition: border-color var(--motion-fast) ease-out, box-shadow var(--motion-normal) ease-out; }
+.editor:focus-within { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.editor[data-disabled] { background: var(--color-subtle); }
+.editorTools { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; border-bottom: 1px solid var(--color-border); background: var(--color-canvas); }
+.editorTools button { min-height: 32px; padding: 4px 10px; border-radius: var(--radius-sm); font: var(--text-button-secondary); }
+.editorTools button[aria-pressed='true'] { background: var(--color-muted); color: var(--color-ink); font-weight: 600; }
+/* 편집 영역. 서식은 저장된 자료 보기와 같은 크기로 보여 준다 */
+.editorInput { flex: 1; min-height: 220px; width: 100%; padding: var(--space-16) var(--space-20); color: var(--color-ink); font: var(--text-lead); outline: none; overflow-wrap: anywhere; white-space: pre-wrap; }
+.editorInput > * + * { margin-top: 10px; }
+.editorInput p { margin: 0; }
+.editorInput h1, .editorInput h2, .editorInput h3 { margin: 18px 0 0; font: 700 20px/30px var(--font-body); letter-spacing: -0.2px; }
+.editorInput h1 { font-size: 24px; line-height: 34px; }
+.editorInput > :first-child { margin-top: 0; }
+.editorInput ul, .editorInput ol { margin: 0; padding-left: 22px; }
+.editorInput li p { margin: 0; }
+.editorInput blockquote { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--color-border-strong); color: var(--color-secondary); }
+.editorInput code { padding: 1px 5px; border-radius: 4px; background: var(--color-muted); font: 14px/22px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.editorInput pre { margin: 0; padding: var(--space-12); border-radius: var(--radius-md); background: var(--color-muted); overflow-x: auto; }
+.editorInput pre code { padding: 0; background: none; }
+.editorInput a { color: var(--color-primary); text-decoration: underline; cursor: text; }
+.editorInput hr { border: 0; border-top: 1px solid var(--color-border); }
+/* 비어 있을 때 첫 줄에 안내를 보여 준다 */
+.editorInput p:global(.isEmpty):first-child::before { content: attr(data-placeholder); float: left; height: 0; color: var(--color-tertiary); pointer-events: none; }
 .hintText { font: var(--text-meta); color: var(--color-tertiary); }
 
 /* 원문 보기. 피그마의 문서 영역은 회색 면, 여백 24px, 간격 20px */

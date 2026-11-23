@@ -25,7 +25,7 @@
 .stageArea { padding: var(--space-16); overflow: auto; border-radius: var(--radius-lg); background: var(--color-subtle); }
 .stageFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); font: var(--text-meta); color: var(--color-tertiary); }
 .stageFoot label { display: flex; align-items: center; gap: var(--space-8); flex-shrink: 0; }
-.stageFoot select { min-height: 32px; font: inherit; color: var(--color-ink); }
+.stageFoot select { min-height: 32px; color: var(--color-ink); }
 
 .inspector { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .inspector > p { font: var(--text-body); color: var(--color-secondary); }
