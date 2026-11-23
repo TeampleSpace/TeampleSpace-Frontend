@@ -30,7 +30,7 @@
 .home .header { min-height: 44px; }
 .home h1 { line-height: 40px; }
 .homeContent { display: flex; flex-direction: column; gap: 32px; }
-.intro { display: flex; flex-direction: column; gap: 24px; padding: 32px; min-height: 144px; background: var(--color-accent-soft); border-radius: 16px; }
+.intro { display: flex; flex-direction: column; gap: 24px; padding: 32px; min-height: 144px; background: var(--color-subtle); border-radius: 16px; }
 .intro h2, .startCard h2 { font: 700 20px/30px var(--font-body); }
 .intro > p { font: var(--text-lead); color: var(--color-secondary); }
 .intro, .startOptions, .howItWorks, .home .grid { animation: var(--motion-content-enter); }
