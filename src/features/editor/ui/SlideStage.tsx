@@ -9,11 +9,17 @@ import type {
 } from '../../../entities/presentation/schema.ts'
 import { deltaToDoc } from '../coords.ts'
 import { describeElement } from '../describe.ts'
+import { snap } from '../snap.ts'
+import type { Guide } from '../snap.ts'
 import { textStyle } from '../textStyle.ts'
 import { SlideRenderer } from './SlideRenderer.tsx'
 import styles from './SlideStage.module.css'
 
-type Drag = { id: string; startX: number; startY: number; dx: number; dy: number }
+// moved는 맞춤 전 포인터가 움직인 거리로, 클릭과 끌기를 가른다
+type Drag = { id: string; startX: number; startY: number; dx: number; dy: number; moved: number; guides: Guide[] }
+
+// 이 거리 안으로 가까워지면 기준선에 붙인다. 화면 픽셀 단위다
+const snapDistance = 6
 
 // 한글 조합 입력을 받는 글상자. 조합 중인지 함께 알린다
 function TextEditor({
@@ -127,29 +133,39 @@ export function SlideStage({
     onSelect(id)
     if (locked(id)) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0 })
+    setDrag({ id, startX: event.clientX, startY: event.clientY, dx: 0, dy: 0, moved: 0, guides: [] })
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!drag) return
     // 화면에서 움직인 거리를 현재 배율로 나눠 문서 좌표로 바꾼다
     const delta = deltaToDoc(event.clientX - drag.startX, event.clientY - drag.startY, scale)
-    setDrag({ ...drag, dx: delta.x, dy: delta.y })
+    const geometry = byId(drag.id)?.geometry
+    const moved = Math.abs(delta.x) + Math.abs(delta.y)
+    // Alt를 누르고 끌면 맞추지 않고 그대로 옮긴다
+    if (!geometry || event.altKey) {
+      setDrag({ ...drag, dx: delta.x, dy: delta.y, moved, guides: [] })
+      return
+    }
+    const others = elements.filter((element) => element.id !== drag.id).map((element) => element.geometry)
+    const fit = snap({ ...geometry, x: geometry.x + delta.x, y: geometry.y + delta.y }, others, canvas, snapDistance / scale)
+    setDrag({ ...drag, dx: delta.x + fit.dx, dy: delta.y + fit.dy, moved, guides: fit.guides })
   }
 
   function onPointerUp() {
     if (!drag) return
     setDrag(undefined)
     const geometry = byId(drag.id)?.geometry
-    if (!geometry || Math.abs(drag.dx) + Math.abs(drag.dy) < 2) return
+    // 거의 움직이지 않았으면 클릭으로 본다. 맞춤으로 줄어든 이동은 그대로 저장한다
+    if (!geometry || drag.moved < 2) return
+    // 맞춘 축은 계산한 좌표를 그대로 두고 나머지 축만 정수로 맞춘다. 홀수 크기 요소도 가운데에 놓인다
+    const place = (value: number, axis: Guide['axis']) =>
+      drag.guides.some((guide) => guide.axis === axis) ? Math.round(value * 100) / 100 : Math.round(value)
+    const x = place(geometry.x + drag.dx, 'x')
+    const y = place(geometry.y + drag.dy, 'y')
+    if (x === geometry.x && y === geometry.y) return
     // 놓는 순간 한 번의 명령으로 저장한다. 좌표 항목은 통째로 보낸다
-    onChange(drag.id, {
-      geometry: {
-        ...geometry,
-        x: Math.round(geometry.x + drag.dx),
-        y: Math.round(geometry.y + drag.dy),
-      },
-    })
+    onChange(drag.id, { geometry: { ...geometry, x, y } })
     onCommit(drag.id)
   }
 
@@ -221,6 +237,22 @@ export function SlideStage({
             />
           )
         })}
+        {drag?.guides.map((guide) => (
+          <div
+            key={`${guide.axis}${guide.at}`}
+            className={guide.axis === 'x' ? styles.guideX : styles.guideY}
+            data-guide={guide.axis}
+            style={
+              {
+                left: guide.axis === 'x' ? guide.at : 0,
+                top: guide.axis === 'y' ? guide.at : 0,
+                width: guide.axis === 'y' ? canvas.width : 0,
+                height: guide.axis === 'x' ? canvas.height : 0,
+                '--stage-scale': scale,
+              } as CSSProperties
+            }
+          />
+        ))}
         {editing?.type === 'text' && (
           <TextEditor
             key={editing.id}
