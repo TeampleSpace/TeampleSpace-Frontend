@@ -5,6 +5,11 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-23 편집 화면 커서 위치 공유 추가
+
+- 커서 위치 경로 `POST /v1/projects/{projectId}/presence`와 `PresenceUpdateRequest`, `PresenceUpdated` 형식을 추가
+- 이벤트 구독은 나를 뺀 팀원의 커서 목록이 바뀔 때 `presence.updated`를 SSE `id` 없이 보낸다. 이벤트 순번과 재연결 커서에는 영향이 없다
+
 ## 2026-11-23 AI 작업과 디자인 변경 승인 요청 추가
 
 - 승인 요청 만들기, 목록, 승인, 거절, 취소 경로와 `ChangeRequest`, `ChangeRequestList`, `ChangeRequestCreate` 형식, 오류 코드 `REQUEST_NOT_PENDING`을 추가

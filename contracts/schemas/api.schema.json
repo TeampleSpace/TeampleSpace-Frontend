@@ -249,6 +249,42 @@
         "presence.updated"
       ]
     },
+    "PresenceUpdateRequest": {
+      "description": "편집 화면의 커서 위치. 좌표는 슬라이드 캔버스 px이고 slideId가 null이면 편집 화면을 떠난 것이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slideId"],
+      "properties": {
+        "slideId": { "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }] },
+        "x": { "type": "number", "minimum": -10000, "maximum": 10000 },
+        "y": { "type": "number", "minimum": -10000, "maximum": 10000 }
+      },
+      "if": { "properties": { "slideId": { "type": "string" } } },
+      "then": { "required": ["x", "y"] }
+    },
+    "PresenceUpdated": {
+      "description": "presence.updated 신호의 data. 나를 뺀 팀원의 현재 커서 전체 목록이며 SSE id 없이 바뀔 때만 온다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId", "cursors"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "cursors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["userId", "slideId", "x", "y"],
+            "properties": {
+              "userId": { "$ref": "#/$defs/Uuid" },
+              "slideId": { "$ref": "#/$defs/Uuid" },
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
     "SnapshotRequired": {
       "description": "커서가 보관 범위 밖이거나 유효하지 않을 때 보내는 신호. 받으면 동기화 스냅샷을 다시 읽는다",
       "type": "object",

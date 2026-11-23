@@ -228,3 +228,10 @@ export const editorSnapshotSchema = z.object({
   ),
 })
 export type EditorSnapshot = z.infer<typeof editorSnapshotSchema>
+
+// 이벤트 구독의 presence.updated. 나를 뺀 팀원의 현재 커서 전체 목록이다
+export const presenceUpdatedSchema = z.object({
+  projectId: z.string(),
+  cursors: z.array(z.object({ userId: z.string(), slideId: z.string(), x: z.number(), y: z.number() })),
+})
+export type PresenceCursor = z.infer<typeof presenceUpdatedSchema>['cursors'][number]

@@ -32,7 +32,13 @@ type Group = {
   closed: boolean
 }
 
-type Stream = { send: (event: EventEnvelope) => void; close: () => void }
+type Stream = {
+  actorId: string
+  send: (event: EventEnvelope) => void
+  presence: (cursors: Cursor[]) => void
+  close: () => void
+}
+type Cursor = { userId: string; slideId: string; x: number; y: number }
 
 export type MockServer = ReturnType<typeof createMockServer>
 
@@ -49,6 +55,9 @@ export function createMockServer(
   const groups = new Map<string, Group>()
   const events: EventEnvelope[] = []
   const streams = new Set<Stream>()
+  // 실제 서버처럼 커서는 메모리에만 두고 나를 뺀 목록을 보낸다
+  const cursors = new Map<string, Cursor>()
+  const othersOf = (actorId: string) => [...cursors.values()].filter((cursor) => cursor.userId !== actorId)
   // 이 순번보다 앞선 이벤트는 보관 범위 밖으로 본다
   let retainedFrom = 1
   let requestSeq = 0
@@ -331,7 +340,7 @@ export function createMockServer(
   }
 
   // 이벤트 스트림의 id는 eventId, event는 type, data는 이벤트 봉투다
-  function openStream(cursor: string | null, signal?: AbortSignal | null): Response {
+  function openStream(actorId: string, cursor: string | null, signal?: AbortSignal | null): Response {
     const encoder = new TextEncoder()
     let stream: Stream | undefined
     let keepAlive: ReturnType<typeof setInterval> | undefined
@@ -360,7 +369,9 @@ export function createMockServer(
           15000,
         )
         const current: Stream = {
+          actorId,
           send: (event) => write(event.type, event.eventId, event),
+          presence: (list) => write('presence.updated', undefined, { projectId: doc.projectId, cursors: list }),
           close: () => {
             if (!streams.delete(current)) return
             clearInterval(keepAlive)
@@ -369,6 +380,7 @@ export function createMockServer(
         }
         stream = current
         streams.add(current)
+        if (othersOf(actorId).length > 0) current.presence(othersOf(actorId))
         signal?.addEventListener('abort', current.close, { once: true })
       },
       cancel() {
@@ -404,7 +416,14 @@ export function createMockServer(
       return json(200, snapshot())
     }
     if (method === 'GET' && path === `${project}/events`) {
-      return openStream(new Headers(init.headers).get('Last-Event-ID'), init.signal)
+      return openStream(actorId, new Headers(init.headers).get('Last-Event-ID'), init.signal)
+    }
+    if (method === 'POST' && path === `${project}/presence`) {
+      const body = JSON.parse(String(init.body)) as { slideId: string | null; x?: number; y?: number }
+      if (body.slideId) cursors.set(actorId, { userId: actorId, slideId: body.slideId, x: body.x ?? 0, y: body.y ?? 0 })
+      else cursors.delete(actorId)
+      for (const stream of streams) stream.presence(othersOf(stream.actorId))
+      return new Response(null, { status: 204 })
     }
     const save =
       method === 'PATCH' && path.match(/^\/v1\/slides\/([^/]+)\/elements\/([^/]+)$/)

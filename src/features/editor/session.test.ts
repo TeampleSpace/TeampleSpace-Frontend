@@ -713,3 +713,41 @@ test('문서 교체 이벤트 뒤 스냅샷을 읽지 못하면 다시 연결해
   expect(session.getState().view?.slides.length).toBe(exampleSnapshot.presentation?.slides.length)
   session.stop()
 })
+
+test('내 커서를 짧은 간격으로 모아 보내고 다른 팀원의 커서만 이름과 함께 받는다', async () => {
+  const { open, calls } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await settle()
+  const presence = () => calls.filter((call) => call.actor === 'user-a' && call.path.endsWith('/presence'))
+
+  // 한꺼번에 움직이면 마지막 위치 하나만 정수로 보낸다
+  a.movePointer(slideId, 10.4, 20.6)
+  a.movePointer(slideId, 30, 40)
+  a.movePointer(slideId, 50.4, 59.6)
+  await settle()
+  await tick(150)
+  expect(presence().map((call) => JSON.parse(call.body!))).toEqual([{ slideId, x: 50, y: 60 }])
+  expect(b.getState().cursors).toEqual([{ userId: actorIds['user-a'], slideId, x: 50, y: 60 }])
+  expect(b.getState().memberNames[actorIds['user-a']]).toBeTruthy()
+  // 내 커서는 내게 오지 않는다
+  expect(a.getState().cursors).toEqual([])
+
+  // 움직이지 않아도 서버가 지우기 전에 같은 위치를 다시 알린다
+  await tick(5000)
+  expect(presence()).toHaveLength(2)
+
+  // 캔버스를 벗어나면 다른 팀원에게서 사라진다
+  a.movePointer(null)
+  await settle()
+  expect(b.getState().cursors).toEqual([])
+
+  // 화면을 떠날 때도 지운다
+  a.movePointer(slideId, 5, 5)
+  await settle()
+  expect(b.getState().cursors).toHaveLength(1)
+  a.stop()
+  await settle()
+  expect(b.getState().cursors).toEqual([])
+  b.stop()
+})

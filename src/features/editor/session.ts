@@ -2,6 +2,7 @@ import {
   editorSnapshotSchema,
   elementChangeSchema,
   elementSaveResultSchema,
+  presenceUpdatedSchema,
 } from '../../entities/presentation/schema.ts'
 import type {
   Element,
@@ -9,10 +10,12 @@ import type {
   ElementSaveRequest,
   ElementSaveResult,
   Presentation,
+  PresenceCursor,
 } from '../../entities/presentation/schema.ts'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import type { ApiClient } from '../../shared/api/client.ts'
 import { eventEnvelopeSchema } from '../../shared/api/contract.ts'
+import { emptySchema } from '../../entities/session/model.ts'
 import { StreamRejectedError, openEventStream } from './sse.ts'
 import type { SseMessage } from './sse.ts'
 
@@ -39,6 +42,10 @@ export type SessionState = {
   // 아직 서버가 확인하지 않은 입력이나 요청이 있는지
   pending: boolean
   memberCount: number
+  // 팀원 이름. 다른 팀원의 커서 이름표에 쓴다
+  memberNames: Record<string, string>
+  // 나를 뺀 팀원의 커서. 연결이 끊기면 비운다
+  cursors: PresenceCursor[]
   elements: Record<string, ElementView>
   stats: { duplicateEvents: number; staleEvents: number; snapshots: number }
 }
@@ -114,6 +121,8 @@ export function createEditorSession(options: {
   let rejected: SessionState['rejected']
   let loaded = false
   let memberCount = 0
+  let memberNames: Record<string, string> = {}
+  let cursors: PresenceCursor[] = []
   // 스냅샷을 다시 읽으라는 신호를 받아 기다리지 않고 바로 다시 연결한다
   let resyncNow = false
   let state: SessionState = {
@@ -121,6 +130,8 @@ export function createEditorSession(options: {
     loaded,
     pending: false,
     memberCount,
+    memberNames,
+    cursors,
     elements: {},
     stats: { ...stats },
   }
@@ -150,6 +161,8 @@ export function createEditorSession(options: {
       view,
       pending: hasPending(),
       memberCount,
+      memberNames,
+      cursors,
       elements,
       stats: { ...stats },
     }
@@ -537,6 +550,20 @@ export function createEditorSession(options: {
   }
 
   function handleMessage(message: SseMessage) {
+    // 커서 목록은 이벤트 순번 없이 오고 받을 때마다 통째로 바꾼다
+    if (message.event === 'presence.updated') {
+      let data: unknown
+      try {
+        data = JSON.parse(message.data)
+      } catch {
+        return
+      }
+      const parsed = presenceUpdatedSchema.safeParse(data)
+      if (!parsed.success) return
+      cursors = parsed.data.cursors
+      publish()
+      return
+    }
     if (message.event === 'snapshot_required') {
       log('이벤트 보관 범위를 벗어나 다시 동기화합니다')
       lastEventId = undefined
@@ -615,6 +642,7 @@ export function createEditorSession(options: {
         stats.snapshots += 1
         loaded = true
         memberCount = result.members.length
+        memberNames = Object.fromEntries(result.members.map((member) => [member.userId, member.displayName]))
         lastEventId = result.eventCursor
         const incoming = result.presentation
         // 아직 발표 자료를 만들기 전이면 문서가 없다
@@ -694,8 +722,9 @@ export function createEditorSession(options: {
       return
     }
 
-    // 연결이 끊기면 새 편집을 막고 입력은 그대로 둔다
+    // 연결이 끊기면 새 편집을 막고 입력은 그대로 둔다. 다른 팀원 커서는 더 믿을 수 없어 숨긴다
     connection = 'offline'
+    cursors = []
     log('연결 끊김')
     publish()
     const delay = resyncNow ? 0 : Math.min(1000 * 2 ** reconnectAttempt, 10000)
@@ -729,11 +758,67 @@ export function createEditorSession(options: {
   function start() {
     if (running) return
     running = true
+    globalThis.addEventListener?.('pagehide', leavePointer)
     connection = 'connecting'
     void connect()
   }
 
+  // 내 커서 위치. 보내는 중이면 마지막 위치만 남겼다가 끝난 뒤 보낸다
+  // ponytail: 위치를 일정 간격으로 보낸다. 더 매끄럽게 하려면 웹소켓으로 바꾼다
+  const pointerIntervalMs = 100
+  // 서버가 10초 동안 소식이 없으면 지우므로 그 전에 같은 위치를 다시 알린다
+  const pointerKeepAliveMs = 5000
+  let pointer: { slideId: string | null; x?: number; y?: number } | undefined
+  let pointerSent: string | undefined
+  let pointerBusy = false
+  let pointerTimer: Timer | undefined
+  let pointerKeepAlive: Timer | undefined
+
+  function movePointer(slideId: string | null, x?: number, y?: number) {
+    pointer = slideId ? { slideId, x: Math.round(x ?? 0), y: Math.round(y ?? 0) } : { slideId: null }
+    if (!pointerTimer) pointerTimer = setTimeout(sendPointer, pointerBusy ? pointerIntervalMs : 0)
+  }
+
+  async function sendPointer(force = false) {
+    pointerTimer = undefined
+    if (!running || !pointer || pointerBusy || connection !== 'online') return
+    const body = pointer
+    const key = JSON.stringify(body)
+    if (!force && key === pointerSent) return
+    pointerBusy = true
+    clearTimeout(pointerKeepAlive)
+    try {
+      await client.request(`/projects/${projectId}/presence`, emptySchema, { method: 'POST', body, timeoutMs: requestTimeoutMs })
+      pointerSent = key
+    } catch {
+      // 커서는 다음 움직임에 다시 보낸다
+      pointerSent = undefined
+    } finally {
+      pointerBusy = false
+    }
+    if (body.slideId) pointerKeepAlive = setTimeout(() => void sendPointer(true), pointerKeepAliveMs)
+    if (pointer && JSON.stringify(pointer) !== pointerSent && !pointerTimer) {
+      pointerTimer = setTimeout(sendPointer, pointerIntervalMs)
+    }
+  }
+
+  // 화면을 떠나면 다른 팀원에게서 내 커서를 바로 지운다. 페이지를 닫아도 끝까지 보낸다
+  function leavePointer() {
+    if (running && pointerSent && pointer?.slideId) {
+      void client
+        .request(`/projects/${projectId}/presence`, emptySchema, { method: 'POST', body: { slideId: null }, keepalive: true })
+        .catch(() => {})
+    }
+    pointerSent = undefined
+  }
+
   function stop() {
+    leavePointer()
+    globalThis.removeEventListener?.('pagehide', leavePointer)
+    clearTimeout(pointerTimer)
+    clearTimeout(pointerKeepAlive)
+    pointer = undefined
+    pointerSent = undefined
     running = false
     stream?.abort()
     stream = undefined
@@ -753,6 +838,7 @@ export function createEditorSession(options: {
     retry,
     resolveConflict,
     reconnect,
+    movePointer,
     // 문서가 새로 만들어졌을 때처럼 이벤트 없이 바뀐 내용을 다시 읽는다
     refresh: snapshot,
     getState: () => state,
