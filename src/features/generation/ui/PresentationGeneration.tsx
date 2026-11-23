@@ -219,7 +219,9 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
           return
         }
       }
-      if (!isUncertain(reason)) {
+      // 같은 종류의 승인 요청이 이미 기다리면 결과가 정해진 것이라 다음에는 최신 구성과 디자인으로 다시 만든다
+      const waiting = command.request && reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS'
+      if (!isUncertain(reason) || waiting) {
         setPending(undefined)
         // 구성이나 디자인이 바뀌었으면 최신 내용으로 다시 보여 준다
         if (reason instanceof ApiError && (reason.code === 'VERSION_CONFLICT' || reason.status === 422)) void loadSummary()

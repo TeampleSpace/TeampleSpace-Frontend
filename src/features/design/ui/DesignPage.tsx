@@ -153,6 +153,8 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const [previewFont, setPreviewFont] = useState<string>()
   const formId = useId()
   const operation = useRef<AbortController | null>(null)
+  // 입력을 바꿀 때마다 늘린다. 다시 읽는 동안 바뀐 입력을 응답으로 덮어쓰지 않는다
+  const edits = useRef(0)
   const fieldToFocus = useRef<InputField | undefined>(undefined)
   const template = items.find((item) => same(selectionOf(item), drafts.template))
   const { custom } = drafts
@@ -194,6 +196,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   }, [invalid, formId])
 
   function chooseMode(value: Mode) {
+    edits.current += 1
     setMode(value)
     setInputErrors({})
     setSaved(undefined)
@@ -211,12 +214,14 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   }
 
   function changeCustom(field: keyof CustomDesign, value: string) {
+    edits.current += 1
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, [field]: value } }))
     setInputErrors((current) => ({ ...current, [field]: undefined }))
     setSaved(undefined)
   }
 
   function changeFont({ font, fontAssetId }: Pick<CustomDesign, 'font' | 'fontAssetId'>) {
+    edits.current += 1
     setPreviewFont(undefined)
     setDrafts((draft) => ({ ...draft, custom: { ...draft.custom, font, fontAssetId } }))
     setInputErrors((current) => ({ ...current, font: undefined }))
@@ -300,8 +305,9 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     if (operation.current) return
     const requested = request.payload as DesignInput
     if (dirty && !(requested.mode === 'custom' && mode === 'custom' && same(requested.custom, configuredCustom))) return
+    const at = edits.current
     void designApi.get(projectId).then((updated) => {
-      if (operation.current) return
+      if (operation.current || edits.current !== at) return
       const canonical = makeDrafts(updated, catalog)
       setBase(updated)
       setInitial(canonical)
