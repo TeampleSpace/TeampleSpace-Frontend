@@ -1,0 +1,23 @@
+.progress {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-radius: var(--radius-lg);
+  background: var(--color-subtle);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.percent {
+  color: var(--color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress progress {
+  width: 100%;
+  accent-color: var(--color-primary);
+}

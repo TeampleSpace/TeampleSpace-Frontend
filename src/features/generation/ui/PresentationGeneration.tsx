@@ -10,6 +10,7 @@ import { useSession } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
 import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
 import type { Job } from '../../../entities/material/model.ts'
+import { JobProgress } from '../../../entities/material/JobProgress.tsx'
 import { outlineApi } from '../../outline/api.ts'
 import { designApi } from '../../design/api.ts'
 import type { DesignSettings } from '../../design/api.ts'
@@ -259,16 +260,11 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
   </span>
   const regenerationBlocked = writeError instanceof ApiError && writeError.code === 'REGENERATION_NOT_ENABLED'
   const itemLabel = summary ? `발표 구성 ${summary.items}장` : '발표 구성'
-  const steps = job && [
-    { label: `${itemLabel} 확인`, state: 'done' },
-    { label: '자료의 핵심 내용과 출처 연결', state: succeeded ? 'done' : job.status === 'running' ? 'current' : 'waiting' },
-    { label: '슬라이드 배치 정리', state: succeeded ? 'done' : 'waiting' },
-  ]
 
   return <>
     {children ? children(trigger) : trigger}
     <Modal open={view === 'confirm'} size="form" title="PPT 초안 만들기"
-      description="검토한 발표 구성과 근거 자료로 초안을 만듭니다." onClose={() => setView(null)}
+      description="검토한 발표 구성과 근거 자료로 초안을 만들어요." onClose={() => setView(null)}
       footer={<>
         <Button variant="secondary" onClick={() => goTo('design')}>디자인 다시 보기</Button>
         <Button disabled={!summary || Boolean(summary.blocker) || !enabled} loading={write === 'create'}
@@ -293,11 +289,11 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
       <RequestError error={writeError} action={regenerationBlocked
         ? <Button variant="secondary" onClick={() => goTo('slides')}>만든 PPT 보기</Button> : undefined} />
     </Modal>
-    <div className={`${styles.slot} ${active ? styles.running : succeeded ? styles.done : ''}`}>
+    <div className={`${styles.slot} ${succeeded ? styles.done : ''}`}>
       <Modal open={view === 'job' && Boolean(job)} size={showJob ? 'form' : 'dialog'}
         title={active ? '발표자료를 만들고 있어요' : succeeded ? '발표자료가 완성됐어요' : failed ? '발표자료를 완성하지 못했어요' : '생성을 취소했어요'}
-        description={active ? '발표 흐름에 맞게 내용을 배치하고 출처를 연결합니다.' : succeeded ? '초안과 연결된 출처를 준비했어요.'
-          : failed ? '자료와 설정은 그대로 남아 있습니다.' : '취소한 초안은 저장되지 않았어요.'}
+        description={active ? '발표 흐름에 맞게 내용을 배치하고 출처를 연결하고 있어요.' : succeeded ? '초안과 연결된 출처를 준비했어요.'
+          : failed ? '자료와 설정은 그대로 남아 있어요.' : '취소한 초안은 저장되지 않았어요.'}
         onClose={() => setView(null)}
         footer={active ? <>
           <Button variant="secondary" disabled={Boolean(job?.cancelRequestedAt)} onClick={() => setView('cancel')}>생성 취소</Button>
@@ -309,15 +305,8 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
           <Button disabled={!enabled} onClick={open}>다시 생성</Button>
           <Button variant="secondary" onClick={() => goTo('design')}>설정 확인</Button>
         </>}>
-        {showJob && steps && <ol className={styles.steps}>
-          {steps.map((step) => <li key={step.label} data-state={step.state}>
-            {step.label}{step.state === 'done' ? ' 완료' : step.state === 'current' ? ' 중' : ''}
-          </li>)}
-        </ol>}
-        {active && <p role="status" className={styles.note}>
-          {job?.cancelRequestedAt ? '취소 요청을 확인하고 있어요. ' : job?.status === 'queued' ? '생성 순서를 기다리고 있어요. ' : ''}
-          이 창을 닫아도 생성은 계속돼요.
-        </p>}
+        {showJob && active && job && <JobProgress job={job} label="발표자료 생성 진행률" />}
+        {active && <p className={styles.note}>이 창을 닫아도 생성은 계속돼요.</p>}
         {succeeded && <p className={styles.note}>팀원과 함께 확인하고 수정할 수 있어요.</p>}
         {failed && <p>{job?.error?.message || '잠시 후 다시 시도해 주세요.'}</p>}
         <RequestError error={writeError} />
@@ -326,7 +315,7 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
           : succeeded && job ? <Button variant="secondary" onClick={() => void complete(job)}>결과 다시 불러오기</Button> : undefined} />
       </Modal>
     </div>
-    <Modal open={view === 'cancel'} size="confirm" title="생성을 취소할까요?" description="취소된 초안은 저장되지 않습니다."
+    <Modal open={view === 'cancel'} size="confirm" title="생성을 취소할까요?" description="취소한 초안은 저장되지 않아요."
       onClose={() => setView('job')} footer={<>
         <Button onClick={() => setView('job')}>생성 계속</Button>
         <Button variant="secondary" loading={write === 'cancel'} onClick={() => void cancel()}>취소하기</Button>

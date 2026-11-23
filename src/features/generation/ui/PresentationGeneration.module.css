@@ -41,29 +41,8 @@
   color: var(--color-primary);
 }
 
-.steps {
-  display: grid;
-  gap: var(--space-16);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font: var(--text-lead);
-}
-
-.steps [data-state='current'] {
-  color: var(--color-primary);
-}
-
-.steps [data-state='waiting'] {
-  color: var(--color-tertiary);
-}
-
 .slot {
   display: contents;
-}
-
-.running dialog h2 {
-  color: var(--color-accent);
 }
 
 .done dialog h2 {
