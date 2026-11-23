@@ -1,0 +1,195 @@
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react'
+import { Button } from '../../../shared/ui/Button.tsx'
+import { Field } from '../../../shared/ui/Field.tsx'
+import { RequestError } from '../../../shared/ui/RequestError.tsx'
+import { useSession } from '../../../entities/session/sessionContext.ts'
+import { materialsApi } from '../../../entities/material/api.ts'
+import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
+import { formatWhen, limits } from '../../../entities/material/model.ts'
+import type { MaterialComment, MaterialNote } from '../../../entities/material/model.ts'
+import styles from './Materials.module.css'
+
+// ponytail: 5초마다 댓글 전체를 다시 읽어 새 댓글과 삭제를 반영한다. 댓글이 많아지거나 자료 화면이 이벤트 구독을 열면 그때 바꾼다
+export const commentRefreshMs = 5000
+
+// 서버와 같이 작성 시각, 같으면 식별자 순서로 합친다. 내가 쓴 댓글과 나중에 읽은 댓글이 섞여도 순서를 지킨다
+function merge(current: MaterialComment[] | undefined, incoming: MaterialComment[]) {
+  const byId = new Map((current ?? []).map((item) => [item.id, item]))
+  for (const item of incoming) byId.set(item.id, item)
+  return [...byId.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    || a.createdAt.localeCompare(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
+// 자료에 팀원이 짧게 남기는 메모. 예전에 함께 쓰던 팀 메모가 있으면 맨 위에 보여 준다
+export function TeamComments({ materialId, onDirtyChange, onError }: {
+  materialId: string; onDirtyChange: (dirty: boolean) => void; onError: (reason: unknown) => void
+}) {
+  const { user } = useSession()
+  const [items, setItems] = useState<MaterialComment[]>()
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [legacy, setLegacy] = useState<MaterialNote | null>(null)
+  const [loadError, setLoadError] = useState<unknown>()
+  const [revision, setRevision] = useState(0)
+  const [draft, setDraft] = useState('')
+  // 응답을 받지 못한 전송. 같은 키로 다시 보낸다
+  const [pending, setPending] = useState<{ body: string; key: string }>()
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<unknown>()
+  const [confirming, setConfirming] = useState<string>()
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<unknown>()
+  const lock = useRef(false)
+  // 내가 지운 댓글. 지우기 전에 시작한 조회 응답에 남아 있어도 다시 보이지 않게 한다
+  const removed = useRef(new Set<string>())
+  // 내가 쓴 댓글을 받은 시각. 쓰기 전에 시작한 조회 응답에 없어도 목록에서 빼지 않는다
+  const sentAt = useRef(new Map<string, number>())
+  const inputId = useId()
+  // 삭제 확인을 닫은 뒤 포커스를 돌려줄 곳
+  const focusAfter = useRef<string>(undefined)
+  useEffect(() => {
+    if (confirming || !focusAfter.current) return
+    const target = focusAfter.current === 'input' ? document.getElementById(inputId)
+      : document.querySelector<HTMLElement>(`[data-comment-delete="${focusAfter.current}"]`)
+    focusAfter.current = undefined
+    target?.focus()
+  }, [confirming, inputId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void Promise.all([materialsApi.comments(materialId, undefined, controller.signal), materialsApi.note(materialId, controller.signal)])
+      .then(([page, note]) => {
+        if (controller.signal.aborted) return
+        setItems(page.items)
+        setNextCursor(page.nextCursor)
+        setLegacy(note.markdown.trim() ? note : null)
+        setLoadError(undefined)
+      })
+      .catch((reason) => { if (!controller.signal.aborted) { setLoadError(reason); onError(reason) } })
+    return () => controller.abort()
+  }, [materialId, revision, onError])
+
+  // 다 읽은 상태면 처음부터 다시 읽어 서버 목록으로 바꾼다
+  const refresh = useEffectEvent(async () => {
+    if (!items || nextCursor) return
+    const began = performance.now()
+    try {
+      const all: MaterialComment[] = []
+      let cursor: string | undefined
+      do {
+        const page = await materialsApi.comments(materialId, cursor)
+        all.push(...page.items)
+        cursor = page.nextCursor ?? undefined
+      } while (cursor)
+      setItems((current) => current && merge(current.filter((item) => (sentAt.current.get(item.id) ?? 0) > began), all)
+        .filter((item) => !removed.current.has(item.id)))
+    } catch (reason) {
+      // 접근을 잃었거나 자료가 사라졌으면 알린다. 잠깐 끊긴 것은 다음 주기에 다시 읽는다
+      if (isAccessLoss(reason) || isGone(reason)) onError(reason)
+    }
+  })
+  useEffect(() => {
+    const timer = setInterval(() => void refresh(), commentRefreshMs)
+    return () => clearInterval(timer)
+  }, [materialId])
+
+  const dirty = draft.trim() !== '' || !!pending
+  useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
+
+  async function more() {
+    if (!nextCursor || lock.current) return
+    lock.current = true
+    try {
+      const page = await materialsApi.comments(materialId, nextCursor)
+      setItems((current) => merge(current, page.items).filter((item) => !removed.current.has(item.id)))
+      setNextCursor(page.nextCursor)
+      setLoadError(undefined)
+    } catch (reason) { setLoadError(reason); onError(reason) }
+    finally { lock.current = false }
+  }
+
+  async function send() {
+    const body = draft.trim()
+    if (lock.current || (!body && !pending)) return
+    const command = pending ?? { body, key: crypto.randomUUID() }
+    lock.current = true
+    setSending(true)
+    setSendError(undefined)
+    try {
+      const created = await materialsApi.addComment(materialId, command.body, command.key)
+      sentAt.current.set(created.id, performance.now())
+      setItems((current) => merge(current, [created]))
+      setPending(undefined)
+      setDraft((value) => value.trim() === command.body ? '' : value)
+    } catch (reason) {
+      setPending(isUncertain(reason) ? command : undefined)
+      setSendError(reason)
+      onError(reason)
+    } finally { lock.current = false; setSending(false) }
+  }
+
+  async function remove(commentId: string) {
+    if (lock.current) return
+    lock.current = true
+    setDeleting(true)
+    setDeleteError(undefined)
+    try {
+      await materialsApi.deleteComment(materialId, commentId)
+      removed.current.add(commentId)
+      setItems((current) => current?.filter((item) => item.id !== commentId))
+      focusAfter.current = 'input'
+      setConfirming(undefined)
+    } catch (reason) { setDeleteError(reason); onError(reason) }
+    finally { lock.current = false; setDeleting(false) }
+  }
+
+  if (!items) return <section className={styles.note} aria-label="팀 메모">
+    <h3 className={styles.sectionTitle}>팀 메모</h3>
+    {loadError
+      ? <RequestError error={loadError} action={<Button variant="text" onClick={() => setRevision((value) => value + 1)}>다시 불러오기</Button>} />
+      : <p className={styles.noteAuthor} role="status">팀 메모를 불러오고 있어요</p>}
+  </section>
+
+  return <section className={styles.note} aria-label="팀 메모">
+    <h3 className={styles.sectionTitle}>팀 메모</h3>
+    {legacy && <div className={styles.comment}>
+      <p className={styles.noteAuthor}>이전 팀 메모{legacy.updatedByName ? ` · ${legacy.updatedByName}` : ''}{legacy.updatedAt ? ` · ${formatWhen(legacy.updatedAt)}` : ''}</p>
+      <p className={styles.plain}>{legacy.markdown}</p>
+    </div>}
+    {items.length > 0 && <ul className={styles.comments} aria-label="남긴 메모">
+      {items.map((item) => <li key={item.id} className={styles.comment}>
+        <p className={styles.noteAuthor}><strong>{item.author.name}</strong> · {formatWhen(item.createdAt)}</p>
+        <p className={styles.plain}>{item.body}</p>
+        {item.author.userId === user?.id && (confirming === item.id
+          ? <div className={styles.actions}>
+            <span>이 메모를 삭제할까요?</span>
+            <Button variant="dangerText" loading={deleting} onClick={() => void remove(item.id)}>삭제</Button>
+            {/* 실수로 지우지 않게 취소에 먼저 포커스를 둔다 */}
+            <Button variant="text" autoFocus disabled={deleting}
+              onClick={() => { focusAfter.current = item.id; setConfirming(undefined) }}>취소</Button>
+          </div>
+          : <div className={styles.actions}><Button variant="text" data-comment-delete={item.id}
+            onClick={() => { setConfirming(item.id); setDeleteError(undefined) }}>삭제</Button></div>)}
+      </li>)}
+    </ul>}
+    {items.length === 0 && !legacy && <p className={styles.noteBody}>아직 남긴 메모가 없어요. 팀원에게 첫 메모를 남겨 보세요.</p>}
+    {nextCursor && <Button variant="text" onClick={() => void more()}>메모 더 보기</Button>}
+    <RequestError error={loadError} />
+    <RequestError error={deleteError} />
+    <form className={styles.commentForm} onSubmit={(event) => { event.preventDefault(); void send() }}>
+      <Field id={inputId} label="메모 남기기" multiline rows={2} maxLength={limits.comment} value={pending ? pending.body : draft}
+        disabled={sending || !!pending} description="Enter로 남기고 Shift와 Enter로 줄을 바꿔요"
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          // 한글 조합 중의 Enter는 글자를 확정할 뿐이다
+          if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+          event.preventDefault()
+          void send()
+        }} />
+      <div className={styles.actions}>
+        <Button type="submit" loading={sending} disabled={!pending && !draft.trim()}>{pending ? '다시 보내기' : '남기기'}</Button>
+      </div>
+    </form>
+    <RequestError error={sendError} />
+  </section>
+}

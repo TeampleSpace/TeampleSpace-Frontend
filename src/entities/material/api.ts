@@ -4,7 +4,8 @@ import { errorBodySchema } from '../../shared/api/contract.ts'
 import { api } from '../session/api.ts'
 import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema,
-  materialNoteSchema, materialSchema, materialSourceSchema, uploadTicketSchema,
+  materialNoteSchema, materialSchema, materialSourceSchema, uploadTicketSchema, materialCommentSchema,
+  materialCommentListSchema, materialCommentDeletedSchema,
 } from './model.ts'
 import type { MaterialKind, MaterialSummary, UploadTicket } from './model.ts'
 
@@ -39,6 +40,14 @@ export function createMaterialsApi(client: ApiClient, fetchImpl: typeof fetch = 
     note: (id: string, signal?: AbortSignal) => client.request(`/materials/${segment(id)}/note`, materialNoteSchema, { timeoutMs: 10000, signal }),
     saveNote: (id: string, expectedVersion: number, markdown: string) =>
       client.request(`/materials/${segment(id)}/note`, materialNoteSavedSchema, { method: 'PUT', body: { expectedVersion, markdown }, timeoutMs: 15000 }),
+    // 오래된 댓글부터 온다. cursor는 앞 페이지 마지막 댓글이다
+    comments: (id: string, cursor?: string, signal?: AbortSignal) =>
+      client.request(`/materials/${segment(id)}/comments${cursor ? `?${new URLSearchParams({ cursor })}` : ''}`, materialCommentListSchema, { timeoutMs: 10000, signal }),
+    // 응답을 받지 못하면 같은 키로 다시 보낸다
+    addComment: (id: string, body: string, key: string) =>
+      client.request(`/materials/${segment(id)}/comments`, materialCommentSchema, { method: 'POST', body: { body }, idempotencyKey: key, timeoutMs: 15000 }),
+    deleteComment: (id: string, commentId: string) =>
+      client.request(`/materials/${segment(id)}/comments/${segment(commentId)}`, materialCommentDeletedSchema, { method: 'DELETE', timeoutMs: 15000 }),
     job: (id: string, signal?: AbortSignal) => client.request(`/jobs/${segment(id)}`, jobSchema, { timeoutMs: 10000, signal }),
     // 한 개정의 원문. 개정을 주지 않으면 현재 개정이다
     source: (id: string, revisionId?: string, signal?: AbortSignal) =>

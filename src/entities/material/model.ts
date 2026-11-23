@@ -83,8 +83,16 @@ export const materialNoteSchema = z.object({
 export type MaterialNote = z.infer<typeof materialNoteSchema>
 export const materialNoteSavedSchema = z.object({ materialId: z.string(), version, eventId: z.string() })
 
+export const materialCommentSchema = z.object({
+  id: z.string(), materialId: z.string(), body: z.string(),
+  author: z.object({ userId: z.string(), name: z.string() }), createdAt: z.string(),
+})
+export type MaterialComment = z.infer<typeof materialCommentSchema>
+export const materialCommentListSchema = z.object({ items: z.array(materialCommentSchema), nextCursor: z.string().nullable() })
+export const materialCommentDeletedSchema = z.object({ id: z.string(), materialId: z.string(), deleted: z.literal(true) })
+
 // 계약이 정한 입력 길이
-export const limits = { title: 255, description: 2000, markdown: 100000, note: 20000, url: 2048 }
+export const limits = { title: 255, description: 2000, markdown: 100000, note: 20000, comment: 2000, url: 2048 }
 
 export const kindLabels: Record<MaterialKind, string> = { file: 'PDF', link: '링크', memo: '메모' }
 export const statusLabels: Record<MaterialSummary['status'], string> = {

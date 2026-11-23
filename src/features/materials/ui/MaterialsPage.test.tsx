@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import MaterialsPage from './MaterialsPage.tsx'
+import { materialsApi } from '../../../entities/material/api.ts'
 import { projectsApi } from '../../../entities/project/api.ts'
 import type { Project } from '../../../entities/project/model.ts'
 import { SessionContext } from '../../../entities/session/sessionContext.ts'
@@ -230,34 +231,154 @@ test('서버가 삭제를 거절하면 이유를 알리고 자료를 남긴다',
   expect(mock.get(id)?.deleted).toBe(false)
 })
 
-test('팀 메모는 충돌해도 내 입력을 남기고 선택한 뒤에만 덮어쓴다', async () => {
+// 남긴 메모 목록에 보이는 본문 순서
+function shownComments() {
+  const list = screen.getByRole('list', { name: '남긴 메모' })
+  return within(list).getAllByRole('listitem').map((item) => item.querySelector('p:last-of-type')?.textContent)
+}
+
+test('팀 메모는 댓글처럼 남기고 다른 팀원의 메모를 새로고침 없이 보여 주며 내 메모만 지운다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
   const id = mock.seed('file', '보고서.pdf')
+  mock.saveNoteAs(id, member, '예전에 함께 쓰던 메모')
+  mock.commentAs(id, member, '12쪽 표를 2장에 넣어요')
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
-  const input = screen.getByLabelText('팀 메모 내용') as HTMLTextAreaElement
-  fireEvent.change(input, { target: { value: '내가 쓴 메모' } })
-  mock.saveNoteAs(id, member, '팀원이 먼저 쓴 메모')
-  fireEvent.click(screen.getByRole('button', { name: '저장' }))
-  expect(await screen.findByText('팀원 2님이 먼저 저장했어요. 내 입력은 그대로 있어요')).toBeTruthy()
-  expect(screen.getByText('팀원이 먼저 쓴 메모')).toBeTruthy()
-  expect(input.value).toBe('내가 쓴 메모')
-  expect(mock.get(id)?.note.markdown).toBe('팀원이 먼저 쓴 메모')
-  fireEvent.click(screen.getByRole('button', { name: '내 내용으로 저장' }))
-  expect(await screen.findByRole('button', { name: '메모 수정' })).toBeTruthy()
-  expect(mock.get(id)?.note).toMatchObject({ markdown: '내가 쓴 메모', version: 2 })
-  expect(await screen.findByText('내가 쓴 메모')).toBeTruthy()
+  expect(await screen.findByText('예전에 함께 쓰던 메모')).toBeTruthy()
+  expect(screen.getByText(/이전 팀 메모/)).toBeTruthy()
+  expect(await screen.findByText('12쪽 표를 2장에 넣어요')).toBeTruthy()
+  const input = screen.getByLabelText('메모 남기기') as HTMLTextAreaElement
+  fireEvent.change(input, { target: { value: '  출처도 같이 적을게요  ' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  expect(await screen.findByText('출처도 같이 적을게요')).toBeTruthy()
+  expect(input.value).toBe('')
+  expect(mock.get(id)?.comments.map((comment) => comment.body)).toEqual(['12쪽 표를 2장에 넣어요', '출처도 같이 적을게요'])
+
+  // 다른 팀원이 남긴 메모가 새로고침 없이 나타난다
+  mock.commentAs(id, member, '좋아요, 그렇게 해요')
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(await screen.findByText('좋아요, 그렇게 해요')).toBeTruthy()
+
+  // 내 메모에만 삭제가 있고 확인한 뒤에 지운다
+  const comments = screen.getAllByRole('listitem').filter((item) => item.closest('[aria-label="남긴 메모"]'))
+  expect(within(comments[0]).queryByRole('button', { name: '삭제' })).toBeNull()
+  fireEvent.click(within(comments[1]).getByRole('button', { name: '삭제' }))
+  fireEvent.click(within(comments[1]).getByRole('button', { name: '삭제' }))
+  await waitFor(() => expect(screen.queryByText('출처도 같이 적을게요')).toBeNull())
+  expect(mock.get(id)?.comments.find((comment) => comment.body === '출처도 같이 적을게요')?.deleted).toBe(true)
+  vi.useRealTimers()
 })
 
-test('팀 메모 저장 응답을 못 받아도 다시 읽어 같으면 저장된 것으로 본다', async () => {
+test('다른 팀원이 쓴 직후 내가 써도 그 사이 남의 메모를 건너뛰지 않고 더 보기 실패를 알린다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
   const id = mock.seed('file', '보고서.pdf')
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
-  fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '한 번만 저장할 메모' } })
-  mock.faults.dropNextResponse = 'PUT /v1/materials'
-  fireEvent.click(screen.getByRole('button', { name: '저장' }))
-  expect(await screen.findByRole('button', { name: '메모 수정' })).toBeTruthy()
-  expect(mock.get(id)?.note.version).toBe(1)
-  expect(mock.calls.filter((call) => call.method === 'PUT')).toHaveLength(1)
+  const input = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
+  // 다음 주기 조회 전에 팀원이 먼저 쓰고 이어서 내가 쓴다
+  mock.commentAs(id, member, '팀원이 먼저 쓴 메모')
+  fireEvent.change(input, { target: { value: '내가 이어서 쓴 메모' } })
+  fireEvent.click(screen.getByRole('button', { name: '남기기' }))
+  expect(await screen.findByText('내가 이어서 쓴 메모')).toBeTruthy()
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(await screen.findByText('팀원이 먼저 쓴 메모')).toBeTruthy()
+  // 나중에 읽었어도 먼저 쓴 메모가 앞에 온다
+  expect(shownComments()).toEqual(['팀원이 먼저 쓴 메모', '내가 이어서 쓴 메모'])
+  vi.useRealTimers()
+
+  // 50개가 넘어 더 보기가 실패하면 이유를 보여 준다
+  for (let index = 0; index < 51; index++) mock.commentAs(id, member, `쌓인 메모 ${index}`)
+  cleanup()
+  mount()
+  // 남은 페이지를 읽기 전에 쓴 내 메모는 나중에 읽은 메모들보다 뒤에 둔다
+  const next = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
+  fireEvent.change(next, { target: { value: '더 보기 전에 쓴 메모' } })
+  fireEvent.click(screen.getByRole('button', { name: '남기기' }))
+  expect(await screen.findByText('더 보기 전에 쓴 메모')).toBeTruthy()
+  fireEvent.click(await screen.findByRole('button', { name: '메모 더 보기' }))
+  await waitFor(() => expect(screen.getByText('쌓인 메모 50')).toBeTruthy())
+  expect(screen.queryByRole('button', { name: '메모 더 보기' })).toBeNull()
+  expect(shownComments().slice(-2)).toEqual(['쌓인 메모 50', '더 보기 전에 쓴 메모'])
+})
+
+test('다른 팀원이 지운 메모는 다음 조회에서 빠지고 내가 지운 메모는 늦게 온 조회 응답에도 다시 보이지 않는다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const id = mock.seed('file', '보고서.pdf')
+  mock.commentAs(id, member, '팀원이 지울 메모')
+  mock.commentAs(id, mock.ownerId, '내가 지울 메모')
+  mount()
+  expect(await screen.findByText('팀원이 지울 메모')).toBeTruthy()
+  mock.get(id)!.comments.find((comment) => comment.body === '팀원이 지울 메모')!.deleted = true
+  await vi.advanceTimersByTimeAsync(5000)
+  await waitFor(() => expect(screen.queryByText('팀원이 지울 메모')).toBeNull())
+
+  // 지우기 전에 시작한 조회 응답이 삭제 응답보다 늦게 온다
+  const stale = await materialsApi.comments(id)
+  let release: () => void = () => {}
+  vi.spyOn(materialsApi, 'comments').mockImplementationOnce(() => new Promise((done) => { release = () => done(stale) }))
+  await vi.advanceTimersByTimeAsync(5000)
+  const mine = screen.getAllByRole('listitem').find((item) => item.textContent?.includes('내가 지울 메모'))!
+  fireEvent.click(within(mine).getByRole('button', { name: '삭제' }))
+  fireEvent.click(within(mine).getByRole('button', { name: '삭제' }))
+  await waitFor(() => expect(screen.queryByText('내가 지울 메모')).toBeNull())
+  release()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(screen.queryByText('내가 지울 메모')).toBeNull()
+  vi.useRealTimers()
+})
+
+test('주기적으로 메모를 읽다가 접근 권한을 잃으면 자료와 메모를 가린다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const id = mock.seed('file', '보고서.pdf')
+  mock.commentAs(id, member, '가려야 할 메모')
+  mount()
+  expect(await screen.findByText('가려야 할 메모')).toBeTruthy()
+  mock.faults.failNext = { match: `GET /v1/materials/${id}/comments`, code: 'ACCESS_DENIED' }
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(await screen.findByText('이 프로젝트에 더 이상 접근할 수 없습니다')).toBeTruthy()
+  expect(screen.queryByText('가려야 할 메모')).toBeNull()
+  vi.useRealTimers()
+})
+
+test('메모 더 보기가 실패하면 목록 아래에 이유를 보여 준다', async () => {
+  const id = mock.seed('file', '보고서.pdf')
+  for (let index = 0; index < 51; index++) mock.commentAs(id, member, `쌓인 메모 ${index}`)
+  mount()
+  const more = await screen.findByRole('button', { name: '메모 더 보기' })
+  mock.faults.failNext = { match: 'GET /v1/materials', code: 'SERVICE_UNAVAILABLE' }
+  fireEvent.click(more)
+  expect(await screen.findByRole('alert')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '메모 더 보기' })).toBeTruthy()
+})
+
+test('메모 삭제 확인은 취소에 포커스를 두고 닫으면 원래 버튼이나 입력란으로 포커스를 돌려준다', async () => {
+  const id = mock.seed('file', '보고서.pdf')
+  mock.commentAs(id, mock.ownerId, '지울 메모')
+  mount()
+  await screen.findByText('지울 메모')
+  const remove = screen.getByRole('button', { name: '삭제' })
+  fireEvent.click(remove)
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '취소' }))
+  fireEvent.click(screen.getByRole('button', { name: '취소' }))
+  await waitFor(() => expect(document.activeElement?.textContent).toBe('삭제'))
+  fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+  fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[0])
+  await waitFor(() => expect(screen.queryByText('지울 메모')).toBeNull())
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('메모 남기기')))
+})
+
+test('메모 전송 응답을 못 받으면 같은 키로 다시 보내 한 번만 남기고 한글 조합 중의 Enter로는 보내지 않는다', async () => {
+  const id = mock.seed('file', '보고서.pdf')
+  mount()
+  const input = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
+  fireEvent.change(input, { target: { value: '한 번만 남길 메모' } })
+  fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+  expect(mock.calls.filter((call) => call.method === 'POST' && call.path.endsWith('/comments'))).toHaveLength(0)
+  mock.faults.dropNextResponse = 'POST /v1/materials'
+  fireEvent.click(screen.getByRole('button', { name: '남기기' }))
+  fireEvent.click(await screen.findByRole('button', { name: '다시 보내기' }))
+  expect(await screen.findByText('한 번만 남길 메모')).toBeTruthy()
+  const posts = mock.calls.filter((call) => call.method === 'POST' && call.path.endsWith('/comments'))
+  expect(posts).toHaveLength(2)
+  expect(mock.get(id)?.comments).toHaveLength(1)
 })
 
 test('팀 메모를 쓰는 중에는 다른 자료로 옮기기 전에 확인한다', async () => {
@@ -265,8 +386,7 @@ test('팀 메모를 쓰는 중에는 다른 자료로 옮기기 전에 확인한
   mock.seed('memo', '둘째 메모')
   const router = mount()
   await detailTitle('둘째 메모')
-  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
-  const input = screen.getByLabelText('팀 메모 내용') as HTMLTextAreaElement
+  const input = await screen.findByLabelText('메모 남기기') as HTMLTextAreaElement
   fireEvent.change(input, { target: { value: '저장하지 않은 메모' } })
   // 검색어를 바꾸는 것은 입력을 잃지 않으므로 막지 않는다
   fireEvent.change(screen.getByRole('searchbox', { name: '자료 검색' }), { target: { value: '메모' } })
@@ -357,20 +477,21 @@ test('추가 페이지의 처리 중 자료도 갱신하고 더 이상 불필요
   await vi.advanceTimersByTimeAsync(2100)
   await waitFor(() => expect(target.textContent).not.toContain('처리 중'))
   expect(screen.getAllByRole('link').filter((link) => link.textContent?.includes('새 메모'))).toHaveLength(31)
-  const requests = mock.calls.length
+  // 팀 메모의 새 댓글 확인은 따로 주기적으로 읽으니 자료 요청만 센다
+  const materialCalls = () => mock.calls.filter((call) => !call.path.includes('/comments'))
+  const requests = materialCalls().length
   await vi.advanceTimersByTimeAsync(4200)
-  expect(mock.calls).toHaveLength(requests)
+  expect(materialCalls()).toHaveLength(requests)
 })
 
 test('열어 둔 자료가 외부에서 삭제되면 복귀 시 본문과 편집 중인 메모를 가린다', async () => {
   const id = mock.seed('memo', '삭제될 회의록', { markdown: '더 이상 표시하면 안 되는 본문' })
   mount(`?material=${id}`)
-  fireEvent.click(await screen.findByRole('button', { name: '메모 작성' }))
-  fireEvent.change(screen.getByLabelText('팀 메모 내용'), { target: { value: '미저장 팀 메모' } })
+  fireEvent.change(await screen.findByLabelText('메모 남기기'), { target: { value: '미저장 팀 메모' } })
   mock.get(id)!.deleted = true
   fireEvent(window, new Event('focus'))
   expect(await screen.findByText('삭제된 자료예요')).toBeTruthy()
   expect(screen.queryByText('더 이상 표시하면 안 되는 본문')).toBeNull()
-  expect(screen.queryByLabelText('팀 메모 내용')).toBeNull()
+  expect(screen.queryByLabelText('메모 남기기')).toBeNull()
   expect(screen.queryByRole('button', { name: '자료 관리' })).toBeNull()
 })

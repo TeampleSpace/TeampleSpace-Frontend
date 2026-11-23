@@ -18,7 +18,8 @@ import type { ManageAction } from './MaterialDetail.tsx'
 import { MaterialCreateDialog } from './MaterialCreateDialog.tsx'
 import type { InputType } from './MaterialCreateDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
-import { MaterialNote } from './MaterialNote.tsx'
+import { TeamComments } from './TeamComments.tsx'
+import { MemoPad } from './MemoPad.tsx'
 import { MaterialJob } from './MaterialJob.tsx'
 import { MaterialAiSummary } from './MaterialAiSummary.tsx'
 import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from '../../../entities/material/model.ts'
@@ -91,11 +92,11 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const [detailError, setDetailError] = useState<{ id: string; reason: unknown } | null>(null)
   const [detailRevision, setDetailRevision] = useState(0)
   const [noteDirty, setNoteDirty] = useState(false)
+  const [memoDirty, setMemoDirty] = useState(false)
   const [view, setView] = useState<ManageAction | null>(null)
   // 열려 있는 자료 추가 모달. edit이 있으면 마크다운 자료 수정이다
   const [create, setCreate] = useState<{ type: InputType; edit?: { material: Material; markdown: string } } | null>(null)
   const [createDirty, setCreateDirty] = useState(false)
-  const [manageError, setManageError] = useState<unknown>()
   // 원문을 보고 있는 자료
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
@@ -164,7 +165,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   }, [loadList, listRevision])
 
   // 목록이 바뀌면 보여 줄 자료를 정한다. 메모를 쓰는 중에는 옮기지 않는다
-  if (visibleList && visibleList !== pinnedFrom && !noteDirty) {
+  if (visibleList && visibleList !== pinnedFrom && !noteDirty && !memoDirty) {
     setPinnedFrom(visibleList)
     if (!pinnedId || !visibleList.items.some((item) => item.id === pinnedId)) setPinnedId(visibleList.items[0]?.id ?? null)
   }
@@ -274,13 +275,6 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   }
 
   // 마크다운 자료는 현재 개정의 본문을 읽어 와서 고친다
-  async function editMemo(material: Material) {
-    setManageError(undefined)
-    try {
-      const source = await materialsApi.source(material.id)
-      setCreate({ type: 'memo', edit: { material, markdown: source.markdown ?? '' } })
-    } catch (reason) { setManageError(reason); onError(reason) }
-  }
   function created(material: Material) {
     const edited = !!create?.edit
     setCreate(null); setCreateDirty(false)
@@ -288,7 +282,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
     setListRevision((value) => value + 1)
     setDetailRevision((value) => value + 1)
     // 팀 메모를 쓰는 중이면 새 자료로 옮기지 않는다
-    if (edited || noteDirty) return
+    if (edited || noteDirty || memoDirty) return
     const next = new URLSearchParams(params)
     next.set('material', material.id)
     skipGuard.current = true
@@ -303,7 +297,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const overlays = <>
     {create && <MaterialCreateDialog key={create.edit?.material.id ?? 'new'} project={project} initial={create.type} edit={create.edit}
       onClose={() => { setCreate(null); setCreateDirty(false) }} onDone={created} onDirtyChange={setCreateDirty} onError={onError} />}
-    <UnsavedGuard dirty={noteDirty || createDirty} when={blocks} />
+    <UnsavedGuard dirty={noteDirty || memoDirty || createDirty} when={blocks} />
   </>
 
   // 새 검색을 불러오는 동안에도 이전 목록과 입력란을 그대로 둔다
@@ -358,13 +352,14 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
           onRetry={() => void reprocess()} onManage={setView}
-          actions={visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
+          actions={visible.kind !== 'memo' && visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
           jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}
-          summary={visible.status === 'ready' && visible.currentRevision && <MaterialAiSummary key={visible.currentRevision.id}
-            material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />}
-          extraMenu={visible.kind === 'memo' && visible.status === 'ready' ? (close) => <Button variant="text" role="menuitem" onClick={() => { close(); void editMemo(visible) }}>내용 수정</Button> : undefined}>
-          <RequestError error={manageError} />
-          <MaterialNote key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
+          summary={visible.status === 'ready' && visible.currentRevision && <>
+            {/* 메모 자료는 본문을 바로 보여 주고 고친다. AI 요약은 그 아래에 둔다 */}
+            {visible.kind === 'memo' && <MemoPad key={visible.id} material={visible} onSaved={apply} onDirtyChange={setMemoDirty} onError={onError} />}
+            <MaterialAiSummary key={visible.currentRevision.id} material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />
+          </>}>
+          <TeamComments key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}
         {!visible && selectedId && gone && <div className={styles.guidance}>
           <p>{detailError?.reason instanceof ApiError && detailError.reason.code === 'MATERIAL_DELETED' ? '삭제된 자료예요' : '자료를 찾을 수 없어요'}</p>
