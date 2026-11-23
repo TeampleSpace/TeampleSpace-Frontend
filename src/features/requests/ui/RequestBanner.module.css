@@ -1,0 +1,6 @@
+.banner { display: flex; flex-direction: column; gap: var(--space-8); animation: var(--motion-feedback-enter); }
+.item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-16); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-primary-soft); }
+.item p { margin: 0; flex: 1 1 240px; min-width: 0; font: var(--text-body); color: var(--color-ink); overflow-wrap: anywhere; }
+.item[role='status'] { background: var(--color-surface); }
+.item .failed { color: var(--color-danger); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }

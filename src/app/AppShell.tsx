@@ -4,6 +4,7 @@ import { projectsApi } from '../entities/project/api.ts'
 import type { Project } from '../entities/project/model.ts'
 import { Button } from '../shared/ui/Button.tsx'
 import type { CurrentProject } from '../shared/lib/shellContext.ts'
+import { RequestBanner } from '../features/requests/ui/RequestBanner.tsx'
 import styles from './AppShell.module.css'
 
 export default function AppShell() {
@@ -100,6 +101,9 @@ export default function AppShell() {
       <NavLink to="/account" className={styles.account}><img src="/assets/navigation/user.svg" alt="" />내 계정</NavLink>
       </div>
     </aside>
-    <div className={styles.workspace}><Outlet context={{ setCurrentProject }} /></div>
+    <div className={styles.workspace}>
+      {match?.params.projectId && <RequestBanner key={match.params.projectId} projectId={match.params.projectId} />}
+      <Outlet context={{ setCurrentProject }} />
+    </div>
   </div>
 }
