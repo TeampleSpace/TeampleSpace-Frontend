@@ -45,6 +45,13 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   // 다른 팀원의 저장으로 다시 읽는 중에 입력이 생기면 응답으로 덮어쓰지 않는다
   const reloading = useRef(false)
   const editedSince = useRef(false)
+  // 다시 읽지 못한 개정. 다시 불러오기를 누르기 전에는 같은 개정을 반복해 읽지 않는다
+  const failedFor = useRef<string>(undefined)
+  const external = material.currentRevision?.id
+  const externalRef = useRef(external)
+  useEffect(() => { externalRef.current = external })
+  // 본문 조회가 끝날 때마다 늘려 그 사이 바뀐 개정을 다시 확인한다
+  const [settled, setSettled] = useState(0)
   const version = useRef(material.version)
   const composing = useRef(false)
   // 충돌을 고르기 전에는 저장하지 않는다
@@ -59,16 +66,25 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
         if (controller.signal.aborted) return
         const skip = reloading.current && editedSince.current
         reloading.current = false
+        setSettled((value) => value + 1)
         if (skip) return
         const text = source.markdown ?? ''
         version.current = current.version
         shown.current = current.currentRevision?.id
+        failedFor.current = undefined
         savedRef.current = text
         setSaved(text)
         setDraft(text)
         setLoadError(undefined)
       })
-      .catch((reason) => { if (!controller.signal.aborted) { setLoadError(reason); onError(reason) } })
+      .catch((reason) => {
+        if (controller.signal.aborted) return
+        if (reloading.current) failedFor.current = externalRef.current
+        reloading.current = false
+        setLoadError(reason)
+        onError(reason)
+        setSettled((value) => value + 1)
+      })
     return () => controller.abort()
   }, [material.id, revision, onError])
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -78,16 +94,19 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const dirty = draft !== undefined && (draft !== saved || sending)
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
 
-  // 입력 중이 아니면 다른 사람이 저장한 새 개정의 본문을 다시 읽는다
-  const external = material.currentRevision?.id
+  // 입력 중이 아니면 다른 사람이 저장한 새 개정의 본문을 다시 읽는다. 표시 개정은 읽기에 성공한 뒤에 바꾼다
   useEffect(() => {
     if (!external || shown.current === undefined || external === shown.current) return
-    if (dirty || blocked.current || saving.current) return
-    shown.current = external
+    if (dirty || blocked.current || saving.current || reloading.current || failedFor.current === external) return
+    reload()
+  }, [external, dirty, settled])
+
+  function reload() {
+    failedFor.current = undefined
     reloading.current = true
     editedSince.current = false
     queueMicrotask(() => setRevision((value) => value + 1))
-  }, [external, dirty])
+  }
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
   function done(next: Material, text: string) {
@@ -199,6 +218,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
         <Button variant="secondary" onClick={takeLatest}>최신 내용으로 바꾸기</Button>
       </div>
     </div>}
+    {/* 다른 팀원이 고친 본문을 읽지 못했다. 고치는 중이면 저장할 때 충돌로 알린다 */}
+    <RequestError error={loadError} action={dirty ? undefined : <Button variant="secondary" onClick={() => { setLoadError(undefined); reload() }}>다시 불러오기</Button>} />
     <RequestError error={error} action={status === 'failed'
       ? <Button variant="secondary" onClick={() => void save()}>다시 저장</Button> : undefined} />
   </section>
