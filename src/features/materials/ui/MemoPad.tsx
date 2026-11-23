@@ -42,6 +42,9 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const savedRef = useRef('')
   // 지금 편집기에 보이는 본문의 개정
   const shown = useRef<string>(undefined)
+  // 다른 팀원의 저장으로 다시 읽는 중에 입력이 생기면 응답으로 덮어쓰지 않는다
+  const reloading = useRef(false)
+  const editedSince = useRef(false)
   const version = useRef(material.version)
   const composing = useRef(false)
   // 충돌을 고르기 전에는 저장하지 않는다
@@ -54,6 +57,9 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     void latestOf(material.id, controller.signal)
       .then(([current, source]) => {
         if (controller.signal.aborted) return
+        const skip = reloading.current && editedSince.current
+        reloading.current = false
+        if (skip) return
         const text = source.markdown ?? ''
         version.current = current.version
         shown.current = current.currentRevision?.id
@@ -78,6 +84,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     if (!external || shown.current === undefined || external === shown.current) return
     if (dirty || blocked.current || saving.current) return
     shown.current = external
+    reloading.current = true
+    editedSince.current = false
     queueMicrotask(() => setRevision((value) => value + 1))
   }, [external, dirty])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
@@ -137,6 +145,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   }
 
   function change(value: string) {
+    editedSince.current = true
     setDraft(value)
     if (blocked.current) return
     setStatus('waiting')
