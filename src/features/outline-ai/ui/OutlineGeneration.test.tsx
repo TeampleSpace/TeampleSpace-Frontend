@@ -205,3 +205,27 @@ test('분석 중인 자료는 고를 수 없게 보여 주고 창을 열어 둔 
   expect(form.queryByText('분석 중')).toBeNull()
   expect(form.getByRole('checkbox', { name: source.title })).toHaveProperty('checked', true)
 })
+
+test('다시 읽는 동안 추가 페이지의 분석 상태를 갱신하고 그 페이지에서 고른 자료를 유지한다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const later: MaterialSummary = { ...source, id: 'later', title: '두 번째 페이지 메모' }
+  const pdf: MaterialSummary = { ...source, id: 'pdf', title: '두 번째 페이지 PDF', kind: 'file', status: 'processing' }
+  const counts = { all: 3, file: 1, link: 0, memo: 2 }
+  const first = { items: [source], nextCursor: 'page-2', counts }
+  vi.mocked(materialsApi.list).mockReset()
+    .mockResolvedValueOnce(first)
+    .mockResolvedValueOnce({ items: [later, pdf], nextCursor: null, counts })
+    .mockResolvedValue(first)
+  vi.spyOn(materialsApi, 'get').mockResolvedValue({ ...pdf, status: 'ready' } as never)
+  mount(true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
+  const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
+  fireEvent.click(await form.findByRole('button', { name: '자료 더 보기' }))
+  expect(await form.findByRole('checkbox', { name: /두 번째 페이지 PDF/ })).toHaveProperty('disabled', true)
+  fireEvent.click(form.getByRole('checkbox', { name: later.title }))
+
+  await vi.advanceTimersByTimeAsync(4000)
+  await waitFor(() => expect(form.getByRole('checkbox', { name: '두 번째 페이지 PDF' })).toHaveProperty('disabled', false))
+  expect(materialsApi.get).toHaveBeenCalledWith('pdf')
+  expect(form.getByRole('checkbox', { name: later.title })).toHaveProperty('checked', true)
+})
