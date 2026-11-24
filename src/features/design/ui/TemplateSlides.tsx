@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { designApi } from '../api.ts'
-import type { DesignTemplate } from '../api.ts'
+import type { DesignTemplate, TemplatePreview } from '../api.ts'
 import { StudioPreview } from './StudioPreview.tsx'
 import { previewSlides } from './templatePreviewSlides.ts'
 import styles from './DesignPage.module.css'
 
-type State = { status: 'loading' } | { status: 'failed' } | { status: 'ready'; slides: ReturnType<typeof previewSlides> }
+type State = { status: 'loading' } | { status: 'failed' }
+  | { status: 'ready'; canvas: TemplatePreview['canvas']; slides: ReturnType<typeof previewSlides> }
 
 // 생성 엔진이 그린 예시 슬라이드를 보여 준다. 불러오는 동안과 실패하면 기존 시안을 보여 준다
 export function TemplateSlides({ template, fallback }: { template: DesignTemplate; fallback: ReactNode }) {
@@ -18,7 +19,7 @@ export function TemplateSlides({ template, fallback }: { template: DesignTemplat
   useEffect(() => {
     const controller = new AbortController()
     designApi.preview(template.id, controller.signal)
-      .then((preview) => setState({ status: 'ready', slides: previewSlides(template.key, preview) }))
+      .then((preview) => setState({ status: 'ready', canvas: preview.canvas, slides: previewSlides(template.key, preview) }))
       .catch(() => { if (!controller.signal.aborted) setState({ status: 'failed' }) })
     return () => controller.abort()
   }, [template.id, template.key, attempt])
@@ -30,7 +31,7 @@ export function TemplateSlides({ template, fallback }: { template: DesignTemplat
 
   if (state.status === 'ready') {
     return <div ref={slides} className={styles.previewSlides} tabIndex={-1} aria-label="실제 배치 미리보기">
-      {state.slides.map(({ label, document }) => <StudioPreview key={document.id} slide={document} label={label} />)}
+      {state.slides.map(({ label, document }) => <StudioPreview key={document.id} slide={document} label={label} canvas={state.canvas} />)}
     </div>
   }
   return <>
