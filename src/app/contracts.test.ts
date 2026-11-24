@@ -22,6 +22,7 @@ import {
 import { createEditorSession } from '../features/editor/session.ts'
 import { createMaterialsApi } from '../entities/material/api.ts'
 import { outlineSchema } from '../features/outline/model.ts'
+import { templatePreviewSchema } from '../features/design/api.ts'
 import {
   jobSchema, materialCreatedSchema, materialDeletedSchema, materialListSchema, materialNoteSavedSchema, materialNoteSchema,
   materialSchema, materialSourceSchema, materialSummarySchema, uploadTicketSchema,
@@ -97,6 +98,7 @@ const frontendSchemas = [
   ['stage-3.schema.json#/$defs/Outline', outlineSchema],
   [api('ChangeRequest'), changeRequestSchema],
   [api('ChangeRequestList'), changeRequestListSchema],
+  ['stage-3-design.schema.json#/$defs/TemplatePreview', templatePreviewSchema],
 ] as const
 
 test('프론트엔드 형식이 계약의 올바른 예제를 모두 받아들인다', () => {

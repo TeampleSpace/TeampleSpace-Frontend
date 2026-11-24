@@ -18,7 +18,7 @@ vi.mock('../../../entities/request/api.ts', async (importOriginal) => ({
 
 vi.mock('../api.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../api.ts')>(),
-  designApi: { catalog: vi.fn(), get: vi.fn(), save: vi.fn() },
+  designApi: { catalog: vi.fn(), get: vi.fn(), save: vi.fn(), preview: vi.fn() },
 }))
 
 vi.mock('../fontsApi.ts', async (importOriginal) => ({
@@ -53,6 +53,8 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [template], allowedFonts: ['Pretendard'] })
   vi.mocked(designApi.get).mockResolvedValue(initial)
+  // 따로 정하지 않으면 실제 배치를 불러오는 중으로 둔다
+  vi.mocked(designApi.preview).mockReturnValue(new Promise(() => {}))
 })
 
 afterEach(cleanup)
@@ -82,6 +84,34 @@ test('목차와 본문 시안이 있는 템플릿은 상세 미리보기에 시�
   const generic = screen.getByRole('dialog', { name: '에디토리얼' })
   expect(within(generic).queryByText('오늘 이야기할 내용')).toBeNull()
   expect(within(generic).getAllByText('발표 제목과 핵심 메시지').length).toBeGreaterThan(0)
+})
+
+test('상세 미리보기는 서버가 그린 실제 배치를 이름과 함께 보여 주고 실패하면 시안을 두고 다시 시도한다', async () => {
+  const text = (value: string, y: number) => ({ type: 'text' as const, geometry: { x: 80, y, width: 600, height: 60, rotation: 0, z: 1 },
+    content: { text: value }, style: { fontFamily: 'Pretendard', fontSize: 40, fontWeight: 700, color: '#212735', align: 'left' as const, lineHeight: 1.2 } })
+  const background = { type: 'shape' as const, geometry: { x: 0, y: 0, width: 1280, height: 720, rotation: 0, z: 0 },
+    content: { shape: 'rect' as const }, style: { fill: '#FFFFFF', stroke: null, strokeWidth: 0 } }
+  vi.mocked(designApi.preview)
+    .mockRejectedValueOnce(new TransportError('network'))
+    .mockResolvedValueOnce({ templateId: template.id, templateVersion: 1, canvas: { width: 1280, height: 720, unit: 'px' }, slides: [
+      { layoutId: 'title', elements: [background, text('캠퍼스 일회용품, 줄일 수 있을까', 250)] },
+      { layoutId: 'process', elements: [background, text('실행 계획', 80)] },
+    ] })
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 미리보기' }))
+  const dialog = screen.getByRole('dialog', { name: '클린 리포트' })
+  expect(await within(dialog).findByRole('alert')).toBeTruthy()
+  expect(within(dialog).getByText('오늘 이야기할 내용')).toBeTruthy()
+  expect(designApi.preview).toHaveBeenCalledWith(template.id, expect.any(AbortSignal))
+
+  fireEvent.click(within(dialog).getByRole('button', { name: '다시 시도' }))
+  expect(await within(dialog).findByText('캠퍼스 일회용품, 줄일 수 있을까')).toBeTruthy()
+  expect(within(dialog).getByText('표지')).toBeTruthy()
+  expect(within(dialog).getByText('단계')).toBeTruthy()
+  expect(within(dialog).queryByText('오늘 이야기할 내용')).toBeNull()
+  expect(within(dialog).queryByRole('alert')).toBeNull()
+  expect(document.activeElement).toBe(within(dialog).getByLabelText('실제 배치 미리보기'))
+  expect(designApi.preview).toHaveBeenCalledTimes(2)
 })
 
 test('아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 그 뒤에 보여 준다', async () => {
