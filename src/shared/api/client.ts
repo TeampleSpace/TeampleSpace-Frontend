@@ -90,6 +90,29 @@ function waitUnless<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
   })
 }
 
+// 응답을 받기 전에 끝난 요청의 이유를 정리한다
+function transportFailure(cause: unknown, callerSignal?: AbortSignal): unknown {
+  // 호출한 쪽에서 취소한 요청은 그대로 알린다
+  if (callerSignal?.aborted) return cause
+  // 세션 조회가 실패한 이유는 바꾸지 않는다
+  if (cause instanceof ApiError || cause instanceof TransportError) return cause
+  const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError'
+  return new TransportError(timedOut ? 'timeout' : 'network', { cause })
+}
+
+// 토큰을 다시 받는 사이 로그인한 사용자가 바뀌었거나 로그인이 끝났다
+function sessionChanged(rejected: ApiError): ApiError {
+  return new ApiError(401, {
+    error: {
+      code: 'UNAUTHENTICATED',
+      message: '로그인 상태가 바뀌었어요. 다시 로그인해 주세요',
+      retryable: false,
+      fieldErrors: [],
+    },
+    requestId: rejected.requestId,
+  })
+}
+
 export type ApiClient = ReturnType<typeof createApiClient>
 
 // 모든 요청은 /v1 아래로 보내고 세션 쿠키와 CSRF 토큰을 함께 싣는다
@@ -97,6 +120,8 @@ export function createApiClient(
   fetchImpl: typeof fetch = (input, init) => fetch(input, init),
 ) {
   let csrfToken: string | undefined
+  // 토큰을 받은 세션의 사용자. 토큰을 다시 받았을 때 같은 사용자인지 비교한다
+  let sessionUserId: string | null | undefined
   let bootstrapping: Promise<SessionBootstrap> | undefined
 
   async function request<T>(
@@ -122,57 +147,67 @@ export function createApiClient(
     ].filter((signal) => signal !== undefined)
     const signal = signals.length > 0 ? AbortSignal.any(signals) : undefined
 
-    let response: Response
-    try {
-      if (method !== 'GET') {
-        // 세션 조회는 여러 요청이 함께 기다리므로 이 요청의 신호로 끊지 않고 기다리기만 그만둔다
-        if (!csrfToken) await waitUnless(bootstrap(), signal)
-        if (csrfToken) headers[CSRF_HEADER] = csrfToken
+    // 거절된 토큰은 서버가 요청을 처리하기 전에 막으므로 새 토큰으로 한 번 더 보낼 수 있다
+    for (let attempt = 0; ; attempt++) {
+      let sentToken: string | undefined
+      let sentUserId: string | null | undefined
+      let response: Response
+      try {
+        if (method !== 'GET') {
+          // 세션 조회는 여러 요청이 함께 기다리므로 이 요청의 신호로 끊지 않고 기다리기만 그만둔다
+          if (!csrfToken) await waitUnless(bootstrap(), signal)
+          sentToken = csrfToken
+          sentUserId = sessionUserId
+        }
+        response = await fetchImpl(`/v1${path}`, {
+          method,
+          headers: sentToken ? { ...headers, [CSRF_HEADER]: sentToken } : headers,
+          credentials: 'same-origin',
+          body: options.binaryBody ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
+          signal,
+          keepalive: options.keepalive,
+        })
+      } catch (cause) {
+        throw transportFailure(cause, options.signal)
       }
-      response = await fetchImpl(`/v1${path}`, {
-        method,
-        headers,
-        credentials: 'same-origin',
-        body: options.binaryBody ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
-        signal,
-        keepalive: options.keepalive,
-      })
-    } catch (cause) {
-      // 호출한 쪽에서 취소한 요청은 그대로 알린다
-      if (options.signal?.aborted) throw cause
-      // 세션 조회가 실패한 이유는 바꾸지 않는다
-      if (cause instanceof ApiError || cause instanceof TransportError) throw cause
-      const timedOut =
-        cause instanceof DOMException && cause.name === 'TimeoutError'
-      throw new TransportError(timedOut ? 'timeout' : 'network', { cause })
-    }
 
-    const json: unknown =
-      response.status === 204
-        ? undefined
-        : await response.json().catch(() => undefined)
+      const json: unknown =
+        response.status === 204
+          ? undefined
+          : await response.json().catch(() => undefined)
 
-    // 서버는 모든 응답에 요청 식별자를 싣는다
-    const requestId = response.headers.get(REQUEST_ID_HEADER) ?? undefined
+      // 서버는 모든 응답에 요청 식별자를 싣는다
+      const requestId = response.headers.get(REQUEST_ID_HEADER) ?? undefined
 
-    if (!response.ok) {
-      const error = errorBodySchema.safeParse(json)
-      if (!error.success) {
-        throw new TransportError('invalid_response', { status: response.status, requestId })
+      if (!response.ok) {
+        const error = errorBodySchema.safeParse(json)
+        if (!error.success) {
+          throw new TransportError('invalid_response', { status: response.status, requestId })
+        }
+        const failure = new ApiError(response.status, error.data, readRetryAfter(response))
+        if (failure.code !== 'CSRF_INVALID' || method === 'GET' || attempt > 0) throw failure
+        try {
+          // 함께 거절된 다른 요청이 이미 새 토큰을 받았으면 다시 조회하지 않는다
+          if (csrfToken === sentToken) await waitUnless(bootstrap(), signal)
+        } catch (cause) {
+          throw transportFailure(cause, options.signal)
+        }
+        // 다른 사용자의 세션이나 로그아웃된 세션으로 같은 변경을 다시 보내지 않는다
+        if (sessionUserId !== sentUserId) throw sessionChanged(failure)
+        continue
       }
-      throw new ApiError(response.status, error.data, readRetryAfter(response))
-    }
 
-    // 계약과 다른 성공 응답을 조용히 통과시키지 않는다
-    const parsed = schema.safeParse(json)
-    if (!parsed.success) {
-      throw new TransportError('invalid_response', {
-        status: response.status,
-        requestId,
-        cause: parsed.error,
-      })
+      // 계약과 다른 성공 응답을 조용히 통과시키지 않는다
+      const parsed = schema.safeParse(json)
+      if (!parsed.success) {
+        throw new TransportError('invalid_response', {
+          status: response.status,
+          requestId,
+          cause: parsed.error,
+        })
+      }
+      return parsed.data
     }
-    return parsed.data
   }
 
   // 세션 컨텍스트를 읽고 CSRF 토큰을 보관한다
@@ -182,6 +217,7 @@ export function createApiClient(
     })
       .then((session) => {
         csrfToken = session.csrfToken
+        sessionUserId = session.status === 'authenticated' ? session.user?.id ?? null : null
         return session
       })
       .finally(() => {
