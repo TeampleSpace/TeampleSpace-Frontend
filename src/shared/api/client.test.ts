@@ -1,6 +1,7 @@
 import { expect, test, vi } from 'vitest'
 import { z } from 'zod'
 import bootstrapBody from '../../../contracts/examples/auth-bootstrap-authenticated.json'
+import anonymousBody from '../../../contracts/examples/auth-bootstrap-anonymous.json'
 import versionConflict from '../../../contracts/examples/error-version-conflict.json'
 import { ApiError, TransportError, createApiClient } from './client.ts'
 import { CSRF_HEADER } from './contract.ts'
@@ -170,4 +171,82 @@ test('세션 조회를 기다리던 요청을 취소해도 함께 기다리던 �
   expect(sent('/auth/bootstrap')).toHaveLength(1)
   const headers = sent('/c')[0][1]?.headers as Record<string, string>
   expect(headers[CSRF_HEADER]).toBe(bootstrapBody.csrfToken)
+})
+
+const csrfInvalid = {
+  error: { code: 'CSRF_INVALID', message: '요청 확인 정보가 만료됐어요.', retryable: false },
+  requestId: 'req_csrf',
+}
+
+// 세션 조회마다 다음 응답을 돌려주고, 변경 요청은 받은 토큰에 따라 응답하는 가짜 fetch
+function rotatingSession(sessions: unknown[], respond: (token: string | undefined) => Response) {
+  let index = 0
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    if (String(input) === '/v1/auth/bootstrap') return json(200, sessions[Math.min(index++, sessions.length - 1)])
+    return respond((init.headers as Record<string, string>)[CSRF_HEADER])
+  })
+  const sent = (path: string) => fetchImpl.mock.calls.filter(([url]) => url === `/v1${path}`)
+  const tokens = (path: string) => sent(path).map(([, init]) => (init?.headers as Record<string, string> | undefined)?.[CSRF_HEADER])
+  return { fetchImpl, sent, tokens }
+}
+
+const renewed = { ...bootstrapBody, csrfToken: 'csrf_renewed' }
+
+test('CSRF 토큰이 거절되면 세션을 다시 읽고 새 토큰으로 한 번 더 보낸다', async () => {
+  const { fetchImpl, sent, tokens } = rotatingSession([bootstrapBody, renewed],
+    (token) => token === 'csrf_renewed' ? json(200, { ok: true }) : json(403, csrfInvalid))
+  const client = createApiClient(fetchImpl)
+
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: { n: 1 }, idempotencyKey: 'key-1' }))
+    .resolves.toEqual({ ok: true })
+  expect(tokens('/x')).toEqual([bootstrapBody.csrfToken, 'csrf_renewed'])
+  expect(sent('/x')[1][1]?.headers).toMatchObject({ 'Idempotency-Key': 'key-1' })
+  expect(sent('/auth/bootstrap')).toHaveLength(2)
+
+  // 다음 변경 요청은 새 토큰을 바로 싣는다
+  await client.request('/y', okSchema, { method: 'POST', body: {} })
+  expect(tokens('/y')).toEqual(['csrf_renewed'])
+  expect(sent('/auth/bootstrap')).toHaveLength(2)
+})
+
+test('함께 거절된 요청들은 세션을 한 번만 다시 읽는다', async () => {
+  const { fetchImpl, sent } = rotatingSession([bootstrapBody, renewed],
+    (token) => token === 'csrf_renewed' ? json(200, { ok: true }) : json(403, csrfInvalid))
+  const client = createApiClient(fetchImpl)
+
+  await Promise.all([
+    client.request('/a', okSchema, { method: 'PATCH', body: {} }),
+    client.request('/b', okSchema, { method: 'POST', body: {} }),
+  ])
+  expect(sent('/auth/bootstrap')).toHaveLength(2)
+})
+
+test('다시 읽은 세션의 사용자가 바뀌었으면 다시 보내지 않고 로그인 필요로 알린다', async () => {
+  const { fetchImpl, sent } = rotatingSession([bootstrapBody, { ...anonymousBody, csrfToken: 'csrf_renewed' }],
+    () => json(403, csrfInvalid))
+  const client = createApiClient(fetchImpl)
+
+  const error = await client.request('/x', okSchema, { method: 'PATCH', body: {} }).catch((e: unknown) => e)
+  expect(error).toBeInstanceOf(ApiError)
+  expect(error).toMatchObject({ status: 401, code: 'UNAUTHENTICATED', requestId: 'req_csrf' })
+  expect(sent('/x')).toHaveLength(1)
+})
+
+test('새 토큰도 거절되면 더 다시 보내지 않는다', async () => {
+  const { fetchImpl, sent } = rotatingSession([bootstrapBody, renewed], () => json(403, csrfInvalid))
+  const client = createApiClient(fetchImpl)
+
+  await expect(client.request('/x', okSchema, { method: 'DELETE' })).rejects.toMatchObject({ code: 'CSRF_INVALID' })
+  expect(sent('/x')).toHaveLength(2)
+  expect(sent('/auth/bootstrap')).toHaveLength(2)
+})
+
+test('CSRF가 아닌 403은 세션을 다시 읽지 않는다', async () => {
+  const { fetchImpl, sent } = rotatingSession([bootstrapBody],
+    () => json(403, { ...csrfInvalid, error: { ...csrfInvalid.error, code: 'FORBIDDEN' } }))
+  const client = createApiClient(fetchImpl)
+
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: {} })).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  expect(sent('/x')).toHaveLength(1)
+  expect(sent('/auth/bootstrap')).toHaveLength(1)
 })
