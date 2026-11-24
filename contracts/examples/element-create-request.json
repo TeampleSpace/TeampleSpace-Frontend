@@ -1,0 +1,27 @@
+{
+  "generation": 1,
+  "clientMutationId": "mut_01JD40A4EL",
+  "element": {
+    "id": "0193a000-0000-7000-8000-00000000e099",
+    "type": "text",
+    "geometry": {
+      "x": 80,
+      "y": 420,
+      "width": 600,
+      "height": 80,
+      "rotation": 0,
+      "z": 9
+    },
+    "content": {
+      "text": "새 글상자"
+    },
+    "style": {
+      "fontFamily": "Pretendard",
+      "fontSize": 24,
+      "fontWeight": 400,
+      "color": "#1F2933",
+      "align": "left",
+      "lineHeight": 1.4
+    }
+  }
+}

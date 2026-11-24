@@ -1,0 +1,21 @@
+{
+  "generation": 1,
+  "clientMutationId": "mut_01JD40A7XX",
+  "element": {
+    "id": "0193a000-0000-7000-8000-00000000e099",
+    "type": "image",
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 10,
+      "height": 10,
+      "rotation": 0,
+      "z": 0
+    },
+    "content": {
+      "fileObjectId": "0193a000-0000-7000-8000-00000000e099",
+      "alt": ""
+    },
+    "style": {}
+  }
+}

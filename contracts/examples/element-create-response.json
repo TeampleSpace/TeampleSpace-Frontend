@@ -1,0 +1,34 @@
+{
+  "clientMutationId": "mut_01JD40A4EL",
+  "resource": {
+    "id": "0193a000-0000-7000-8000-00000000e099",
+    "slideId": "0193a000-0000-7000-8000-0000000000a2",
+    "type": "text",
+    "version": 1,
+    "geometry": {
+      "x": 80,
+      "y": 420,
+      "width": 600,
+      "height": 80,
+      "rotation": 0,
+      "z": 9
+    },
+    "content": {
+      "text": "새 글상자"
+    },
+    "style": {
+      "fontFamily": "Pretendard",
+      "fontSize": 24,
+      "fontWeight": 400,
+      "color": "#1F2933",
+      "align": "left",
+      "lineHeight": 1.4
+    },
+    "sourceRefs": []
+  },
+  "elementVersion": 1,
+  "slideVersion": 12,
+  "presentationVersion": 18,
+  "generation": 1,
+  "eventId": "49"
+}

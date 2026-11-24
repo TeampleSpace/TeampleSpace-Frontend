@@ -1,0 +1,31 @@
+{
+  "eventId": "46",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "slide.created",
+  "actorId": "0193a000-0000-7000-8000-0000000000d1",
+  "clientMutationId": "mut_01JD40A1SL",
+  "occurredAt": "2026-11-21T01:00:00.000000Z",
+  "resourceId": "0193a000-0000-7000-8000-0000000000a9",
+  "presentationVersion": 15,
+  "generation": 1,
+  "payload": {
+    "resource": {
+      "id": "0193a000-0000-7000-8000-0000000000a9",
+      "presentationId": "0193a000-0000-7000-8000-000000000010",
+      "generation": 1,
+      "version": 1,
+      "layoutId": "content",
+      "elementIds": [],
+      "elements": []
+    },
+    "slideIds": [
+      "0193a000-0000-7000-8000-0000000000a1",
+      "0193a000-0000-7000-8000-0000000000a9",
+      "0193a000-0000-7000-8000-0000000000a2"
+    ],
+    "slideVersion": 1,
+    "presentationVersion": 15,
+    "orderVersion": 2,
+    "generation": 1
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "clientMutationId": "mut_01JD40A9XX",
+  "resource": {
+    "id": "0193a000-0000-7000-8000-0000000000a9",
+    "presentationId": "0193a000-0000-7000-8000-000000000010",
+    "generation": 1,
+    "version": 1,
+    "elementIds": [],
+    "elements": []
+  },
+  "tombstone": {
+    "resourceType": "slide",
+    "id": "0193a000-0000-7000-8000-0000000000a9",
+    "deletedAt": "2026-11-21T01:00:00.000000Z"
+  },
+  "eventId": "50"
+}

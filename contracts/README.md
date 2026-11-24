@@ -154,6 +154,28 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 
 주소 자체를 해석할 수 없는 요청은 서블릿 컨테이너가 먼저 거절해 이 형식이 아닌 400이 온다. 요청 식별자도 붙지 않는다.
 
+## 슬라이드와 요소의 추가, 삭제, 순서 변경
+
+다섯 명령 모두 `Idempotency-Key`가 필수이고 요소 수정과 같은 순서로 처리한다. 성공 응답은 `MutationResponse`다.
+
+| 명령 | 비교하는 버전 | 응답에 싣는 것 |
+| --- | --- | --- |
+| 슬라이드 추가 | `generation`, `orderVersion` | 새 슬라이드 `resource`, 바뀐 뒤의 `slideIds` |
+| 슬라이드 삭제 | `generation`, `orderVersion` | 슬라이드 `tombstone`, 바뀐 뒤의 `slideIds` |
+| 슬라이드 순서 변경 | `generation`, `orderVersion` | 바뀐 뒤의 `slideIds` |
+| 요소 추가 | `generation` | 새 요소 `resource` |
+| 요소 삭제 | `generation`, 요소의 `baseVersion` | 요소 `tombstone` |
+
+- 새 슬라이드와 새 요소의 식별자는 클라이언트가 만든다. 이미 쓰인 식별자는 `VALIDATION_FAILED`다
+- 슬라이드 추가는 `afterSlideId` 바로 뒤에 넣는다. null이거나 없으면 맨 앞이다
+- 슬라이드 순서 변경은 지금 있는 슬라이드를 빠짐없이 한 번씩 담은 전체 순서를 보낸다. 빠지거나 겹치면 `VALIDATION_FAILED`다
+- 슬라이드 목록을 바꾸는 명령은 `orderVersion`이 다르면 덮어쓰지 않고 `VERSION_CONFLICT`와 `currentVersions`를 돌려준다. 받은 쪽은 이벤트나 동기화 스냅샷으로 최신 순서를 얻은 뒤 사용자가 다시 시도한다
+- 슬라이드 목록이 바뀌면 `presentationVersion`과 `orderVersion`이 함께 1씩 오른다. 요소가 생기거나 지워지면 그 슬라이드의 `slideVersion`과 `presentationVersion`이 1씩 오른다
+- 삭제는 표시만 남긴다. 지운 슬라이드와 요소는 스냅샷에 나오지 않고 `tombstone`의 `version`은 지울 때 올린 버전이다. 지운 슬라이드에 있던 요소와 지운 요소의 수정은 `VERSION_CONFLICT`다
+- 마지막 남은 슬라이드는 지울 수 없고 `VALIDATION_FAILED`다
+- 요소 추가는 내용과 스타일을 요소 종류에 맞게 검증한다. 이미지는 아직 추가할 수 없다
+- 지워지는 요소의 열린 편집 묶음은 닫는다
+
 ## 이벤트
 
 - SSE의 `id`는 `eventId`, `event`는 `type`, `data`는 `Event` 형식의 JSON이다
@@ -161,6 +183,8 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - 같은 `eventId`를 다시 받으면 버린다
 - 요소 변경 이벤트의 `payload`는 요소 수정 응답과 같은 항목을 쓴다. 응답과 이벤트 중 어느 쪽이 먼저 와도 같은 `clientMutationId`와 버전으로 한 번만 반영한다. 이미 가진 것보다 오래된 요소 버전은 버린다
 - 문서 버전을 올리는 이벤트는 `presentationVersion`과 `generation`을 싣는다. 받은 `presentationVersion`이 알고 있는 값보다 2 이상 크면 중간 변경을 놓친 것이므로 동기화 스냅샷을 다시 읽는다
+- 요소 추가도 `element.updated`로 전달한다. 모르는 요소면 `resource`의 `slideId`가 가리키는 슬라이드에 더한다. 요소 삭제는 `element.deleted`와 `tombstone`이다
+- `slide.created`, `slide.deleted`, `slide.order.updated`의 `payload`는 해당 응답과 같은 항목을 쓰고 바뀐 뒤의 전체 순서 `slideIds`를 싣는다. 받는 쪽은 자기 목록을 이 순서로 맞춘다
 - 변경 묶음 이벤트의 `payload`는 `changeId`와 `groupState`다
 - `presence.updated`는 일시적인 커서 표시라 SSE `id` 없이 오고 다시 받을 수 있다고 보장하지 않는다. `data`는 `PresenceUpdated` 형식으로 나를 뺀 팀원의 현재 커서 전체 목록이며, 목록이 바뀔 때만 온다. 목록에 없는 팀원의 커서는 지운다
 
@@ -186,6 +210,11 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 기능 | 경로 | 형식 | 구현 상태 | HTTP 경로를 여는 단계 |
 | --- | --- | --- | --- | --- |
 | 요소 수정 | `PATCH /v1/slides/{slideId}/elements/{elementId}` | `ElementPatchRequest`, `MutationResponse` | 구현. 버전 충돌과 닫힌 묶음은 `currentVersions`를 담은 409로 응답하고 같은 멱등키에는 같은 응답을 돌려준다. 요소 종류에 맞지 않는 내용과 스타일은 `VALIDATION_FAILED`다 | 4단계 |
+| 요소 추가 | `POST /v1/slides/{slideId}/elements` | `ElementCreateRequest`, `MutationResponse` | 구현. 텍스트와 도형만 받는다 | 4단계 |
+| 요소 삭제 | `DELETE /v1/slides/{slideId}/elements/{elementId}` | `ElementDeleteRequest`, `MutationResponse` | 구현 | 4단계 |
+| 슬라이드 추가 | `POST /v1/presentations/{presentationId}/slides` | `SlideCreateRequest`, `MutationResponse` | 구현 | 4단계 |
+| 슬라이드 삭제 | `DELETE /v1/slides/{slideId}` | `SlideDeleteRequest`, `MutationResponse` | 구현. 마지막 슬라이드는 지울 수 없다 | 4단계 |
+| 슬라이드 순서 변경 | `PUT /v1/presentations/{presentationId}/slide-order` | `SlideOrderRequest`, `MutationResponse` | 구현 | 4단계 |
 | AI 수정 제안 | `POST /v1/slides/{slideId}/ai-revision-jobs` | `SlideRevisionRequest`, `Job`, `SlideRevisionResult` | 구현. 슬라이드의 텍스트 요소 글만 고친 제안을 작업 결과에 담는다. 적용 전에는 문서를 바꾸지 않는다. 제공자가 꺼져 있으면 `SERVICE_UNAVAILABLE`이고 `featureFlags.aiRevision`이 false다 | 4단계 |
 | AI 수정 적용 | `POST /v1/ai-proposals/{proposalId}/apply` | `SlideRevisionApplied` | 구현. 제안 식별자는 작업 식별자다. 요청자만 적용한다. 모든 대상이 기준 버전 그대로일 때만 요소 수정 경로로 한 번에 반영하고, 하나라도 바뀌었으면 아무것도 바꾸지 않고 `VERSION_CONFLICT`다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
@@ -194,6 +223,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |
 | 발표 템플릿 목록 | `GET /v1/templates` | `TemplateCatalog` | 공개 개정과 옵션 조회 | 3단계 |
+| 발표 템플릿 미리보기 | `GET /v1/templates/{templateId}/preview` | `TemplatePreview` | 발표 생성과 같은 규칙으로 그린 예시 슬라이드 | 3단계 |
 | 디자인 설정 조회 | `GET /v1/projects/{projectId}/design-settings` | `DesignSettings` | 저장한 선택과 개정 조회 | 3단계 |
 | 디자인 설정 저장 | `PUT /v1/projects/{projectId}/design-settings` | `DesignSettingsPutRequest`, `DesignSettings` | 버전 비교와 멱등 저장, [디자인 계약](stage-3-design.md) | 3단계 |
 | 발표 구성 조회 | `GET /v1/projects/{projectId}/outline` | `Outline` | 현재 구성과 고정된 자료 개정 조회 | 3단계 |
@@ -277,7 +307,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 출처 연결 저장과 수정 | 3단계 | 근거를 연결하는 구성 기능에서 정한다. 지금 응답의 `sourceRefs`는 비어 있다 |
 | 생성 작업이 쓰는 자료의 삭제 충돌 응답 | 5단계 | 자료를 입력으로 고정하는 작업이 생길 때 추가한다 |
 | 동기화 스냅샷의 구성 범위 | 3단계 | 구성과 디자인 기능이 있어야 내용이 정해진다 |
-| 요소 삽입, 삭제, 슬라이드 추가와 순서 변경의 요청 본문 | 4단계 | 응답 형식은 `MutationResponse`로 같다. 요청은 편집 기능을 만들 때 정한다 |
+| 구조 변경의 변경 이력 기록 | 6단계 | 슬라이드와 요소의 추가, 삭제, 순서 변경은 버전과 이벤트만 남긴다. 이력에 남기는 형식은 이력과 검토 단계에서 정한다 |
 | 이미지 요소의 파일 교체 | 4단계 | 요소 수정은 내용과 스타일을 요소 종류에 맞게 검증한다. 이미지의 `fileObjectId`는 아직 바꿀 수 없다 |
 | 글자 범위별 스타일이 필요한지 | 4단계 | 편집 화면을 만들 때 확인한다 |
 | 이벤트 기록의 보관 기간 정리 | 4단계 | 구독 HTTP 연결은 열었다. 오래된 이벤트를 지우는 처리는 아직 없다 |
