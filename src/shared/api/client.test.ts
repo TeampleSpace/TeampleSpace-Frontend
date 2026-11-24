@@ -226,10 +226,39 @@ test('다시 읽은 세션의 사용자가 바뀌었으면 다시 보내지 않�
     () => json(403, csrfInvalid))
   const client = createApiClient(fetchImpl)
 
+  const changed = vi.fn()
+  client.onSessionChange(changed)
+
   const error = await client.request('/x', okSchema, { method: 'PATCH', body: {} }).catch((e: unknown) => e)
   expect(error).toBeInstanceOf(ApiError)
   expect(error).toMatchObject({ status: 401, code: 'UNAUTHENTICATED', requestId: 'req_csrf' })
   expect(sent('/x')).toHaveLength(1)
+  expect(changed).toHaveBeenCalledTimes(1)
+
+  // 이전 사용자의 화면에서 다시 저장해도 새 세션의 토큰으로 보내지 않는다
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: {} }))
+    .rejects.toMatchObject({ status: 401, code: 'UNAUTHENTICATED' })
+  await expect(client.request('/y', okSchema, { method: 'POST', body: {} }))
+    .rejects.toMatchObject({ status: 401, code: 'UNAUTHENTICATED' })
+  expect(sent('/x')).toHaveLength(1)
+  expect(sent('/y')).toHaveLength(0)
+  expect(changed).toHaveBeenCalledTimes(1)
+  // 조회 요청은 막지 않는다
+  await client.request('/z', okSchema).catch(() => {})
+  expect(sent('/z')).toHaveLength(1)
+})
+
+test('사용자가 바뀐 뒤에는 화면이 세션을 다시 읽어야 변경 요청을 다시 보낸다', async () => {
+  const { fetchImpl, sent } = rotatingSession([bootstrapBody, { ...anonymousBody, csrfToken: 'csrf_renewed' }],
+    (token) => token === 'csrf_renewed' ? json(200, { ok: true }) : json(403, csrfInvalid))
+  const client = createApiClient(fetchImpl)
+
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: {} })).rejects.toMatchObject({ status: 401 })
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: {} })).rejects.toMatchObject({ status: 401 })
+
+  await client.bootstrap()
+  await expect(client.request('/x', okSchema, { method: 'PATCH', body: {} })).resolves.toEqual({ ok: true })
+  expect(sent('/x')).toHaveLength(2)
 })
 
 test('새 토큰도 거절되면 더 다시 보내지 않는다', async () => {
