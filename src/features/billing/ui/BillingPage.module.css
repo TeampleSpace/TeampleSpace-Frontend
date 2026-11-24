@@ -24,7 +24,7 @@
 }
 
 .status {
-  color: var(--color-accent);
+  color: var(--color-ink);
   font: var(--text-status-title);
 }
 
