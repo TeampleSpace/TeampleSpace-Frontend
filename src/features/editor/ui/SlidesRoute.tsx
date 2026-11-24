@@ -21,7 +21,7 @@ export default function SlidesRoute() {
 
 function ProjectSlides({ projectId, slideId }: { projectId: string; slideId?: string }) {
   const { setCurrentProject } = useShell()
-  const { setUser } = useSession()
+  const { setUser, capabilities } = useSession()
   const [project, setProject] = useState<Project | null>(null)
   const [error, setError] = useState<unknown>()
   const [revision, setRevision] = useState(0)
@@ -72,6 +72,7 @@ function ProjectSlides({ projectId, slideId }: { projectId: string; slideId?: st
   return <PresentationGeneration projectId={projectId} projectName={project.name} onCompleted={session.refresh}>
     {(generate) => <SlideEditor projectId={projectId} projectName={project.name} session={session} slideId={slideId}
       generate={generate}
+      aiRevision={capabilities?.featureFlags.aiRevision === true}
       // 개발 서버에서 AI 없이 편집을 확인하는 용도다
       onCreateSample={import.meta.env.DEV ? async () => {
         await api.request(`/projects/${projectId}/sample-presentation`, emptySchema, { method: 'POST' })

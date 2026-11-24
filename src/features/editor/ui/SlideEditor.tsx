@@ -13,6 +13,7 @@ import { describeElement } from '../describe.ts'
 import { useProjectFonts } from '../projectFonts.ts'
 import type { EditorSession, SaveStatus, SessionState } from '../session.ts'
 import { SlideStage } from './SlideStage.tsx'
+import { SlideRevision } from './SlideRevision.tsx'
 import styles from './SlideEditor.module.css'
 
 // 여러 요소의 상태 중 가장 먼저 알려야 하는 것
@@ -130,9 +131,11 @@ type Props = {
   onCreateSample?: () => Promise<void>
   // 문서가 없을 때 보여 줄 PPT 생성 버튼
   generate?: ReactNode
+  // 서버가 AI 수정을 지원할 때만 요청 버튼을 보여 준다
+  aiRevision?: boolean
 }
 
-export function SlideEditor({ projectId, projectName, session, slideId, onCreateSample, generate }: Props) {
+export function SlideEditor({ projectId, projectName, session, slideId, onCreateSample, generate, aiRevision = false }: Props) {
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const base = `/projects/${projectId}/slides`
   const view = state.view
@@ -238,6 +241,8 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
           canvas={view.canvas}
           slide={slide}
           heading={`${String(index + 1).padStart(2, '0')} / ${slideName(slide, index)}`}
+          label={`${String(index + 1).padStart(2, '0')}번 - ${slideName(slide, index)}`}
+          aiRevision={aiRevision}
         />
       </div>
     </>
@@ -251,13 +256,18 @@ function Workspace({
   canvas,
   slide,
   heading,
+  label,
+  aiRevision,
 }: {
   session: EditorSession
   state: SessionState
   canvas: Presentation['canvas']
   slide: Slide
   heading: string
+  label: string
+  aiRevision: boolean
 }) {
+
   const [selectedId, setSelectedId] = useState<string>()
   const [editingId, setEditingId] = useState<string>()
   const [zoom, setZoom] = useState(0)
@@ -334,7 +344,18 @@ function Workspace({
       <section aria-label="슬라이드 편집" className={styles.stage}>
         <div className={styles.stageHead}>
           <h2>{heading}</h2>
-          {modified && <span>수정됨</span>}
+          <div className={styles.stageActions}>
+            {modified && <span>수정됨</span>}
+            {aiRevision && (
+              <SlideRevision
+                session={session}
+                slide={slide}
+                label={label}
+                busy={modified}
+                disabled={!online || !slide.elements.some((element) => element.type === 'text' && !element.deletedAt)}
+              />
+            )}
+          </div>
         </div>
         <div ref={setArea} className={styles.stageArea}>
           <SlideStage

@@ -5,6 +5,14 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-24 문장 요청으로 슬라이드 글을 고치는 AI 수정 추가
+
+- 수정 작업 등록 `POST /v1/slides/{slideId}/ai-revision-jobs`와 적용 `POST /v1/ai-proposals/{proposalId}/apply` 경로, `SlideRevisionRequest`, `SlideRevisionResult`, `SlideRevisionApplied` 형식을 추가
+- 작업 종류는 `slide_revision`, 대상은 `slide`다. 제안은 작업의 `resultRef`에 담기고 제안 식별자는 작업 식별자다
+- 적용은 대상마다 요소 수정과 같은 `element.updated` 이벤트와 변경 이력을 남긴다
+- `featureFlags.aiRevision`이 발표 생성 제공자 설정을 따른다
+- 작업 실패 코드 `JOB_REVISION_PROVIDER_UNAVAILABLE`, `JOB_REVISION_INVALID_RESULT`, `JOB_REVISION_NO_CHANGE`, `JOB_REVISION_ACCESS_REVOKED`를 추가
+
 ## 2026-11-23 편집 화면 커서 위치 공유 추가
 
 - 커서 위치 경로 `POST /v1/projects/{projectId}/presence`와 `PresenceUpdateRequest`, `PresenceUpdated` 형식을 추가
