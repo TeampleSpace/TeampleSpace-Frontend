@@ -44,7 +44,8 @@
 .empty { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'title' 'ready' 'actions'; gap: var(--space-24); }
 .empty .readyCount { max-width: 760px; background: var(--color-subtle); }
 .empty .emptyLead { margin-top: var(--space-12); }
-.callout, .conflict { background: var(--color-accent-soft); }
+.callout { background: var(--color-subtle); }
+.conflict { background: var(--color-accent-soft); }
 .callout { align-items: flex-start; padding: var(--space-32); }
 .callout p { font: var(--text-dialog-title); }
 .emptyHeader a, .linkAction { display: inline-flex; align-items: center; justify-content: center; min-height: var(--button-height-regular); padding: var(--space-8) var(--space-16); border-radius: var(--radius-md); text-decoration: none; color: var(--color-ink); font: var(--text-button-secondary); }

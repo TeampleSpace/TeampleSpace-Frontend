@@ -67,7 +67,7 @@
 .type h2 { font: 700 20px/30px var(--font-body); }
 .type p { max-width: 280px; color: var(--color-secondary); }
 .type button { margin-top: auto; }
-.hint { padding: var(--space-20); border-radius: var(--radius-lg); background: var(--color-accent-soft); color: var(--color-accent); }
+.hint { padding: var(--space-20); border-radius: var(--radius-lg); background: var(--color-subtle); color: var(--color-secondary); }
 
 /* 자료 관리 메뉴 */
 .menu { position: relative; flex: none; }
