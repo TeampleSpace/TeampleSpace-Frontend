@@ -29,16 +29,21 @@ export default function AppShell() {
     requestAnimationFrame(() => document.getElementById(next ? 'app-sidebar-open' : 'app-sidebar-close')?.focus())
   }
   const narrow = useSyncExternalStore(subscribeNarrow, () => narrowMedia()?.matches ?? false, () => false)
-  // 연 위치를 기억해 화면을 옮기면 서랍이 저절로 닫힌다
-  const [menuAt, setMenuAt] = useState<string | null>(null)
+  const [menuOpened, setMenuOpened] = useState(false)
   const location = useLocation()
-  const menuOpen = narrow && menuAt === location.key
+  // 화면을 옮기거나 화면 폭 구간이 바뀌면 서랍을 닫는다. 뒤로 가기로 돌아와도 다시 열리지 않는다
+  const [menuScope, setMenuScope] = useState({ key: location.key, narrow })
+  if (menuScope.key !== location.key || menuScope.narrow !== narrow) {
+    setMenuScope({ key: location.key, narrow })
+    setMenuOpened(false)
+  }
+  const menuOpen = narrow && menuOpened
   function openMenu() {
-    setMenuAt(location.key)
+    setMenuOpened(true)
     requestAnimationFrame(() => document.getElementById('app-menu-close')?.focus())
   }
   function closeMenu() {
-    setMenuAt(null)
+    setMenuOpened(false)
     requestAnimationFrame(() => document.getElementById('app-menu-open')?.focus())
   }
   const account = useMatch('/account/*')
