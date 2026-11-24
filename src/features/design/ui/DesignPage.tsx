@@ -17,6 +17,7 @@ import { templateCovers, templatePurposes as purposes } from './templateCovers.t
 import { TemplateGallery } from './TemplateGallery.tsx'
 import { StudioPreview } from './StudioPreview.tsx'
 import { studioPreview } from './studioPreviews.ts'
+import { templateArtwork } from './templateArtwork.ts'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
 import styles from './DesignPage.module.css'
 
@@ -455,8 +456,10 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
         {templateCovers[detail.key] ? <TemplateCover templateKey={detail.key} />
           : <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />}
         <div className={styles.detailsGrid}>
+          {templateArtwork(detail.key)?.map(({ document }) => <StudioPreview key={document.id} slide={document} />) ?? <>
           <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />
           <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" slide={secondExample} />
+          </>}
         </div>
         </>}
       </div>
