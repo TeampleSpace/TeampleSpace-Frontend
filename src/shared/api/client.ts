@@ -101,7 +101,7 @@ function transportFailure(cause: unknown, callerSignal?: AbortSignal): unknown {
 }
 
 // 토큰을 다시 받는 사이 로그인한 사용자가 바뀌었거나 로그인이 끝났다
-function sessionChanged(rejected: ApiError): ApiError {
+function sessionChanged(requestId: string): ApiError {
   return new ApiError(401, {
     error: {
       code: 'UNAUTHENTICATED',
@@ -109,7 +109,7 @@ function sessionChanged(rejected: ApiError): ApiError {
       retryable: false,
       fieldErrors: [],
     },
-    requestId: rejected.requestId,
+    requestId,
   })
 }
 
@@ -123,6 +123,9 @@ export function createApiClient(
   // 토큰을 받은 세션의 사용자. 토큰을 다시 받았을 때 같은 사용자인지 비교한다
   let sessionUserId: string | null | undefined
   let bootstrapping: Promise<SessionBootstrap> | undefined
+  // 사용자가 바뀐 것을 알아챈 요청의 식별자. 화면이 세션을 다시 읽을 때까지 변경 요청을 막는다
+  let changedBy: string | undefined
+  const sessionListeners = new Set<() => void>()
 
   async function request<T>(
     path: string,
@@ -154,8 +157,10 @@ export function createApiClient(
       let response: Response
       try {
         if (method !== 'GET') {
+          // 이전 사용자의 화면에서 보낸 변경이 새 사용자의 세션으로 처리되지 않게 한다
+          if (changedBy !== undefined) throw sessionChanged(changedBy)
           // 세션 조회는 여러 요청이 함께 기다리므로 이 요청의 신호로 끊지 않고 기다리기만 그만둔다
-          if (!csrfToken) await waitUnless(bootstrap(), signal)
+          if (!csrfToken) await waitUnless(loadSession(), signal)
           sentToken = csrfToken
           sentUserId = sessionUserId
         }
@@ -188,12 +193,18 @@ export function createApiClient(
         if (failure.code !== 'CSRF_INVALID' || method === 'GET' || attempt > 0) throw failure
         try {
           // 함께 거절된 다른 요청이 이미 새 토큰을 받았으면 다시 조회하지 않는다
-          if (csrfToken === sentToken) await waitUnless(bootstrap(), signal)
+          if (csrfToken === sentToken) await waitUnless(loadSession(), signal)
         } catch (cause) {
           throw transportFailure(cause, options.signal)
         }
         // 다른 사용자의 세션이나 로그아웃된 세션으로 같은 변경을 다시 보내지 않는다
-        if (sessionUserId !== sentUserId) throw sessionChanged(failure)
+        if (sessionUserId !== sentUserId) {
+          if (changedBy === undefined) {
+            changedBy = failure.requestId
+            sessionListeners.forEach((listener) => listener())
+          }
+          throw sessionChanged(changedBy)
+        }
         continue
       }
 
@@ -210,8 +221,23 @@ export function createApiClient(
     }
   }
 
+  // 화면이 세션을 다시 읽으면 바뀐 사용자를 반영한 것으로 보고 변경 요청을 다시 허용한다
+  async function bootstrap(): Promise<SessionBootstrap> {
+    const session = await loadSession()
+    changedBy = undefined
+    return session
+  }
+
+  // 로그인한 사용자가 바뀐 것을 알아채면 알린다
+  function onSessionChange(listener: () => void): () => void {
+    sessionListeners.add(listener)
+    return () => {
+      sessionListeners.delete(listener)
+    }
+  }
+
   // 세션 컨텍스트를 읽고 CSRF 토큰을 보관한다
-  function bootstrap(): Promise<SessionBootstrap> {
+  function loadSession(): Promise<SessionBootstrap> {
     bootstrapping ??= request('/auth/bootstrap', sessionBootstrapSchema, {
       timeoutMs: BOOTSTRAP_TIMEOUT_MS,
     })
@@ -226,5 +252,5 @@ export function createApiClient(
     return bootstrapping
   }
 
-  return { request, bootstrap }
+  return { request, bootstrap, onSessionChange }
 }

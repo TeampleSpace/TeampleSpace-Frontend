@@ -27,6 +27,8 @@ export function SessionProvider() {
     } finally { if (current === generation.current) setLoading(false) }
   }, [])
   useEffect(() => { void Promise.resolve().then(refresh).catch(() => {}) }, [refresh])
+  // 다른 탭에서 로그인한 사용자가 바뀌면 세션을 다시 읽어 이전 사용자의 화면을 내린다
+  useEffect(() => api.onSessionChange(() => void refresh().catch(() => {})), [refresh])
   return <SessionContext value={{ user, capabilities, loading, error, refresh, setUser }}><Outlet /></SessionContext>
 }
 
