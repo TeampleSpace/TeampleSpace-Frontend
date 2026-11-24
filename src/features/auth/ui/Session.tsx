@@ -35,7 +35,7 @@ export function RequireSession({ onboarding = false }: { onboarding?: boolean })
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
-    if (!import.meta.env.DEV || !user || loading || error || location.hash) return
+    if (!user || loading || error || location.hash) return
     const accountReturn = location.pathname === '/account' && !location.search && user.onboardingStatus === 'completed'
     const onboardingReturn = onboarding && (!location.search || new URLSearchParams(location.search).get('returnTo') === '/account')
     if (!accountReturn && !onboardingReturn) return

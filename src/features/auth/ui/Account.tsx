@@ -93,11 +93,11 @@ export default function Account() {
       <section className={account.providers}><h2>로그인 수단</h2>
         <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider} data-connected={user.identities.some((identity) => identity.provider === provider)}>{providerNames[provider]} <span>{user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</span></li>)}</ul>
       </section>
-      {import.meta.env.DEV && <section className={page.section} aria-labelledby="account-subscription">
+      <section className={page.section} aria-labelledby="account-subscription">
         <h2 id="account-subscription">구독 및 결제</h2>
         <p>개인 월 구독 요금제를 확인할 수 있어요. 결제 서비스는 준비 중이에요.</p>
         <div><Link className={`${buttonStyles.button} ${buttonStyles.secondary}`} to="/account/subscription">요금제 보기</Link></div>
-      </section>}
+      </section>
       <section className={account.withdrawal}>
         <div><h2>회원 탈퇴</h2><p>소유 프로젝트를 이전하거나 삭제한 뒤 탈퇴할 수 있어요 <Link to="/">프로젝트 보기</Link></p>
           {user.ownedProjectCount > 0 && <p>현재 소유한 프로젝트 {user.ownedProjectCount}개</p>}
