@@ -75,6 +75,10 @@
     { "code": "JOB_PRESENTATION_PROVIDER_UNAVAILABLE", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "발표 자료 생성 제공자 호출에 실패했다. 일시 오류만 내부 재시도한다" },
     { "code": "JOB_PRESENTATION_INVALID_RESULT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "발표 자료 생성 응답의 형식이나 슬라이드 수, 글자 수가 맞지 않아 반영하지 않았다" },
     { "code": "JOB_PRESENTATION_ACCESS_REVOKED", "httpStatus": null, "retryable": false, "basis": "권한", "meaning": "발표 자료 생성 요청자의 프로젝트 접근이 회수되어 반영하지 않았다" },
+    { "code": "JOB_REVISION_PROVIDER_UNAVAILABLE", "httpStatus": null, "retryable": true, "basis": "기술 선택", "meaning": "슬라이드 수정 제안 제공자 호출에 실패했다. 일시 오류만 내부 재시도한다" },
+    { "code": "JOB_REVISION_INVALID_RESULT", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "슬라이드 수정 제안 응답의 형식이나 글상자 번호, 글자 수가 맞지 않아 제안을 만들지 않았다" },
+    { "code": "JOB_REVISION_NO_CHANGE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "수정 제안 응답이 원래 글과 같아 제안을 만들지 않았다" },
+    { "code": "JOB_REVISION_ACCESS_REVOKED", "httpStatus": null, "retryable": false, "basis": "권한", "meaning": "수정 제안 요청자의 프로젝트 접근이 회수되어 제안을 만들지 않았다" },
     { "code": "JOB_TARGET_GONE", "httpStatus": null, "retryable": false, "basis": "기술 선택", "meaning": "작업 대상이 삭제되어 결과를 반영하지 않았다. 작업의 error.code로 전달한다" }
   ]
 }

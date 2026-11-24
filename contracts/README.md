@@ -186,6 +186,8 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 기능 | 경로 | 형식 | 구현 상태 | HTTP 경로를 여는 단계 |
 | --- | --- | --- | --- | --- |
 | 요소 수정 | `PATCH /v1/slides/{slideId}/elements/{elementId}` | `ElementPatchRequest`, `MutationResponse` | 구현. 버전 충돌과 닫힌 묶음은 `currentVersions`를 담은 409로 응답하고 같은 멱등키에는 같은 응답을 돌려준다. 요소 종류에 맞지 않는 내용과 스타일은 `VALIDATION_FAILED`다 | 4단계 |
+| AI 수정 제안 | `POST /v1/slides/{slideId}/ai-revision-jobs` | `SlideRevisionRequest`, `Job`, `SlideRevisionResult` | 구현. 슬라이드의 텍스트 요소 글만 고친 제안을 작업 결과에 담는다. 적용 전에는 문서를 바꾸지 않는다. 제공자가 꺼져 있으면 `SERVICE_UNAVAILABLE`이고 `featureFlags.aiRevision`이 false다 | 4단계 |
+| AI 수정 적용 | `POST /v1/ai-proposals/{proposalId}/apply` | `SlideRevisionApplied` | 구현. 제안 식별자는 작업 식별자다. 요청자만 적용한다. 모든 대상이 기준 버전 그대로일 때만 요소 수정 경로로 한 번에 반영하고, 하나라도 바뀌었으면 아무것도 바꾸지 않고 `VERSION_CONFLICT`다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
 | 커서 위치 | `POST /v1/projects/{projectId}/presence` | `PresenceUpdateRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 10초 동안 새 위치가 없거나 `slideId`가 null이면 목록에서 빠진다. 같은 사람의 여러 탭은 마지막 위치 하나다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | `scope=editor`만 구현. 그 밖의 값은 `VALIDATION_FAILED`다. 요소가 자료를 참조하기 전이라 `materials`는 비어 있다 | 4단계 |
