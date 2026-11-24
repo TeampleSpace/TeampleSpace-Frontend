@@ -95,7 +95,7 @@ export default function Account() {
       </section>
       {import.meta.env.DEV && <section className={page.section} aria-labelledby="account-subscription">
         <h2 id="account-subscription">구독 및 결제</h2>
-        <p>개인 월 구독 요금 안내를 준비 중이에요.</p>
+        <p>개인 월 구독 요금제를 확인할 수 있어요. 결제 서비스는 준비 중이에요.</p>
         <div><Link className={`${buttonStyles.button} ${buttonStyles.secondary}`} to="/account/subscription">요금제 보기</Link></div>
       </section>}
       <section className={account.withdrawal}>

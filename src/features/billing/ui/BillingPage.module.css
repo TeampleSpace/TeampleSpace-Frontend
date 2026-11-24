@@ -60,14 +60,16 @@
 .details > div {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-24);
+  gap: var(--space-16);
 }
 
-.details dt, .conditions p, .note { color: var(--color-secondary); }
+.details dt, .conditions p, .note, .lead, .caption { color: var(--color-secondary); }
 .details dd { margin: 0; }
 
-.conditions { display: grid; gap: var(--space-8); }
-.conditions h3 { font: var(--text-status-title); }
+.conditions { display: grid; gap: var(--space-12); }
+.conditions h3, .lead, .active { font: var(--text-status-title); }
+.active { color: var(--color-primary); }
+.caption { font: var(--text-meta); }
 .price, .resultTitle { font: var(--text-title); }
 .resultSuccess { color: var(--color-primary); }
 .previewLabel { align-self: center; color: var(--color-secondary); font: var(--text-meta); }
