@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router'
 import { projectsApi } from '../entities/project/api.ts'
 import type { Project } from '../entities/project/model.ts'
@@ -6,6 +6,15 @@ import { Button } from '../shared/ui/Button.tsx'
 import type { CurrentProject } from '../shared/lib/shellContext.ts'
 import { RequestBanner } from '../features/requests/ui/RequestBanner.tsx'
 import styles from './AppShell.module.css'
+
+// 좁은 화면에서는 사이드바를 상단 막대의 메뉴 서랍으로 연다
+const narrowQuery = '(max-width: 800px)'
+const narrowMedia = () => typeof window.matchMedia === 'function' ? window.matchMedia(narrowQuery) : null
+function subscribeNarrow(change: () => void) {
+  const media = narrowMedia()
+  media?.addEventListener('change', change)
+  return () => media?.removeEventListener('change', change)
+}
 
 export default function AppShell() {
   const [currentProject, setCurrentProject] = useState<CurrentProject>(null)
@@ -19,9 +28,26 @@ export default function AppShell() {
     setFolded(next)
     requestAnimationFrame(() => document.getElementById(next ? 'app-sidebar-open' : 'app-sidebar-close')?.focus())
   }
+  const narrow = useSyncExternalStore(subscribeNarrow, () => narrowMedia()?.matches ?? false, () => false)
+  const [menuOpened, setMenuOpened] = useState(false)
+  const location = useLocation()
+  // 화면을 옮기거나 화면 폭 구간이 바뀌면 서랍을 닫는다. 뒤로 가기로 돌아와도 다시 열리지 않는다
+  const [menuScope, setMenuScope] = useState({ key: location.key, narrow })
+  if (menuScope.key !== location.key || menuScope.narrow !== narrow) {
+    setMenuScope({ key: location.key, narrow })
+    setMenuOpened(false)
+  }
+  const menuOpen = narrow && menuOpened
+  function openMenu() {
+    setMenuOpened(true)
+    requestAnimationFrame(() => document.getElementById('app-menu-close')?.focus())
+  }
+  function closeMenu() {
+    setMenuOpened(false)
+    requestAnimationFrame(() => document.getElementById('app-menu-open')?.focus())
+  }
   const account = useMatch('/account/*')
   const billingReturn = useMatch('/billing/return')
-  const location = useLocation()
   const showingProjects = !account && !billingReturn
   const [projects, setProjects] = useState<Project[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -72,11 +98,18 @@ export default function AppShell() {
     } catch { if (request === generation.current) setError(true) }
     finally { moreLock.current = false; setLoading(false) }
   }
-  return <div className={styles.shell} data-collapsed={collapsed || undefined} data-editor={editor ? '' : undefined}>
-    <aside id="app-sidebar" className={styles.sidebar} hidden={collapsed}>
+  return <div className={styles.shell} data-collapsed={!narrow && collapsed || undefined} data-editor={editor ? '' : undefined} data-menu-open={menuOpen || undefined}>
+    {narrow && <div className={styles.topBar} inert={menuOpen}>
+      <NavLink className={styles.brand} to="/"><span>t</span>TeamPleSpace</NavLink>
+      <button type="button" className={styles.menu} aria-label="메뉴 열기" id="app-menu-open" aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={openMenu}><span aria-hidden="true" /></button>
+    </div>}
+    {menuOpen && <div className={styles.scrim} aria-hidden="true" onClick={closeMenu} />}
+    <aside id="app-sidebar" className={styles.sidebar} hidden={narrow ? !menuOpen : collapsed} onKeyDown={(event) => { if (menuOpen && event.key === 'Escape') closeMenu() }}>
       <div className={styles.sidebarHead}>
         <NavLink className={styles.brand} to="/"><span>t</span>TeamPleSpace</NavLink>
-        <button type="button" className={styles.fold} aria-label="메뉴 접기" id="app-sidebar-close" aria-controls="app-sidebar" aria-expanded="true" onClick={() => toggle(true)}><span aria-hidden="true" /></button>
+        {narrow
+          ? <button type="button" className={styles.close} aria-label="메뉴 닫기" id="app-menu-close" aria-controls="app-sidebar" aria-expanded="true" onClick={closeMenu}><span aria-hidden="true" /></button>
+          : <button type="button" className={styles.fold} aria-label="메뉴 접기" id="app-sidebar-close" aria-controls="app-sidebar" aria-expanded="true" onClick={() => toggle(true)}><span aria-hidden="true" /></button>}
       </div>
       <nav aria-label="주 메뉴" className={styles.navigation}>
         <NavLink to="/" end><img src="/assets/navigation/home.svg" alt="" />홈</NavLink>
@@ -113,8 +146,8 @@ export default function AppShell() {
       <NavLink to="/account" className={styles.account}><img src="/assets/navigation/user.svg" alt="" />내 계정</NavLink>
       </div>
     </aside>
-    <div className={styles.workspace}>
-      {collapsed && <button type="button" className={styles.unfold} aria-label="메뉴 펼치기" id="app-sidebar-open" aria-controls="app-sidebar" aria-expanded="false" onClick={() => toggle(false)}><span aria-hidden="true" /></button>}
+    <div className={styles.workspace} inert={menuOpen}>
+      {!narrow && collapsed && <button type="button" className={styles.unfold} aria-label="메뉴 펼치기" id="app-sidebar-open" aria-controls="app-sidebar" aria-expanded="false" onClick={() => toggle(false)}><span aria-hidden="true" /></button>}
       {match?.params.projectId && <RequestBanner key={match.params.projectId} projectId={match.params.projectId} />}
       <Outlet context={{ setCurrentProject }} />
     </div>
