@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { Element, Presentation, Slide } from '../../../entities/presentation/schema.ts'
+import type { Element, Presentation, Slide } from './schema.ts'
 import styles from './SlideRenderer.module.css'
-import { textStyle } from '../textStyle.ts'
+import { textStyle } from './textStyle.ts'
 
 type Props = {
   canvas: Presentation['canvas']

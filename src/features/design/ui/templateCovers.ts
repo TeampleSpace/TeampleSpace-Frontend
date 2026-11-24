@@ -98,6 +98,10 @@ export const templateCovers: Record<string, TemplateCoverSpec> = {
 
 // 템플릿의 용도 분류. 갤러리의 분류와 상세 설명에 쓰고, 적힌 순서가 갤러리의 표시 순서다
 export const templatePurposes: Record<string, string> = {
+  'burgundy-editorial': '보고서',
+  'tech-pitch': '제안서',
+  'open-campus': '수업 발표',
+  'field-notes': '세미나',
   'clean-report': '보고서', 'blue-focus': '수업 발표', 'orange-pitch': '제안서', 'green-insight': '보고서',
   'mono-editorial': '세미나', 'lilac-studio': '제안서', 'data-briefing': '보고서', 'warm-seminar': '세미나', 'team-story': '수업 발표',
   editorial: '세미나', 'pitch-dark': '제안서', 'warm-story': '수업 발표', 'grid-analysis': '보고서', 'bold-cover': '제안서',
