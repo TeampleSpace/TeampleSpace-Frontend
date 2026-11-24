@@ -264,7 +264,8 @@ test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으�
   const retry = await screen.findByRole('button', { name: '저장 다시 시도' })
   const previous = screen.getByRole<HTMLButtonElement>('button', { name: '클린 리포트 선택' })
   const directInput = screen.getByRole<HTMLButtonElement>('button', { name: '직접 입력' })
-  expect(previous.disabled).toBe(true)
+  // 카드는 포커스를 잃지 않게 aria-disabled로 잠근다
+  expect(previous.getAttribute('aria-disabled')).toBe('true')
   expect(directInput.disabled).toBe(true)
   fireEvent.click(previous)
   fireEvent.click(directInput)
@@ -274,8 +275,27 @@ test('저장 응답을 잃으면 기존 디자인이나 다른 입력 방식으�
   expect(save).toHaveBeenCalledTimes(2)
   expect(save.mock.calls[1][1]).toEqual(save.mock.calls[0][1])
   expect(save.mock.calls[1][2]).toBe(save.mock.calls[0][2])
-  expect(previous.disabled).toBe(false)
+  expect(previous.getAttribute('aria-disabled')).toBeNull()
   expect(directInput.disabled).toBe(false)
+})
+
+test('저장하는 동안에도 선택한 카드에 포커스가 남고 다시 눌러도 한 번만 저장한다', async () => {
+  let finish: (value: DesignSettings) => void = () => {}
+  const save = vi.mocked(designApi.save).mockReturnValue(new Promise((resolve) => { finish = resolve }))
+  mount()
+  const card = await screen.findByRole<HTMLButtonElement>('button', { name: '클린 리포트 선택' })
+  card.focus()
+  fireEvent.click(card)
+  // 저장 중에는 누를 수 없다고만 알리고 버튼은 포커스를 받을 수 있게 둔다
+  await waitFor(() => expect(card.getAttribute('aria-disabled')).toBe('true'))
+  expect(card.disabled).toBe(false)
+  expect(document.activeElement).toBe(card)
+  fireEvent.click(card)
+  expect(save).toHaveBeenCalledTimes(1)
+  finish(storedTemplate)
+  await screen.findByText('클린 리포트 템플릿으로 저장했어요')
+  expect(document.activeElement).toBe(card)
+  expect(card.getAttribute('aria-disabled')).toBeNull()
 })
 
 test('템플릿을 연달아 누르면 매번 바로 저장하고 미리보기에서 고른 템플릿도 저장한다', async () => {

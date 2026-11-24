@@ -51,8 +51,10 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
         const active = selected?.id === item.id && selected.version === item.version
         const studioCover = studioPreview(item.key)?.[0]
         return <div key={`${item.id}:${item.version}`} className={styles.item}>
+          {/* 저장하는 동안에도 포커스가 남도록 disabled 대신 aria-disabled로 막는다 */}
           <button type="button" className={styles.card} aria-pressed={active}
-            aria-label={`${item.name} ${active ? '선택됨' : '선택'}`} disabled={disabled} onClick={() => onSelect(item)}>
+            aria-label={`${item.name} ${active ? '선택됨' : '선택'}`} aria-disabled={disabled || undefined}
+            onClick={() => { if (!disabled) onSelect(item) }}>
             {studioCover ? <StudioPreview slide={studioCover.document} />
               : templateCovers[item.key] ? <TemplateCover templateKey={item.key} />
               : <DesignPreview preview={{ ...item.preview, font: item.fonts[0], templateKey: item.key }} projectName={projectName} variant="thumbnail" />}
