@@ -93,7 +93,7 @@ test('상세 미리보기는 서버가 그린 실제 배치를 이름과 함께 
     content: { shape: 'rect' as const }, style: { fill: '#FFFFFF', stroke: null, strokeWidth: 0 } }
   vi.mocked(designApi.preview)
     .mockRejectedValueOnce(new TransportError('network'))
-    .mockResolvedValueOnce({ templateId: template.id, templateVersion: 1, canvas: { width: 1280, height: 720, unit: 'px' }, slides: [
+    .mockResolvedValueOnce({ templateId: template.id, templateVersion: 1, canvas: { width: 1600, height: 900, unit: 'px' }, slides: [
       { layoutId: 'title', elements: [background, text('캠퍼스 일회용품, 줄일 수 있을까', 250)] },
       { layoutId: 'process', elements: [background, text('실행 계획', 80)] },
     ] })
@@ -108,6 +108,9 @@ test('상세 미리보기는 서버가 그린 실제 배치를 이름과 함께 
   expect(await within(dialog).findByText('캠퍼스 일회용품, 줄일 수 있을까')).toBeTruthy()
   expect(within(dialog).getByText('표지')).toBeTruthy()
   expect(within(dialog).getByText('단계')).toBeTruthy()
+  // 응답의 캔버스 비율로 그린다
+  const frame = within(dialog).getByLabelText('실제 배치 미리보기').querySelector<HTMLElement>('figure > div')
+  expect(frame?.style.aspectRatio).toBe('1600 / 900')
   expect(within(dialog).queryByText('오늘 이야기할 내용')).toBeNull()
   expect(within(dialog).queryByRole('alert')).toBeNull()
   expect(document.activeElement).toBe(within(dialog).getByLabelText('실제 배치 미리보기'))
