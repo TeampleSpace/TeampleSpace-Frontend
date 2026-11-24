@@ -56,11 +56,12 @@ export function SubscriptionPage() {
           <p className={styles.caption}>결제 서비스가 연결되기 전에는 구독이 시작되지 않습니다.</p>
         </section>
       </div>
-      <nav className={styles.actions} aria-label="구독 화면 이동">
+      {/* 예시 상태 화면은 개발 서버에만 있다 */}
+      {import.meta.env.DEV && <nav className={styles.actions} aria-label="구독 화면 이동">
         <Link className={secondaryLink} to={managementPath}>구독 및 결제 관리</Link>
         <Link className={secondaryLink} to={completePreviewPath}>구독 완료 미리보기</Link>
         <Link className={secondaryLink} to={interruptedPreviewPath}>결제 중단 미리보기</Link>
-      </nav>
+      </nav>}
     </div>
   )
 }

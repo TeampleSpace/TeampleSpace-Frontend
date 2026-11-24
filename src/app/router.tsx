@@ -38,11 +38,13 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
     ]
   : []
 
+// 요금 안내 화면은 운영 빌드에도 열고 예시 상태 화면은 개발 서버에만 둔다
+const subscriptionRoute: RouteObject = {
+  path: 'account/subscription',
+  lazy: async () => ({ Component: (await import('../features/billing/ui/BillingPage.tsx')).SubscriptionPage }),
+}
+
 const billingPreviewRoutes: RouteObject[] = import.meta.env.DEV ? [
-  {
-    path: 'account/subscription',
-    lazy: async () => ({ Component: (await import('../features/billing/ui/BillingPage.tsx')).SubscriptionPage }),
-  },
   {
     path: 'account/subscription/manage',
     lazy: async () => ({ Component: (await import('../features/billing/ui/BillingPage.tsx')).BillingManagePage }),
@@ -77,6 +79,7 @@ export const router = createBrowserRouter([
         { element: <RequireSession />, children: [{ element: <AppShell />, children: [
           { index: true, element: <ProjectHome /> },
           { path: 'account', element: <Account /> },
+          subscriptionRoute,
           ...billingPreviewRoutes,
           { path: 'projects/:projectId', element: <ProjectPage /> },
           { path: 'projects/:projectId/settings', element: <ProjectPage /> },

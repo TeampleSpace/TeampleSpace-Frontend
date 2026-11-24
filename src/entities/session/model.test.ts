@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { authCapabilitiesSchema, authDestination, oauthUrl, requiredDocuments, safeReturnTo, userSchema } from './model.ts'
 
 test('로그인 복귀는 허용한 내부 화면만 사용한다', () => {
@@ -8,6 +8,18 @@ test('로그인 복귀는 허용한 내부 화면만 사용한다', () => {
   expect(safeReturnTo('/invite/token?from=team')).toBe('/invite/token?from=team')
   expect(safeReturnTo('/projects/p/settings')).toBe('/projects/p/settings')
   expect(safeReturnTo('/account')).toBe('/account')
+})
+
+afterEach(() => vi.unstubAllEnvs())
+
+test('운영 빌드에서는 요금 안내 주소만 로그인 복귀 주소로 받는다', () => {
+  vi.stubEnv('DEV', false)
+  expect(safeReturnTo('/account/subscription')).toBe('/account/subscription')
+  expect(safeReturnTo('/account/subscription/')).toBe('/account/subscription')
+  for (const value of ['/account/subscription/manage', '/account/subscription/preview/complete', '/account/subscription/preview/interrupted', '/billing/return']) {
+    expect(safeReturnTo(value)).toBe('/')
+  }
+  expect(oauthUrl('kakao', 'login', '/account/subscription')).toBe('/v1/auth/oauth/kakao/authorize?purpose=login&returnTo=%2Faccount')
 })
 
 test('소셜 로그인도 검증한 복귀 경로만 서버에 전달한다', () => {

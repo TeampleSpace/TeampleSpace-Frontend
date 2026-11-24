@@ -1,14 +1,15 @@
 const previewPaths = /^\/(?:account\/subscription(?:\/manage|\/preview\/(?:complete|interrupted))?|billing\/return)\/?$/
+// 운영 빌드는 요금 안내 화면만 연다
+const openPaths = /^\/account\/subscription\/?$/
 const previewReturnKey = 'teamplespace.billing-preview.return'
 const previewReturnLifetimeMs = 300_000
 
 export function billingPreviewPath(pathname: string) {
-  if (!import.meta.env.DEV || !previewPaths.test(pathname)) return undefined
+  if (!(import.meta.env.DEV ? previewPaths : openPaths).test(pathname)) return undefined
   return pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
 }
 
 export function setBillingPreviewReturn(returnTo?: string) {
-  if (!import.meta.env.DEV) return
   try {
     const path = billingPreviewPath(returnTo ?? '')
     if (path) sessionStorage.setItem(previewReturnKey, JSON.stringify({ path, expiresAt: Date.now() + previewReturnLifetimeMs }))
@@ -19,7 +20,6 @@ export function setBillingPreviewReturn(returnTo?: string) {
 }
 
 export function takeBillingPreviewReturn() {
-  if (!import.meta.env.DEV) return undefined
   try {
     const stored = sessionStorage.getItem(previewReturnKey)
     sessionStorage.removeItem(previewReturnKey)
