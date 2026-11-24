@@ -67,6 +67,23 @@ test('서버에서 선택한 스타일을 카드와 슬라이드 미리보기에
   expect(container.querySelector('[data-template="clean-report"]')).toBeTruthy()
 })
 
+test('목차와 본문 시안이 있는 템플릿은 상세 미리보기에 시안을, 없는 템플릿은 공통 예시를 보여 준다', async () => {
+  const editorial = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00003', key: 'editorial', name: '에디토리얼' }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial], allowedFonts: ['Pretendard'] })
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: '클린 리포트 미리보기' }))
+  const clean = screen.getByRole('dialog', { name: '클린 리포트' })
+  expect(within(clean).getByText('오늘 이야기할 내용')).toBeTruthy()
+  expect(within(clean).getByText('관찰에서 발견한 세 가지')).toBeTruthy()
+  expect(within(clean).queryByText('발표 제목과 핵심 메시지')).toBeNull()
+  fireEvent.click(within(clean).getByRole('button', { name: '닫기' }))
+
+  fireEvent.click(screen.getByRole('button', { name: '에디토리얼 미리보기' }))
+  const generic = screen.getByRole('dialog', { name: '에디토리얼' })
+  expect(within(generic).queryByText('오늘 이야기할 내용')).toBeNull()
+  expect(within(generic).getAllByText('발표 제목과 핵심 메시지').length).toBeGreaterThan(0)
+})
+
 test('아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 그 뒤에 보여 준다', async () => {
   const editorial = { ...template, id: 'editorial', key: 'editorial', name: '에디토리얼' }
   const unknown = { ...template, id: 'new-template', key: 'new-template', name: '새 템플릿' }
