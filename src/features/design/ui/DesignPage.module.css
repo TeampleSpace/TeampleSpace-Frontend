@@ -52,6 +52,7 @@
 
 /* 템플릿 상세 모달. 왼쪽은 미리보기, 오른쪽은 설명 */
 .detailPreviews { grid-area: content; display: grid; align-content: start; gap: var(--space-16); min-width: 0; }
+.previewSlides { display: grid; gap: var(--space-16); min-width: 0; }
 .detailPreviews .detail { border-color: var(--color-border); }
 .detailInfo { grid-area: body; display: flex; flex-direction: column; gap: var(--space-24); min-width: 0; overflow-wrap: anywhere; }
 .detailInfo p, .detailInfo h3 { margin: 0; }
