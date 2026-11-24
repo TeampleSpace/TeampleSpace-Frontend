@@ -75,3 +75,9 @@
   .stageFoot { flex-direction: column; align-items: flex-start; }
   .banner { flex-direction: column; align-items: flex-start; }
 }
+
+/* AI 수정 모달 */
+.revision { display: flex; flex-direction: column; gap: var(--space-12); }
+.revisionList { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
+.revisionList li { display: flex; flex-direction: column; gap: var(--space-8); }
+.stageActions { display: flex; align-items: center; gap: var(--space-12); flex-shrink: 0; }

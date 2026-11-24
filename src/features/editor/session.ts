@@ -6,6 +6,7 @@ import {
 } from '../../entities/presentation/schema.ts'
 import type {
   Element,
+  ElementChange,
   ElementPatch,
   ElementSaveRequest,
   ElementSaveResult,
@@ -534,6 +535,16 @@ export function createEditorSession(options: {
     setConfirmed(server)
   }
 
+  // 다른 경로로 저장한 변경 응답을 이벤트를 기다리지 않고 반영한다. 같은 이벤트가 나중에 와도 버전으로 걸러진다
+  function accept(changes: ElementChange[]) {
+    for (const change of changes) {
+      if (!find(change.resource.id)) continue
+      bumpVersions(change.resource.id, change)
+      reconcile(change.resource)
+    }
+    publish()
+  }
+
   function resolveConflict(elementId: string, keep: 'server' | 'mine') {
     const entry = entries.get(elementId)
     if (!entry || entry.status !== 'conflict' || !entry.serverLatest) return
@@ -837,6 +848,7 @@ export function createEditorSession(options: {
     flush,
     retry,
     resolveConflict,
+    accept,
     reconnect,
     movePointer,
     // 문서가 새로 만들어졌을 때처럼 이벤트 없이 바뀐 내용을 다시 읽는다
