@@ -52,6 +52,12 @@ export function SlideRevision({ session, slide, label, busy, disabled }: {
   const [applying, setApplying] = useState(false)
   // 같은 제안을 다시 적용할 때는 같은 키를 보내 한 번만 반영되게 한다
   const applyKey = useRef('')
+  const form = useRef<HTMLFormElement>(null)
+
+  // 다시 요청으로 돌아오면 요청 문장을 바로 고칠 수 있게 입력란에 포커스를 준다. 처음 열 때는 모달이 맡는다
+  useEffect(() => {
+    if (open && phase === 'request') form.current?.querySelector('textarea')?.focus()
+  }, [open, phase])
 
   const jobId = phase === 'working' ? job?.id : undefined
   useEffect(() => {
@@ -149,7 +155,7 @@ export function SlideRevision({ session, slide, label, busy, disabled }: {
         open={open}
         title={titles[phase]}
         description={descriptions[phase]}
-        size="form"
+        size="confirm"
         onClose={close}
         footer={
           phase === 'request' ? (
@@ -169,7 +175,7 @@ export function SlideRevision({ session, slide, label, busy, disabled }: {
         }
       >
         {phase === 'request' && (
-          <form className={styles.revision} onSubmit={(event) => { event.preventDefault(); void submit() }}>
+          <form ref={form} className={styles.revision} onSubmit={(event) => { event.preventDefault(); void submit() }}>
             <Field
               multiline
               label="어떻게 바꿀까요?"
@@ -177,7 +183,7 @@ export function SlideRevision({ session, slide, label, busy, disabled }: {
               value={prompt}
               maxLength={promptMax}
               rows={3}
-              autoFocus
+              data-autofocus
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {
                 // 한글 조합 중의 Enter는 글자 확정이다
