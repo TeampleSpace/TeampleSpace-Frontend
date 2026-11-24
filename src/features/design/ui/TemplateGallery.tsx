@@ -4,6 +4,8 @@ import type { DesignTemplate } from '../api.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { DesignPreview } from './DesignPreview.tsx'
 import { TemplateCover } from './TemplateCover.tsx'
+import { StudioPreview } from './StudioPreview.tsx'
+import { studioPreview } from './studioPreviews.ts'
 import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import styles from './TemplateGallery.module.css'
 
@@ -47,10 +49,12 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
     <div className={styles.grid}>
       {visible.map((item) => {
         const active = selected?.id === item.id && selected.version === item.version
+        const studioCover = studioPreview(item.key)?.[0]
         return <div key={`${item.id}:${item.version}`} className={styles.item}>
           <button type="button" className={styles.card} aria-pressed={active}
             aria-label={`${item.name} ${active ? '선택됨' : '선택'}`} disabled={disabled} onClick={() => onSelect(item)}>
-            {templateCovers[item.key] ? <TemplateCover templateKey={item.key} />
+            {studioCover ? <StudioPreview slide={studioCover.document} />
+              : templateCovers[item.key] ? <TemplateCover templateKey={item.key} />
               : <DesignPreview preview={{ ...item.preview, font: item.fonts[0], templateKey: item.key }} projectName={projectName} variant="thumbnail" />}
             <span className={styles.name}>{item.name}{active && <span className={styles.selected}>선택됨</span>}</span>
             <span className={styles.caption}>{purposes[item.key] ?? item.preview.description} / 16:9</span>

@@ -15,6 +15,8 @@ import { DesignPreview } from './DesignPreview.tsx'
 import { TemplateCover } from './TemplateCover.tsx'
 import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import { TemplateGallery } from './TemplateGallery.tsx'
+import { StudioPreview } from './StudioPreview.tsx'
+import { studioPreview } from './studioPreviews.ts'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
 import styles from './DesignPage.module.css'
 
@@ -28,7 +30,9 @@ type SaveAttempt = { body: DesignInput; key: string; request?: boolean }
 type AccessError = (reason: unknown) => void
 
 const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표 색상', guidelines: '디자인 지침', template: '템플릿' }
-const layoutNames: Record<string, string> = { title: '제목', content: '본문', summary: '요약' }
+const layoutNames: Record<string, string> = {
+  title: '제목', agenda: '목차', content: '본문', compare: '비교', chart: '차트', summary: '요약',
+}
 const defaultPreview: PreviewStyle = { backgroundColor: '#FFFFFF', headingColor: '#20242D' }
 const defaultCustomColor = '#2864E8'
 const palette = [
@@ -446,12 +450,15 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     {detail && <Modal open title={detail.name} size="preview" onClose={() => setDetail(null)}
       footer={<Button disabled={inputLocked || conflict || !!waitingUntil} onClick={() => chooseTemplate(detail)}>이 템플릿 선택</Button>}>
       <div className={styles.detailPreviews}>
+        {studioPreview(detail.key)?.map(({ label, document }) =>
+          <StudioPreview key={document.id} slide={document} label={label} />) ?? <>
         {templateCovers[detail.key] ? <TemplateCover templateKey={detail.key} />
           : <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />}
         <div className={styles.detailsGrid}>
           <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />
           <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" slide={secondExample} />
         </div>
+        </>}
       </div>
       <div className={styles.detailInfo}>
         <div className={styles.detailAbout}>

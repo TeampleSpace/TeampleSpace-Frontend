@@ -11,8 +11,8 @@ import { clientToDoc, deltaToDoc } from '../coords.ts'
 import { describeElement } from '../describe.ts'
 import { snap } from '../snap.ts'
 import type { Guide } from '../snap.ts'
-import { textStyle } from '../textStyle.ts'
-import { SlideRenderer } from './SlideRenderer.tsx'
+import { textStyle } from '../../../entities/presentation/textStyle.ts'
+import { SlideRenderer } from '../../../entities/presentation/SlideRenderer.tsx'
 import styles from './SlideStage.module.css'
 
 // moved는 맞춤 전 포인터가 움직인 거리로, 클릭과 끌기를 가른다

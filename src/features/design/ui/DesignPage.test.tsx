@@ -77,6 +77,31 @@ test('아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 그 뒤�
   expect(cards.map((button) => button.getAttribute('aria-label'))).toEqual(['클린 리포트 선택', '에디토리얼 선택', '새 템플릿 선택'])
 })
 
+test('새 템플릿 검색, 여섯 장 미리보기, 버전 저장을 연결한다', async () => {
+  const studio = { ...template, id: 'studio', key: 'open-campus', name: '오픈 캠퍼스', version: 2 }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [studio, template], allowedFonts: ['Pretendard'] })
+  vi.mocked(designApi.save).mockResolvedValue({ ...storedTemplate, templateId: studio.id, templateVersion: studio.version })
+  mount()
+
+  const previewButton = await screen.findByRole('button', { name: '오픈 캠퍼스 미리보기' })
+  fireEvent.click(screen.getByRole('button', { name: '수업 발표' }))
+  fireEvent.change(screen.getByRole('searchbox', { name: '템플릿 검색' }), { target: { value: '캠퍼스' } })
+  expect(screen.queryByRole('button', { name: '클린 리포트 선택' })).toBeNull()
+  fireEvent.click(previewButton)
+  const dialog = screen.getByRole('dialog', { name: '오픈 캠퍼스' })
+  expect(within(dialog).getAllByRole('figure')).toHaveLength(6)
+  expect(within(dialog).getByText('차트')).toBeTruthy()
+  const arc = dialog.querySelector<HTMLImageElement>('img[src$="open-campus-5-2.svg"]')?.parentElement
+  expect(arc?.style.left).toBe('134.16px')
+  expect(arc?.style.width).toBe('310px')
+  fireEvent.click(within(dialog).getByRole('button', { name: '이 템플릿 선택' }))
+
+  await waitFor(() => expect(designApi.save).toHaveBeenCalledWith('project', {
+    expectedVersion: 1, mode: 'template', templateId: studio.id, templateVersion: studio.version,
+  }, expect.any(String), expect.any(AbortSignal)))
+  await screen.findByRole('button', { name: '오픈 캠퍼스 선택됨' })
+})
+
 test('검색과 분류에서 선택한 항목이 숨겨져도 저장 대상을 유지하고 검색을 초기화한다', async () => {
   const editorial = { ...template, id: 'editorial', key: 'editorial', name: '에디토리얼' }
   const unknown = { ...template, id: 'new-template', key: 'new-template', name: '새 템플릿' }
