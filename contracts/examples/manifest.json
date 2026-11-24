@@ -505,6 +505,11 @@
     "valid": true
   },
   {
+    "example": "template-preview.json",
+    "schema": "stage-3-design.schema.json#/$defs/TemplatePreview",
+    "valid": true
+  },
+  {
     "example": "design-template-put-request.json",
     "schema": "stage-3-design.schema.json#/$defs/DesignSettingsPutRequest",
     "valid": true
@@ -583,5 +588,75 @@
     "example": "event-presence-updated.json",
     "schema": "api.schema.json#/$defs/PresenceUpdated",
     "valid": true
+  },
+  {
+    "example": "slide-create-request.json",
+    "schema": "api.schema.json#/$defs/SlideCreateRequest",
+    "valid": true
+  },
+  {
+    "example": "slide-create-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "slide-delete-request.json",
+    "schema": "api.schema.json#/$defs/SlideDeleteRequest",
+    "valid": true
+  },
+  {
+    "example": "slide-delete-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "slide-order-request.json",
+    "schema": "api.schema.json#/$defs/SlideOrderRequest",
+    "valid": true
+  },
+  {
+    "example": "slide-order-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "element-create-request.json",
+    "schema": "api.schema.json#/$defs/ElementCreateRequest",
+    "valid": true
+  },
+  {
+    "example": "element-create-response.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": true
+  },
+  {
+    "example": "element-delete-request.json",
+    "schema": "api.schema.json#/$defs/ElementDeleteRequest",
+    "valid": true
+  },
+  {
+    "example": "event-slide-created.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": true
+  },
+  {
+    "example": "event-slide-order-updated.json",
+    "schema": "api.schema.json#/$defs/Event",
+    "valid": true
+  },
+  {
+    "example": "invalid/mutation-response-with-resource-and-tombstone.json",
+    "schema": "api.schema.json#/$defs/MutationResponse",
+    "valid": false
+  },
+  {
+    "example": "invalid/slide-order-request-duplicate.json",
+    "schema": "api.schema.json#/$defs/SlideOrderRequest",
+    "valid": false
+  },
+  {
+    "example": "invalid/element-create-request-image.json",
+    "schema": "api.schema.json#/$defs/ElementCreateRequest",
+    "valid": false
   }
 ]

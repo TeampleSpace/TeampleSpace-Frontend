@@ -2,7 +2,7 @@ import type { Element, Slide } from '../../../entities/presentation/schema.ts'
 
 type Bounds = [x: number, y: number, width: number, height: number]
 type Position = Omit<Element['geometry'], 'z'>
-type PreviewElement =
+export type PreviewElement =
   | { type: 'text'; geometry: Position; content: Extract<Element, { type: 'text' }>['content']; style: Extract<Element, { type: 'text' }>['style'] }
   | { type: 'shape'; geometry: Position; content: Extract<Element, { type: 'shape' }>['content']; style: Extract<Element, { type: 'shape' }>['style'] }
   | { type: 'image'; geometry: Position; content: Extract<Element, { type: 'image' }>['content']; style: Extract<Element, { type: 'image' }>['style'] }

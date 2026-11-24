@@ -5,6 +5,21 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-25 템플릿 미리보기 슬라이드 조회 추가
+
+- `GET /v1/templates/{templateId}/preview` 경로와 `TemplatePreview`, `TemplatePreviewSlide`, `TemplatePreviewElement` 형식을 추가
+- 예시 발표를 발표 생성과 같은 배치와 테마 규칙으로 그린다. 요소에는 식별자와 버전이 없다
+
+## 2026-11-24 발표 디자인 여덟 가지의 본문 배치
+
+- 발표 생성 고정 입력의 `promptVersion`을 `presentation-v3`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
+- 텍스트 요소의 `fontFamily`에 `Gmarket Sans TTF`가 올 수 있다. 화면은 이 이름으로 등록한 글꼴로 그린다
+
+## 2026-11-24 생성 발표 자료의 배치 개선
+
+- 발표 생성 고정 입력의 `promptVersion`을 `presentation-v2`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
+- 생성한 슬라이드에 목차와 본문 배치별 `layoutId`(`agenda`, `cards`, `list`, `process`, `compare`, `statement`)가 생겼다. 제목 텍스트에는 줄바꿈 문자가 들어갈 수 있다
+
 ## 2026-11-24 문장 요청으로 슬라이드 글을 고치는 AI 수정 추가
 
 - 수정 작업 등록 `POST /v1/slides/{slideId}/ai-revision-jobs`와 적용 `POST /v1/ai-proposals/{proposalId}/apply` 경로, `SlideRevisionRequest`, `SlideRevisionResult`, `SlideRevisionApplied` 형식을 추가
@@ -38,6 +53,12 @@
 - 작업 실패 코드 `JOB_PRESENTATION_PROVIDER_UNAVAILABLE`, `JOB_PRESENTATION_INVALID_RESULT`, `JOB_PRESENTATION_ACCESS_REVOKED`를 추가
 - 성공하면 `presentation.replaced` 이벤트를 보낸다. 받은 화면은 동기화 스냅샷을 다시 읽는다
 - 직접 입력에서 고른 프로젝트 글꼴은 텍스트 `fontFamily`에 `ProjectFont-{fontAssetId}`로 적는다
+
+## 2026-11-21 슬라이드와 요소의 추가, 삭제, 순서 변경 추가
+
+- `SlideCreateRequest`, `SlideDeleteRequest`, `SlideOrderRequest`, `ElementCreateRequest`, `ElementDeleteRequest`와 예제를 추가
+- `DocumentChange`에 바뀐 뒤의 전체 슬라이드 순서 `slideIds`를 추가. 순서만 바꾼 응답과 이벤트는 `resource`와 `tombstone` 없이 `slideIds`만 싣는다. `resource`와 `tombstone`을 함께 싣는 것은 여전히 받지 않는다
+- 요소 추가는 `element.updated`로 전달하고 새 슬라이드와 새 요소의 식별자는 클라이언트가 만든다
 
 ## 2026-11-20 편집 경로의 HTTP 공개
 

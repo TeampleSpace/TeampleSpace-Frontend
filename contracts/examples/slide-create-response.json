@@ -1,0 +1,22 @@
+{
+  "clientMutationId": "mut_01JD40A1SL",
+  "resource": {
+    "id": "0193a000-0000-7000-8000-0000000000a9",
+    "presentationId": "0193a000-0000-7000-8000-000000000010",
+    "generation": 1,
+    "version": 1,
+    "layoutId": "content",
+    "elementIds": [],
+    "elements": []
+  },
+  "slideIds": [
+    "0193a000-0000-7000-8000-0000000000a1",
+    "0193a000-0000-7000-8000-0000000000a9",
+    "0193a000-0000-7000-8000-0000000000a2"
+  ],
+  "slideVersion": 1,
+  "presentationVersion": 15,
+  "orderVersion": 2,
+  "generation": 1,
+  "eventId": "46"
+}

@@ -18,6 +18,7 @@ import { TemplateGallery } from './TemplateGallery.tsx'
 import { StudioPreview } from './StudioPreview.tsx'
 import { studioPreview } from './studioPreviews.ts'
 import { templateArtwork } from './templateArtwork.ts'
+import { TemplateSlides } from './TemplateSlides.tsx'
 import type { PreviewStyle, SlideExample } from './DesignPreview.tsx'
 import styles from './DesignPage.module.css'
 
@@ -452,7 +453,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
       footer={<Button disabled={inputLocked || conflict || !!waitingUntil} onClick={() => chooseTemplate(detail)}>이 템플릿 선택</Button>}>
       <div className={styles.detailPreviews}>
         {studioPreview(detail.key)?.map(({ label, document }) =>
-          <StudioPreview key={document.id} slide={document} label={label} />) ?? <>
+          <StudioPreview key={document.id} slide={document} label={label} />) ?? <TemplateSlides key={detail.id} template={detail} fallback={<>
         {templateCovers[detail.key] ? <TemplateCover templateKey={detail.key} />
           : <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" />}
         <div className={styles.detailsGrid}>
@@ -461,7 +462,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
           <DesignPreview projectName={projectName} preview={previewOf(detail)} variant="detail" slide={secondExample} />
           </>}
         </div>
-        </>}
+        </>} />}
       </div>
       <div className={styles.detailInfo}>
         <div className={styles.detailAbout}>

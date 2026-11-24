@@ -1,0 +1,20 @@
+{
+  "eventId": "48",
+  "projectId": "0193a000-0000-7000-8000-000000000001",
+  "type": "slide.order.updated",
+  "actorId": "0193a000-0000-7000-8000-0000000000d1",
+  "clientMutationId": "mut_01JD40A3SL",
+  "occurredAt": "2026-11-21T01:00:00.000000Z",
+  "resourceId": "0193a000-0000-7000-8000-000000000010",
+  "presentationVersion": 17,
+  "generation": 1,
+  "payload": {
+    "slideIds": [
+      "0193a000-0000-7000-8000-0000000000a2",
+      "0193a000-0000-7000-8000-0000000000a1"
+    ],
+    "presentationVersion": 17,
+    "orderVersion": 4,
+    "generation": 1
+  }
+}

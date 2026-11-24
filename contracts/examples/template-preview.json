@@ -1,0 +1,84 @@
+{
+  "templateId": "ec85bac3-878f-4b5f-b4bc-5f0bc8c00001",
+  "templateVersion": 1,
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "unit": "px"
+  },
+  "slides": [
+    {
+      "layoutId": "title",
+      "elements": [
+        {
+          "type": "shape",
+          "geometry": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720,
+            "rotation": 0,
+            "z": 0
+          },
+          "content": {
+            "shape": "rect"
+          },
+          "style": {
+            "fill": "#FFFFFF",
+            "stroke": null,
+            "strokeWidth": 0
+          }
+        },
+        {
+          "type": "text",
+          "geometry": {
+            "x": 96,
+            "y": 250,
+            "width": 1088,
+            "height": 150,
+            "rotation": 0,
+            "z": 1
+          },
+          "content": {
+            "text": "캠퍼스 일회용품, 줄일 수 있을까"
+          },
+          "style": {
+            "fontFamily": "Pretendard",
+            "fontSize": 60,
+            "fontWeight": 700,
+            "color": "#212735",
+            "align": "left",
+            "lineHeight": 1.2
+          }
+        }
+      ]
+    },
+    {
+      "layoutId": "summary",
+      "elements": [
+        {
+          "type": "text",
+          "geometry": {
+            "x": 96,
+            "y": 96,
+            "width": 1088,
+            "height": 72,
+            "rotation": 0,
+            "z": 0
+          },
+          "content": {
+            "text": "정리"
+          },
+          "style": {
+            "fontFamily": "Pretendard",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "color": "#212735",
+            "align": "left",
+            "lineHeight": 1.2
+          }
+        }
+      ]
+    }
+  ]
+}

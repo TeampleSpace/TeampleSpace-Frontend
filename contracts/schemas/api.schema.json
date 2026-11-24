@@ -99,6 +99,85 @@
         { "required": ["finalizeGroup"], "properties": { "finalizeGroup": { "const": true } } }
       ]
     },
+    "SlideCreateRequest": {
+      "description": "슬라이드 추가 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "orderVersion", "clientMutationId", "slideId"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "description": "클라이언트가 아는 슬라이드 목록 버전", "$ref": "#/$defs/Version" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "slideId": { "description": "클라이언트가 만든 새 슬라이드 식별자", "$ref": "#/$defs/Uuid" },
+        "afterSlideId": {
+          "description": "이 슬라이드 바로 뒤에 넣는다. null이거나 없으면 맨 앞에 넣는다",
+          "anyOf": [{ "$ref": "#/$defs/Uuid" }, { "type": "null" }]
+        },
+        "layoutId": { "type": ["string", "null"], "maxLength": 64 }
+      }
+    },
+    "SlideDeleteRequest": {
+      "description": "슬라이드 삭제 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "orderVersion", "clientMutationId"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "description": "클라이언트가 아는 슬라이드 목록 버전", "$ref": "#/$defs/Version" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" }
+      }
+    },
+    "SlideOrderRequest": {
+      "description": "슬라이드 순서 변경 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "orderVersion", "clientMutationId", "slideIds"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "orderVersion": { "description": "클라이언트가 아는 슬라이드 목록 버전", "$ref": "#/$defs/Version" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "slideIds": {
+          "description": "바꾼 뒤의 전체 순서. 지금 있는 슬라이드를 빠짐없이 한 번씩 담는다",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Uuid" }
+        }
+      }
+    },
+    "ElementCreateRequest": {
+      "description": "요소 추가 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "clientMutationId", "element"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" },
+        "element": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "geometry", "content", "style"],
+          "properties": {
+            "id": { "description": "클라이언트가 만든 새 요소 식별자", "$ref": "#/$defs/Uuid" },
+            "type": { "description": "이미지는 파일을 확정해 연결하는 경로가 생길 때 연다", "enum": ["text", "shape"] },
+            "geometry": { "$ref": "document.schema.json#/$defs/Geometry" },
+            "content": { "type": "object" },
+            "style": { "type": "object" }
+          }
+        }
+      }
+    },
+    "ElementDeleteRequest": {
+      "description": "요소 삭제 요청 본문. Idempotency-Key 헤더가 필수다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "baseVersion", "clientMutationId"],
+      "properties": {
+        "generation": { "$ref": "#/$defs/Version" },
+        "baseVersion": { "description": "마지막으로 서버가 확인해 준 요소 버전", "$ref": "#/$defs/Version" },
+        "clientMutationId": { "$ref": "#/$defs/ClientMutationId" }
+      }
+    },
     "ElementPatch": {
       "description": "보낸 항목만 바꾼다. 각 항목은 통째로 교체된다",
       "type": "object",
@@ -131,11 +210,19 @@
         "presentationVersion": { "$ref": "#/$defs/Version" },
         "orderVersion": { "$ref": "#/$defs/Version" },
         "generation": { "$ref": "#/$defs/Version" },
-        "changeId": { "$ref": "#/$defs/Uuid" }
+        "changeId": { "$ref": "#/$defs/Uuid" },
+        "slideIds": {
+          "description": "슬라이드 추가, 삭제, 순서 변경 뒤의 전체 순서",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Uuid" }
+        }
       },
-      "oneOf": [
+      "not": { "required": ["resource", "tombstone"] },
+      "anyOf": [
         { "required": ["resource"] },
-        { "required": ["tombstone"] }
+        { "required": ["tombstone"] },
+        { "required": ["slideIds"] }
       ]
     },
     "Tombstone": {

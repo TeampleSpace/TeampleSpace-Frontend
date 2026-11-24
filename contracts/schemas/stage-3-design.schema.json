@@ -82,6 +82,52 @@
           }
         }
       ]
+    },
+    "TemplatePreview": {
+      "description": "템플릿으로 그린 예시 발표. 발표 생성과 같은 배치 규칙을 쓴다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["templateId", "templateVersion", "canvas", "slides"],
+      "properties": {
+        "templateId": { "$ref": "api.schema.json#/$defs/Uuid" },
+        "templateVersion": { "$ref": "api.schema.json#/$defs/Version" },
+        "canvas": { "$ref": "document.schema.json#/$defs/Canvas" },
+        "slides": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/TemplatePreviewSlide" } }
+      }
+    },
+    "TemplatePreviewSlide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layoutId", "elements"],
+      "properties": {
+        "layoutId": { "type": "string", "maxLength": 64 },
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/TemplatePreviewElement" } }
+      }
+    },
+    "TemplatePreviewElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "geometry", "content", "style"],
+      "properties": {
+        "type": { "enum": ["text", "shape", "image"] },
+        "geometry": { "$ref": "document.schema.json#/$defs/Geometry" },
+        "content": { "type": "object" },
+        "style": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "text" } } },
+          "then": { "properties": { "content": { "$ref": "document.schema.json#/$defs/TextContent" }, "style": { "$ref": "document.schema.json#/$defs/TextStyle" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "shape" } } },
+          "then": { "properties": { "content": { "$ref": "document.schema.json#/$defs/ShapeContent" }, "style": { "$ref": "document.schema.json#/$defs/ShapeStyle" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "image" } } },
+          "then": { "properties": { "content": { "$ref": "document.schema.json#/$defs/ImageContent" }, "style": { "$ref": "document.schema.json#/$defs/ImageStyle" } } }
+        }
+      ]
     }
   }
 }
