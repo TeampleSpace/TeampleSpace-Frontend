@@ -79,7 +79,7 @@ export const openCampus = [
       shape([0,0,1280,720], "rect", "#f8f5ef", null, 0, 0, 0),
       text([64,64,1152,62], "응답의 중심에는 반납 동선이 있습니다", "Pretendard", 700, 48, "#142e68", "left", 1.29, 0),
       image([94,246,350,350], "open-campus-5-1.svg", 0),
-      image([94,246,350,350], "open-campus-5-2.svg", 0),
+      image([134.16,246,310,350], "open-campus-5-2.svg", 0),
       text([146,362,250,86], "64%", "Manrope", 700, 80, "#285bdd", "center", 1.08, 0),
       text([174,460,192,30], "반납 장소", "Pretendard", 400, 20, "#142e68", "center", 1.5, 0),
       text([580,250,620,124], "가까운 반납함이\n실천을 도와줍니다", "Pretendard", 700, 48, "#142e68", "left", 1.29, 0),

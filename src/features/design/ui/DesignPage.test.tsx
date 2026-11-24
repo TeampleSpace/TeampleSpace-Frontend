@@ -91,6 +91,9 @@ test('새 템플릿 검색, 여섯 장 미리보기, 버전 저장을 연결한�
   const dialog = screen.getByRole('dialog', { name: '오픈 캠퍼스' })
   expect(within(dialog).getAllByRole('figure')).toHaveLength(6)
   expect(within(dialog).getByText('차트')).toBeTruthy()
+  const arc = dialog.querySelector<HTMLImageElement>('img[src$="open-campus-5-2.svg"]')?.parentElement
+  expect(arc?.style.left).toBe('134.16px')
+  expect(arc?.style.width).toBe('310px')
   fireEvent.click(within(dialog).getByRole('button', { name: '이 템플릿 선택' }))
 
   await waitFor(() => expect(designApi.save).toHaveBeenCalledWith('project', {
