@@ -8,9 +8,9 @@
   --color-ink: #191f28;
   --color-secondary: #4e5968;
   --color-tertiary: #6b7684;
-  --color-primary: #3182f6;
-  --color-primary-hover: #1b64da;
-  --color-primary-pressed: #1957c2;
+  --color-primary: #1b64da;
+  --color-primary-hover: #1957c2;
+  --color-primary-pressed: #164aa6;
   --color-primary-soft: #e8f3ff;
   --color-on-primary: #ffffff;
   --color-accent: #c2410c;
@@ -20,7 +20,7 @@
   --color-border-strong: #d1d6db;
   /* 입력창처럼 경계를 분명히 보여야 하는 조작부 */
   --color-border-control: #8b95a1;
-  --color-danger: #e42939;
+  --color-danger: #d22030;
   --color-danger-soft: #ffeeee;
 
   /* 라이선스와 함께 배포하는 웹폰트 */
@@ -78,7 +78,7 @@
   --shadow-sm: 0 0 #0000;
   --shadow-popover: 0 0 0 1px rgb(0 27 55 / 0.06), 0 8px 24px rgb(0 27 55 / 0.1);
   --shadow-dialog: 0 16px 48px rgb(0 27 55 / 0.16);
-  --focus-ring: 0 0 0 3px rgb(49 130 246 / 0.2);
+  --focus-ring: 0 0 0 3px rgb(27 100 218 / 0.2);
 
   /* 큰 제목만 자간을 조금 좁힌다 */
   --tracking-title: -0.6px;
