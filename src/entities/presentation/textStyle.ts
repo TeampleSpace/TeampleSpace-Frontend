@@ -5,7 +5,7 @@ import type { TextElement } from './schema.ts'
 export function textStyle(element: TextElement): CSSProperties {
   const { fontFamily, fontSize, fontWeight, color, align, lineHeight } = element.style
   return {
-    fontFamily: `'${fontFamily}', var(--font-body)`,
+    fontFamily: `'${fontFamily}', var(--font-slide)`,
     fontSize,
     fontWeight,
     color,
