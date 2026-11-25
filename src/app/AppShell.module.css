@@ -1,32 +1,33 @@
 .shell { min-height: 100dvh; display: flex; }
-.sidebar { width: 264px; flex-shrink: 0; background: var(--color-canvas); border-right: 1px solid var(--color-border); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
-.brand { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); font: 600 18px/28px var(--font-body); text-decoration: none; }
-.brand span { color: white; background: var(--color-accent-bright); width: 28px; height: 28px; border-radius: 8px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), var(--shadow-xs); display: grid; place-items: center; font: 700 20px/28px var(--font-body); }
-.navigation { display: flex; flex-direction: column; gap: var(--space-20); }
-.navigation a, .account, .managementLinks a { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: 12px 16px; min-height: 48px; border-radius: var(--radius-md); font: var(--text-nav); }
-.navigation a:hover, .account:hover { background: var(--color-muted); }
-.navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-primary); background: var(--color-primary-soft); }
-.navigation .search { background: var(--color-surface); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-xs); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
+.sidebar { width: 256px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
+.brand { display: flex; gap: var(--space-8); align-items: center; padding-left: 4px; color: var(--color-ink); font: 700 18px/28px var(--font-body); letter-spacing: -0.4px; text-decoration: none; }
+.brand span { color: var(--color-on-primary); background: var(--color-primary); width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font: 700 15px/24px var(--font-body); }
+.navigation { display: flex; flex-direction: column; gap: 2px; }
+.navigation a, .account, .managementLinks a { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: 10px 12px; min-height: 44px; border-radius: var(--radius-md); font: var(--text-nav); color: var(--color-secondary); }
+.navigation a:hover, .account:hover { background: var(--color-subtle); color: var(--color-ink); }
+.navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-ink); background: var(--color-subtle); font-weight: 700; }
+.navigation .search { margin-bottom: var(--space-12); background: var(--color-subtle); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
+.navigation .search:hover { background: var(--color-muted); }
 .management { margin-top: auto; display: flex; flex-direction: column; gap: 20px; }
 .managementLinks { display: flex; flex-direction: column; gap: 4px; }
-.managementLinks a:hover, .projectChildren a:hover, .projectRow a:hover { background: var(--color-muted); }
-.managementLinks a[aria-current='page'] { color: var(--color-primary); background: var(--color-primary-soft); }
-.caption { font: var(--text-meta); color: var(--color-secondary); }
+.managementLinks a:hover, .projectChildren a:hover, .projectRow a:hover { background: var(--color-subtle); }
+.managementLinks a[aria-current='page'] { color: var(--color-ink); background: var(--color-subtle); font-weight: 700; }
+.caption { padding-left: 12px; font: 600 13px/19px var(--font-body); color: var(--color-tertiary); }
 .explorer { display: flex; flex-direction: column; gap: 12px; }
 .explorer ul { display: flex; flex-direction: column; gap: 12px; padding: 0; margin: 0; list-style: none; }
 .projectRow { display: flex; align-items: flex-start; }
 .projectRow button { width: 40px; min-height: 44px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; border-radius: 8px; cursor: pointer; }
-.projectRow button:hover { background: var(--color-muted); }
+.projectRow button:hover { background: var(--color-subtle); }
 .projectRow a { flex: 1; min-width: 0; padding: 11px 4px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
 .chevron { width: 18px; height: 18px; background: url('/assets/navigation/chevron-down.svg') center no-repeat; transform: rotate(-90deg); transition: transform var(--motion-fast) var(--motion-ease-out); }
 .projectRow button[aria-expanded='true'] .chevron { transform: rotate(0); }
 .projectChildren { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; animation: var(--motion-feedback-enter); }
 .projectChildren a, .projectChildren > span { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
-.projectChildren a[aria-current='page'] { background: var(--color-primary-soft); color: var(--color-primary); }
+.projectChildren a[aria-current='page'] { background: var(--color-subtle); color: var(--color-ink); font-weight: 700; }
 .projectChildren > span, .projectChildren small { color: var(--color-secondary); }
 .projectChildren small { font: var(--text-meta); }
 .managementLinks a, .projectChildren a, .projectRow a, .projectRow button { transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
-.navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-primary-soft); color: var(--color-primary); }
+.navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-muted); }
 .sidebar > * { flex-shrink: 0; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
 .navigation a, .account {
@@ -35,7 +36,7 @@
 /* 좁은 화면은 상단 막대와 왼쪽 메뉴 서랍을 쓴다 */
 @media (max-width: 800px) {
   .shell { flex-direction: column; }
-  .topBar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: 56px; padding: 0 var(--space-8) 0 var(--space-16); background: var(--color-canvas); border-bottom: 1px solid var(--color-border); }
+  .topBar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: 56px; padding: 0 var(--space-8) 0 var(--space-16); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
   .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; width: min(300px, calc(100vw - 56px)); height: 100dvh; overscroll-behavior: contain; box-shadow: var(--shadow-dialog); animation: drawer-in var(--motion-enter) var(--motion-ease-out); }
   .scrim { position: fixed; inset: 0; z-index: 30; background: rgb(23 23 23 / 0.4); animation: var(--motion-fade-enter); }
   .workspace { padding: var(--space-20) var(--space-16); }
@@ -43,7 +44,7 @@
 }
 @keyframes drawer-in { from { translate: -100% 0; } to { translate: none; } }
 .menu, .close { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-ink); cursor: pointer; }
-.menu:hover, .close:hover { background: var(--color-muted); }
+.menu:hover, .close:hover { background: var(--color-subtle); }
 .menu span, .close span { width: 24px; height: 24px; background: currentColor; mask: url('/assets/navigation/menu.svg') center / contain no-repeat; }
 .close { margin-right: -12px; }
 .close span { mask-image: url('/assets/navigation/x.svg'); }
@@ -51,7 +52,7 @@
 /* 사이드바 접기. 펼치기 단추는 작업 영역 왼쪽 위에 둔다 */
 .sidebarHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
 .fold, .unfold { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--color-secondary); cursor: pointer; transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
-.fold:hover, .unfold:hover { background: var(--color-muted); color: var(--color-ink); }
+.fold:hover, .unfold:hover { background: var(--color-subtle); color: var(--color-ink); }
 .unfold { position: absolute; top: 12px; left: 12px; z-index: 5; border-color: var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-xs); }
 .fold span, .unfold span { width: 18px; height: 18px; background: currentColor; mask: url('/assets/navigation/chevron-down.svg') center / contain no-repeat; rotate: 90deg; }
 .unfold span { rotate: -90deg; }

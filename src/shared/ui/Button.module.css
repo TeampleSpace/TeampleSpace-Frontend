@@ -42,8 +42,6 @@
   font: var(--text-button);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  /* 위쪽의 옅은 빛과 아래 그림자로 면을 살짝 띄운다 */
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), var(--shadow-xs);
 }
 
 .primary:not(:disabled, [aria-disabled='true']):hover {
@@ -55,21 +53,22 @@
 }
 
 .secondary {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  box-shadow: var(--shadow-xs);
+  background: var(--color-subtle);
+  color: var(--color-secondary);
 }
 
 .secondary:not(:disabled, [aria-disabled='true']):hover {
-  border-color: var(--color-border-strong);
+  background: var(--color-muted);
 }
 
-.secondary:not(:disabled, [aria-disabled='true']):hover,
 .text:not(:disabled, [aria-disabled='true']):hover {
   background: var(--color-subtle);
 }
 
-.secondary:not(:disabled, [aria-disabled='true']):active,
+.secondary:not(:disabled, [aria-disabled='true']):active {
+  background: var(--color-border-strong);
+}
+
 .text:not(:disabled, [aria-disabled='true']):active {
   background: var(--color-muted);
 }
@@ -82,9 +81,7 @@
 }
 
 .dangerOutline {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  box-shadow: var(--shadow-xs);
+  background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 
@@ -94,7 +91,7 @@
 
 .dangerOutline:not(:disabled, [aria-disabled='true']):hover,
 .dangerText:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--color-subtle);
+  background: var(--color-danger-soft);
 }
 
 .dangerOutline:not(:disabled, [aria-disabled='true']):active,
