@@ -1,11 +1,17 @@
 .shell { min-height: 100dvh; display: flex; }
 .sidebar { width: 256px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
 .brand { display: flex; gap: var(--space-8); align-items: center; padding-left: 4px; color: var(--color-ink); font: 700 18px/28px var(--font-body); letter-spacing: -0.4px; text-decoration: none; }
-.brand span { color: var(--color-on-primary); background: var(--color-primary); width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font: 700 15px/24px var(--font-body); }
+.brand { font-family: var(--font-title); }
+.brand span { color: #fff; background: var(--color-accent-bright); width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 800 16px/26px var(--font-title); transition: rotate var(--motion-slow) var(--motion-spring); }
+.brand:hover span { rotate: -12deg; }
 .navigation { display: flex; flex-direction: column; gap: 2px; }
 .navigation a, .account, .managementLinks a { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: 10px 12px; min-height: 44px; border-radius: var(--radius-md); font: var(--text-nav); color: var(--color-secondary); }
 .navigation a:hover, .account:hover { background: var(--color-subtle); color: var(--color-ink); }
 .navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-ink); background: var(--color-subtle); font-weight: 700; }
+/* 선택 메뉴 왼쪽에 주황 막대를 늘려 보인다 */
+.navigation a:not(.search), .account, .managementLinks a, .projectChildren a { position: relative; }
+.navigation a[aria-current='page']:not(.search)::before, .account[aria-current='page']::before, .managementLinks a[aria-current='page']::before, .projectChildren a[aria-current='page']::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--color-accent-bright); animation: nav-mark var(--motion-slow) var(--motion-spring); }
+@keyframes nav-mark { from { scale: 1 0; } to { scale: 1 1; } }
 .navigation .search { margin-bottom: var(--space-12); background: var(--color-subtle); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
 .navigation .search:hover { background: var(--color-muted); }
 .management { margin-top: auto; display: flex; flex-direction: column; gap: 20px; }
@@ -30,6 +36,13 @@
 .navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-muted); }
 .sidebar > * { flex-shrink: 0; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
+/* 화면을 열면 본문 묶음을 위에서부터 차례로 올린다 */
+.workspace > * > * { animation: teample-rise var(--motion-slow) var(--motion-ease-out) backwards; }
+.workspace > * > :nth-child(2) { animation-delay: 50ms; }
+.workspace > * > :nth-child(3) { animation-delay: 100ms; }
+.workspace > * > :nth-child(4) { animation-delay: 150ms; }
+.workspace > * > :nth-child(n+5) { animation-delay: 200ms; }
+.shell[data-editor] .workspace > * > * { animation: none; }
 .navigation a, .account {
   transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
 }

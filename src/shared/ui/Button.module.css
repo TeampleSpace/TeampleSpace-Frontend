@@ -29,7 +29,7 @@
       border-color var(--motion-fast) ease-out,
       box-shadow var(--motion-fast) ease-out,
       color var(--motion-fast) ease-out,
-      transform var(--motion-fast) var(--motion-ease-out);
+      transform var(--motion-normal) var(--motion-spring);
   }
 
   .button:not(:disabled, [aria-disabled='true']):active {
@@ -46,6 +46,7 @@
 
 .primary:not(:disabled, [aria-disabled='true']):hover {
   background: var(--color-primary-hover);
+  box-shadow: 0 6px 16px rgb(28 28 26 / 0.18);
 }
 
 .primary:not(:disabled, [aria-disabled='true']):active {

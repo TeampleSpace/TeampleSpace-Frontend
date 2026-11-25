@@ -1,38 +1,42 @@
 /* 차가운 회색 단계와 파란 강조색 하나로 구성한 공통 변수 */
 :root {
-  /* 색상 */
+  /* 색상. 먹색 버튼과 주황 포인트 하나를 쓰고 바탕은 옅은 중성 회색으로 둔다 */
   --color-surface: #ffffff;
-  --color-canvas: #f9fafb;
-  --color-subtle: #f2f4f6;
-  --color-muted: #e5e8eb;
-  --color-ink: #191f28;
-  --color-secondary: #4e5968;
-  --color-tertiary: #6b7684;
-  --color-primary: #1b64da;
-  --color-primary-hover: #1957c2;
-  --color-primary-pressed: #164aa6;
-  --color-primary-soft: #e8f3ff;
+  --color-canvas: #f6f6f4;
+  --color-subtle: #f0f0ed;
+  --color-muted: #e6e6e2;
+  --color-ink: #1c1c1a;
+  --color-secondary: #52524e;
+  --color-tertiary: #6e6e69;
+  --color-primary: #1c1c1a;
+  --color-primary-hover: #3a3a37;
+  --color-primary-pressed: #000000;
+  --color-primary-soft: #f0f0ed;
   --color-on-primary: #ffffff;
-  --color-accent: #c2410c;
-  --color-accent-soft: #fff4eb;
-  --color-accent-bright: #f27c36;
-  --color-border: #e5e8eb;
-  --color-border-strong: #d1d6db;
+  --color-link: #c2410c;
+  --color-accent: #b23c0a;
+  --color-accent-soft: #fff1e8;
+  --color-accent-bright: #f26b1d;
+  --color-border: #e6e6e2;
+  --color-border-strong: #d4d4ce;
   /* 입력창처럼 경계를 분명히 보여야 하는 조작부 */
-  --color-border-control: #8b95a1;
-  --color-danger: #d22030;
-  --color-danger-soft: #ffeeee;
+  --color-border-control: #8f8f88;
+  --color-danger: #c81e2c;
+  --color-danger-soft: #fff0f0;
 
-  /* 라이선스와 함께 배포하는 웹폰트 */
+  /* 눈누 글꼴. 본문 원티드 산스, 제목 페이퍼로지, 강조 문장 마루 부리 */
   --font-body:
-    'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
+    'Wanted Sans', 'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif;
-  --font-title: var(--font-body);
+  --font-title: 'Paperlogy UI', var(--font-body);
+  --font-serif: 'MaruBuri', 'Apple Myungjo', serif;
+  /* 슬라이드 글자는 내보내기 결과와 같도록 기존 글꼴을 유지한다 */
+  --font-slide: 'Pretendard', system-ui, sans-serif;
 
   /* 글자. 굵기 크기 줄높이 글꼴 순서 */
-  --text-title: 700 26px/36px var(--font-title);
-  --text-modal-title: 700 22px/30px var(--font-body);
-  --text-dialog-title: 700 20px/28px var(--font-body);
+  --text-title: 800 28px/38px var(--font-title);
+  --text-modal-title: 700 22px/30px var(--font-title);
+  --text-dialog-title: 700 20px/28px var(--font-title);
   --text-lead: 400 16px/26px var(--font-body);
   --text-body: 400 15px/24px var(--font-body);
   --text-button: 600 15px/22px var(--font-body);
@@ -75,19 +79,21 @@
 
   /* 그림자. 카드와 버튼은 면 색으로 구분하고 떠 있는 요소에만 옅게 쓴다 */
   --shadow-xs: 0 0 #0000;
-  --shadow-sm: 0 0 #0000;
-  --shadow-popover: 0 0 0 1px rgb(0 27 55 / 0.06), 0 8px 24px rgb(0 27 55 / 0.1);
-  --shadow-dialog: 0 16px 48px rgb(0 27 55 / 0.16);
-  --focus-ring: 0 0 0 3px rgb(27 100 218 / 0.2);
+  --shadow-sm: 0 1px 2px rgb(28 28 26 / 0.04), 0 8px 20px rgb(28 28 26 / 0.06);
+  --shadow-popover: 0 0 0 1px rgb(28 28 26 / 0.06), 0 8px 24px rgb(28 28 26 / 0.1);
+  --shadow-dialog: 0 24px 64px rgb(28 28 26 / 0.18);
+  --focus-ring: 0 0 0 3px rgb(242 107 29 / 0.28);
 
   /* 큰 제목만 자간을 조금 좁힌다 */
-  --tracking-title: -0.6px;
+  --tracking-title: -0.5px;
 
   /* 움직임 */
   --motion-fast: 140ms;
   --motion-normal: 180ms;
   --motion-enter: 220ms;
   --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --motion-slow: 420ms;
   --motion-page-enter: teample-fade-in var(--motion-enter) var(--motion-ease-out);
   --motion-content-enter: teample-content-in var(--motion-normal) var(--motion-ease-out);
   --motion-feedback-enter: teample-content-in var(--motion-fast) var(--motion-ease-out);

@@ -34,7 +34,7 @@
 }
 
 .dialog[open] {
-  animation: dialog-enter var(--motion-normal) var(--motion-ease-out);
+  animation: dialog-enter var(--motion-slow) var(--motion-spring);
 }
 
 .dialog[open]::backdrop {
@@ -45,8 +45,8 @@
 @supports (transition-behavior: allow-discrete) {
   .dialog {
     opacity: 0;
-    transform: translateY(6px) scale(0.985);
-    transition: opacity var(--motion-normal) ease-out, transform var(--motion-normal) var(--motion-ease-out), display var(--motion-normal) allow-discrete, overlay var(--motion-normal) allow-discrete;
+    transform: translateY(16px) scale(0.96);
+    transition: opacity var(--motion-normal) ease-out, transform var(--motion-slow) var(--motion-spring), display var(--motion-normal) allow-discrete, overlay var(--motion-normal) allow-discrete;
   }
   .dialog[open] { opacity: 1; transform: none; animation: none; }
   .dialog:not([open]), .dialog:not([open])::backdrop { pointer-events: none; }
@@ -56,13 +56,13 @@
   }
   .dialog[open]::backdrop { opacity: 1; animation: none; }
   @starting-style {
-    .dialog[open] { opacity: 0; transform: translateY(6px) scale(0.985); }
+    .dialog[open] { opacity: 0; transform: translateY(16px) scale(0.96); }
     .dialog[open]::backdrop { opacity: 0; }
   }
 }
 
 @keyframes dialog-enter {
-  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
 

@@ -14,3 +14,9 @@ Pretendard와 Gmarket Sans는 원본 글꼴 파일을 수정하지 않고 배포
 
 - https://github.com/orioncactus/pretendard/tree/v1.3.9
 - https://corp.gmarket.com/fonts/
+
+화면 글꼴은 눈누에 등록된 배포처 CDN에서 불러온다. 모두 웹 임베딩을 허용하는 무료 글꼴이다
+
+- Wanted Sans 가변 글꼴, SIL OFL, 본문
+- Paperlogy SemiBold, Bold, ExtraBold, SIL OFL, 제목
+- 마루 부리 Regular, Bold, 네이버 나눔글꼴 라이선스, 강조 문장

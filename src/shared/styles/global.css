@@ -21,7 +21,7 @@ body {
 }
 
 ::selection {
-  background: rgb(27 100 218 / 0.16);
+  background: rgb(242 107 29 / 0.2);
 }
 
 h1,
@@ -42,8 +42,16 @@ h2 {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-link);
   text-underline-offset: 3px;
+}
+
+h2 {
+  font-family: var(--font-title);
+}
+
+:focus-visible {
+  transition: outline-offset var(--motion-fast) var(--motion-ease-out);
 }
 
 button,
@@ -102,7 +110,12 @@ select:disabled {
 }
 
 @keyframes teample-content-in {
-  from { opacity: .65; translate: 0 4px; }
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: none; }
+}
+
+@keyframes teample-rise {
+  from { opacity: 0; translate: 0 14px; }
   to { opacity: 1; translate: none; }
 }
 

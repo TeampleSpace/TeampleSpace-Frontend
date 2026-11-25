@@ -47,3 +47,41 @@
   font-display: swap;
   src: url('/fonts/GmarketSansTTFBold.ttf') format('truetype');
 }
+
+/* 화면용 글꼴. 눈누에서 고른 OFL 글꼴을 배포처 CDN에서 불러온다 */
+@font-face {
+  font-family: 'Wanted Sans';
+  font-weight: 400 1000;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2611030107@font-variable-1269/variable-1269/WantedSansVariable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Paperlogy UI';
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Paperlogy UI';
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Paperlogy UI';
+  font-weight: 800;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'MaruBuri';
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'MaruBuri';
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');
+}
