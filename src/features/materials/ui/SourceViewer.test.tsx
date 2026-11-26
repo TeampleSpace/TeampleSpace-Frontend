@@ -235,6 +235,15 @@ test('구글 문서 링크는 원문 팝업 안에 미리보기로 보여 주고
   expect(popup.queryByText('수집한 글자')).toBeNull()
 })
 
+test('근거로 고정한 구글 문서 개정은 미리보기 대신 연결 당시 본문을 보여 준다', async () => {
+  const id = mock.seed('link', '조사 계획서', { url: 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz_0123456789/edit', text: '연결 당시 본문' })
+  const material = mock.get(id)!
+  render(<SourceViewer material={{ id, title: material.title }} revisionId={material.revisions[0]!.id} onClose={vi.fn()} onError={vi.fn()} />)
+  expect(await viewer().findByText('연결 당시 본문')).toBeTruthy()
+  expect(viewer().queryByTitle(/미리보기$/)).toBeNull()
+  expect(viewer().getByRole('link', { name: /^docs\.google\.com 원본 페이지 열기/ })).toBeTruthy()
+})
+
 test('고정된 개정이 있으면 최신 메모 대신 연결 당시 원문을 조회한다', async () => {
   const id = mock.seed('memo', '회의 메모', { markdown: '연결 당시 메모' })
   const material = mock.get(id)!
