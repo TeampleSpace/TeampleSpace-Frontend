@@ -152,6 +152,9 @@ export function createEditorSession(options: {
   const before = new Map<string, Record<string, unknown>>()
   let replaying = false
   let stepping = false
+  // 요소를 추가한 순번. 그보다 먼저 읽기 시작한 스냅샷에 없는 요소를 지운 것으로 보지 않는다
+  let addSeq = 0
+  const addedAt = new Map<string, number>()
 
   function publish() {
     const elements: Record<string, ElementView> = {}
@@ -333,13 +336,21 @@ export function createEditorSession(options: {
         replaying = false
         if (!applied) return false
         endEdit(op.id)
-      } else if ((op.kind === 'create') !== forward) {
-        // 추가를 되돌리거나 삭제를 다시 한다
-        await remove(op.element.id)
       } else {
-        const created = await add(op.element.slideId, op.element)
-        remap(op.element.id, created)
-        op.element = created
+        try {
+          if ((op.kind === 'create') !== forward) {
+            // 추가를 되돌리거나 삭제를 다시 한다
+            await remove(op.element.id)
+          } else {
+            const created = await add(op.element.slideId, op.element)
+            remap(op.element.id, created)
+            op.element = created
+          }
+        } catch (error) {
+          // 요청이 실패하면 기록을 남겨 두고 다시 시도할 수 있게 한다
+          from.push(op)
+          throw error
+        }
       }
       to.push(op)
       return true
@@ -390,6 +401,7 @@ export function createEditorSession(options: {
       idempotencyKey: crypto.randomUUID(),
       timeoutMs: requestTimeoutMs,
     })
+    addedAt.set(result.resource.id, (addSeq += 1))
     insert(result.resource)
     bumpVersions(result.resource.id, result)
     publish()
@@ -834,6 +846,7 @@ export function createEditorSession(options: {
 
   // 문서와 이벤트 커서를 같은 시점에서 읽고 내 입력과 비교한다
   function snapshot(): Promise<void> {
+    const since = addSeq
     snapshotting ??= client
       .request(`/projects/${projectId}/sync-snapshot?scope=editor`, editorSnapshotSchema)
       .then((result) => {
@@ -861,11 +874,12 @@ export function createEditorSession(options: {
               else insert(element)
             }
             // 스냅샷에는 지운 요소가 없다. 보내는 중인 입력이 없는 요소만 지운 것으로 본다
-            // ponytail: 스냅샷을 읽는 사이 내가 추가한 요소는 다음 스냅샷까지 남지 않을 수 있다. 문제가 되면 추가 중인 요소를 따로 센다
+            // 스냅샷을 읽기 시작한 뒤 내가 추가한 요소도 아직 스냅샷에 없을 수 있다
             for (const element of local?.elements ?? []) {
               const kept = slide.elements.some((candidate) => candidate.id === element.id)
               const entry = entries.get(element.id)
-              if (!kept && !entry?.draft && !entry?.flight) markDeleted(element.id, element.version, new Date().toISOString())
+              const added = (addedAt.get(element.id) ?? 0) > since
+              if (!kept && !added && !entry?.draft && !entry?.flight) markDeleted(element.id, element.version, new Date().toISOString())
             }
           }
         }
