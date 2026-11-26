@@ -37,13 +37,14 @@ function mount(enabled: boolean, onAccessError = vi.fn(), options: {
   const capabilities = { ...current, featureFlags: { ...current.featureFlags, outlineGeneration: enabled } }
   const session = { user: null, capabilities, loading: false, error: undefined, refresh: vi.fn(), setUser: vi.fn() }
   const onGenerated = vi.fn(options.onGenerated ?? (async () => true))
-  const component = (dirty = false) => <SessionContext value={session}>
-    <OutlineGeneration projectId={projectId} version={1} outlineHasItems={Boolean(options.linkedSourceIds)}
-      linkedSourceIds={options.linkedSourceIds} dirty={dirty}
+  const component = (dirty = false, linked = options.linkedSourceIds) => <SessionContext value={session}>
+    <OutlineGeneration projectId={projectId} version={1} outlineHasItems={Boolean(linked)}
+      linkedSourceIds={linked} dirty={dirty}
       onGenerated={onGenerated} onAccessError={onAccessError} />
   </SessionContext>
   const { rerender } = render(component(options.dirty))
-  return { onGenerated, setDirty: (dirty: boolean) => rerender(component(dirty)) }
+  return { onGenerated, setDirty: (dirty: boolean) => rerender(component(dirty)),
+    setLinked: (linked: string[]) => rerender(component(options.dirty, linked)) }
 }
 
 function apiError(status: number, code: string, retryAfter?: number) {
@@ -73,7 +74,7 @@ test('생성 응답이 끊겨도 같은 키와 본문으로 재시도하고 완�
   const create = vi.spyOn(outlineGenerationApi, 'create')
     .mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(queued)
   vi.spyOn(materialsApi, 'job').mockResolvedValue(succeeded)
-  const { onGenerated: refresh } = mount(true)
+  const { onGenerated: refresh, setLinked } = mount(true)
   fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
   const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
   fireEvent.click(await form.findByRole('checkbox', { name: source.title }))
@@ -82,6 +83,9 @@ test('생성 응답이 끊겨도 같은 키와 본문으로 재시도하고 완�
   fireEvent.click(form.getByRole('button', { name: '구성 만들기' }))
   fireEvent.click(await form.findByRole('button', { name: '생성 요청 다시 확인' }))
   expect(await screen.findByText('발표 구성을 만들었어요')).toBeTruthy()
+  // 새 구성을 불러와 항목이 생겨도 전체 생성 결과 안내를 유지한다
+  setLinked([source.id])
+  expect(screen.getByText('발표 구성을 만들었어요')).toBeTruthy()
   expect(create).toHaveBeenCalledTimes(2)
   expect(create.mock.calls[0]).toEqual(create.mock.calls[1])
   expect(create.mock.calls[0]?.[1]).toEqual({ expectedVersion: 1, sourceIds: [source.id], instructions: '발표 시간을 고려해 주세요' })
