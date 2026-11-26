@@ -23,6 +23,9 @@ export default function AppShell() {
   const editor = useMatch('/projects/:projectId/slides/*')
   const [folded, setFolded] = useState<boolean>()
   const collapsed = folded ?? !!editor
+  // 처음 그릴 때는 사이드바 전환을 하지 않고, 그린 뒤부터 전환을 켠다
+  const shell = useRef<HTMLDivElement>(null)
+  useEffect(() => { shell.current?.setAttribute('data-ready', '') }, [])
   // 누른 단추가 사라지므로 반대 단추로 포커스를 옮긴다
   function toggle(next: boolean) {
     setFolded(next)
@@ -100,7 +103,7 @@ export default function AppShell() {
     } catch { if (request === generation.current) setError(true) }
     finally { moreLock.current = false; setLoading(false) }
   }
-  return <div className={styles.shell} data-collapsed={!narrow && collapsed || undefined} data-editor={editor ? '' : undefined} data-menu-open={menuOpen || undefined}>
+  return <div className={styles.shell} data-collapsed={!narrow && collapsed || undefined} data-editor={editor ? '' : undefined} data-menu-open={menuOpen || undefined} ref={shell}>
     {narrow && <div className={styles.topBar} inert={menuOpen}>
       <NavLink className={styles.brand} to="/"><span>t</span>TeamPleSpace</NavLink>
       <button type="button" className={styles.menu} aria-label="메뉴 열기" id="app-menu-open" aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={openMenu}><span aria-hidden="true" /></button>
