@@ -348,3 +348,21 @@ test('물음표로 단축키 안내를 열고 Page Up으로 이전 슬라이드�
   const first = exampleSnapshot.presentation!.slides[0].id
   await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${projectId}/slides/${first}`))
 })
+
+test('Tab으로 옮겨 간 요소를 선택하고 Delete가 그 요소를 지운다', async () => {
+  const { server } = setup()
+  mount(open(server.fetchAs(userA)))
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.map((element) => element.id)
+
+  const target = await body()
+  fireEvent.keyDown(target, { key: ' ' })
+  const elements = screen.getAllByRole('button').filter((button) => button.hasAttribute('data-element'))
+  const next = elements.find((element) => element !== target)!
+  fireEvent.focus(next)
+  expect(next.getAttribute('aria-pressed')).toBe('true')
+  fireEvent.keyDown(next, { key: 'Delete' })
+
+  const nextId = next.getAttribute('data-element')!
+  await waitFor(() => expect(live()).not.toContain(nextId))
+  expect(live()).toContain(bodyId)
+})
