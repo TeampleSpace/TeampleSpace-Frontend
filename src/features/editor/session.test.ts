@@ -39,10 +39,18 @@ async function settle() {
 function setup() {
   const server = createMockServer(exampleSnapshot)
   const calls: Call[] = []
-  const control: { failNextPatch: boolean; failNextDelete: boolean; dropNextPostResponse: boolean; snapshotGate?: Promise<void> } = {
+  const control: {
+    failNextPatch: boolean
+    // 이 횟수만큼 삭제 요청이 서버에 닿지 못한다
+    failDeletes: number
+    dropNextPostResponse: boolean
+    dropNextDeleteResponse: boolean
+    snapshotGate?: Promise<void>
+  } = {
     failNextPatch: false,
-    failNextDelete: false,
+    failDeletes: 0,
     dropNextPostResponse: false,
+    dropNextDeleteResponse: false,
   }
 
   function tracked(actor: string, silentEvents: boolean): typeof fetch {
@@ -69,9 +77,13 @@ function setup() {
         // 연결은 됐지만 이벤트가 오지 않는 상황
         return Promise.resolve(new Response(new ReadableStream()))
       }
-      if (method === 'DELETE' && control.failNextDelete) {
-        control.failNextDelete = false
+      if (method === 'DELETE' && control.failDeletes > 0) {
+        control.failDeletes -= 1
         return Promise.reject(new TypeError('연결 실패'))
+      }
+      if (method === 'DELETE' && control.dropNextDeleteResponse) {
+        control.dropNextDeleteResponse = false
+        return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
       }
       if (method === 'POST' && path.endsWith('/elements') && control.dropNextPostResponse) {
         // 서버는 반영하고 응답만 잃는다
@@ -844,7 +856,8 @@ test('되돌리기 요청이 실패하면 기록을 남겨 다시 시도할 수 
 
   const created = await a.createElement(slideId, serverElement())
   await settle()
-  control.failNextDelete = true
+  // 같은 키로 한 번 더 물어보는 것까지 실패한다
+  control.failDeletes = 2
   await expect(a.undo()).rejects.toThrow()
   expect(serverElement(created.id)).toBeDefined()
 
@@ -918,4 +931,36 @@ test('되살리기 응답을 잃은 뒤 다시 시도해도 요소가 하나만 
   expect(await a.redo()).toBe(true)
   await settle()
   expect(sameText()).toHaveLength(0)
+})
+
+test('삭제 응답을 잃어도 같은 요청으로 확인하고 되돌릴 수 있다', async () => {
+  const { open, control, server } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  control.dropNextDeleteResponse = true
+  await a.deleteElement(bodyId)
+  expect(sameText()).toHaveLength(0)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(1)
+})
+
+test('보내지 못한 입력이 남은 요소가 다른 팀원에게 지워지면 스냅샷에서 지운다', async () => {
+  const { open } = setup()
+  const a = open('user-a', { silentEvents: true, saveDelayMs: 60000 })
+  const b = open('user-b')
+  await tick()
+
+  a.edit(bodyId, text('보내지 못한 입력'))
+  await b.deleteElement(bodyId)
+  await a.refresh()
+
+  const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
+  expect(element?.deletedAt).toBeDefined()
+  expect(a.getState().pending).toBe(false)
 })

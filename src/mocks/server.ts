@@ -354,8 +354,13 @@ export function createMockServer(
     return Promise.resolve(json(200, { clientMutationId: body.clientMutationId, ...change, eventId }))
   }
 
+  // 지운 요소의 응답. 같은 요청을 다시 보내면 그대로 돌려준다
+  const deleted = new Map<string, unknown>()
+
   function deleteElement(actorId: string, slideId: string, elementId: string, init: RequestInit): Promise<Response> {
     const body = JSON.parse(String(init.body)) as { generation: number; baseVersion: number; clientMutationId: string }
+    const replay = deleted.get(`${elementId} ${body.clientMutationId}`)
+    if (replay) return Promise.resolve(json(200, replay))
     const slide = doc.slides.find((candidate) => candidate.id === slideId)
     const index = slide?.elements.findIndex((candidate) => candidate.id === elementId) ?? -1
     if (!slide || index < 0) return Promise.resolve(json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')))
@@ -371,7 +376,9 @@ export function createMockServer(
     const tombstone = { resourceType: 'element', id: elementId, version: element.version + 1, deletedAt: new Date(now()).toISOString() }
     const change = { tombstone, elementVersion: tombstone.version, slideVersion: slide.version, presentationVersion: doc.version }
     const { eventId } = emit('element.deleted', actorId, { clientMutationId: body.clientMutationId, resourceId: elementId }, change)
-    return Promise.resolve(json(200, { clientMutationId: body.clientMutationId, ...change, eventId }))
+    const response = { clientMutationId: body.clientMutationId, ...change, eventId }
+    deleted.set(`${elementId} ${body.clientMutationId}`, response)
+    return Promise.resolve(json(200, response))
   }
 
   // 문서와 이벤트 커서를 같은 시점에서 읽는다
