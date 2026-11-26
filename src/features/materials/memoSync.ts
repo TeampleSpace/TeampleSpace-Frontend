@@ -147,13 +147,22 @@ export function startMemoSync(options: {
   }
   awareness?.on('update', onAwareness)
   // 창을 닫거나 주소를 옮기면 화면 정리 없이 사라지므로 이때 내 커서를 지운다
+  // 뒤로 가기 캐시에서 되살아나면 지웠던 내 상태를 다시 알린다
+  let hidden: Record<string, unknown> | null = null
   function leaveCursor() {
     if (!awareness || !ready) return
+    hidden = awareness.getLocalState()
     removeAwarenessStates(awareness, [awareness.clientID], 'local')
     changedClients.add(awareness.clientID)
     sendAwareness(true)
   }
   window.addEventListener('pagehide', leaveCursor)
+  const restoreCursor = (event: PageTransitionEvent) => {
+    if (!event.persisted || !awareness || !hidden || stopped) return
+    awareness.setLocalState(hidden)
+    hidden = null
+  }
+  window.addEventListener('pageshow', restoreCursor)
 
   const onUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === remote) return
@@ -240,6 +249,7 @@ export function startMemoSync(options: {
       doc.off('update', onUpdate)
       unsubscribe()
       window.removeEventListener('pagehide', leaveCursor)
+      window.removeEventListener('pageshow', restoreCursor)
       // 떠나면 팀원 화면에서 내 커서를 지운다
       awareness?.off('update', onAwareness)
       leaveCursor()

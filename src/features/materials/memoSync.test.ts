@@ -171,3 +171,17 @@ test('커서를 쉬지 않고 옮기는 동안에도 정해진 간격마다 상�
   expect(sent() - before).toBeGreaterThanOrEqual(3)
   only.sync.stop()
 })
+
+test('뒤로 가기 캐시로 숨었다가 돌아오면 내 커서 상태를 다시 알린다', async () => {
+  const first = client('본문', (doc) => new Awareness(doc))
+  const second = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(first.ready() && second.ready()).toBe(true))
+  first.cursors!.setLocalStateField('user', { name: '김팀원' })
+  await vi.waitFor(() => expect(second.cursors!.getStates().get(first.doc.clientID)).toEqual({ user: { name: '김팀원' } }))
+  window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: true }))
+  await vi.waitFor(() => expect(second.cursors!.getStates().has(first.doc.clientID)).toBe(false))
+  window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }))
+  await vi.waitFor(() => expect(second.cursors!.getStates().get(first.doc.clientID)).toEqual({ user: { name: '김팀원' } }))
+  first.sync.stop()
+  second.sync.stop()
+})
