@@ -450,12 +450,12 @@ function Workspace({
     }
     if (key === 'KeyV' && clipboard) {
       const source = clipboard
-      return handle(() => run(session.createElement(slide.id, placed(source, slide)).then((created) => focusElement(created.id)), '붙여넣었어요'))
+      return handle(() => run(session.createElement(slide.id, (current) => placed(source, current)).then((created) => focusElement(created.id)), '붙여넣었어요'))
     }
     if (key === 'KeyD' && selected) {
       return handle(() => {
         if (selected.type === 'image') return setMessage('이미지는 아직 복제할 수 없어요')
-        run(session.createElement(slide.id, placed(selected, slide)).then((created) => focusElement(created.id)), '복제했어요')
+        run(session.createElement(slide.id, (current) => placed(selected, current)).then((created) => focusElement(created.id)), '복제했어요')
       })
     }
   })

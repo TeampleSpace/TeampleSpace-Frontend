@@ -13,6 +13,7 @@ import type {
   ElementSaveResult,
   Presentation,
   PresenceCursor,
+  Slide,
 } from '../../entities/presentation/schema.ts'
 import { ApiError, TransportError } from '../../shared/api/client.ts'
 import type { ApiClient } from '../../shared/api/client.ts'
@@ -497,11 +498,15 @@ export function createEditorSession(options: {
     return run
   }
 
-  function createElement(slideId: string, source: Element): Promise<Element> {
+  // source가 함수면 차례가 왔을 때의 슬라이드를 보고 놓을 자리를 정한다. 연달아 추가해도 겹치지 않는다
+  function createElement(slideId: string, source: Element | ((slide: Slide) => Element)): Promise<Element> {
     return serial(async () => {
       recordAll()
       const at = undoStack.length
-      const created = await add(slideId, source)
+      const slide = doc?.slides.find((candidate) => candidate.id === slideId)
+      if (!slide) throw new Error('슬라이드를 찾을 수 없어요')
+      const shown = { ...slide, elements: slide.elements.map((element) => viewOf(element.id)) }
+      const created = await add(slideId, typeof source === 'function' ? source(shown) : source)
       push({ kind: 'create', element: created }, at)
       return created
     })
