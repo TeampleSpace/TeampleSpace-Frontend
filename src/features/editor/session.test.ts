@@ -1208,3 +1208,27 @@ test('연달아 복제해도 차례가 왔을 때의 슬라이드를 보고 자�
   const [one, two] = await Promise.all([first, second])
   expect(serverElement(one.id).geometry.x).not.toBe(serverElement(two.id).geometry.x)
 })
+
+test('차례를 기다리는 추가가 있으면 미저장으로 알리고 떠나기 전에 막는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  const first = a.createElement(slideId, source)
+  const second = a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 40 } })
+  await settle()
+  expect(a.getState().pending).toBe(true)
+  expect(a.flush()).toBe(true)
+
+  control.postGate = undefined
+  release()
+  await Promise.all([first, second])
+  await settle()
+  expect(a.getState().pending).toBe(false)
+  expect(a.flush()).toBe(false)
+})
