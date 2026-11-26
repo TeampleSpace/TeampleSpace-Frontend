@@ -46,3 +46,15 @@ test('활성화된 재인증 수단이 없으면 불가능한 인증 버튼을 �
   expect(screen.queryByRole('button', { name: '본인 확인 코드 받기' })).toBeNull()
   expect(screen.getByText('현재 사용할 수 있는 본인 확인 수단이 없어요. 계정 지원 담당자에게 문의해 주세요')).toBeTruthy()
 })
+
+test('화면 테마를 고르면 바로 적용하고 시스템 설정으로 되돌릴 수 있다', () => {
+  openDeletion(true, false)
+  fireEvent.click(screen.getByRole('button', { name: '취소' }))
+  const select = screen.getByRole('combobox', { name: '화면 테마' })
+  fireEvent.change(select, { target: { value: 'dark' } })
+  expect(document.documentElement.dataset.theme).toBe('dark')
+  expect(localStorage.getItem('theme')).toBe('dark')
+  fireEvent.change(select, { target: { value: 'system' } })
+  expect(document.documentElement.dataset.theme).toBeUndefined()
+  expect(localStorage.getItem('theme')).toBeNull()
+})
