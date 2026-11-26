@@ -596,6 +596,8 @@ export function createEditorSession(options: {
   // 서버 확인본은 더 높은 버전으로만 바꾼다
   function setConfirmed(element: Element) {
     const { slide, index, element: current } = locate(element.id)
+    // 지운 요소는 되살리지 않는다. 늦게 온 저장 응답이 삭제를 덮지 않게 한다
+    if (current.deletedAt) return
     if (element.version > current.version) slide.elements[index] = element
   }
 
