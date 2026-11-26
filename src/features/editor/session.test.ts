@@ -39,9 +39,10 @@ async function settle() {
 function setup() {
   const server = createMockServer(exampleSnapshot)
   const calls: Call[] = []
-  const control: { failNextPatch: boolean; failNextDelete: boolean; snapshotGate?: Promise<void> } = {
+  const control: { failNextPatch: boolean; failNextDelete: boolean; dropNextPostResponse: boolean; snapshotGate?: Promise<void> } = {
     failNextPatch: false,
     failNextDelete: false,
+    dropNextPostResponse: false,
   }
 
   function tracked(actor: string, silentEvents: boolean): typeof fetch {
@@ -71,6 +72,11 @@ function setup() {
       if (method === 'DELETE' && control.failNextDelete) {
         control.failNextDelete = false
         return Promise.reject(new TypeError('연결 실패'))
+      }
+      if (method === 'POST' && path.endsWith('/elements') && control.dropNextPostResponse) {
+        // 서버는 반영하고 응답만 잃는다
+        control.dropNextPostResponse = false
+        return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
       }
       if (path.endsWith('/sync-snapshot') && control.snapshotGate) {
         // 지금 시점의 스냅샷을 만들어 두고 응답만 늦춘다
@@ -866,4 +872,50 @@ test('늦게 도착한 스냅샷이 그사이 추가한 요소를 지우지 않�
 
   const live = a.getState().view!.slides.flatMap((slide) => slide.elements).find((element) => element.id === created.id)
   expect(live?.deletedAt).toBeUndefined()
+})
+
+test('방향키로 옮긴 뒤 복제하면 복제부터 되돌린다', async () => {
+  const { open, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const original = serverElement()
+  a.edit(bodyId, { geometry: { ...original.geometry, x: original.geometry.x + 10 } })
+  const created = await a.createElement(slideId, { ...original, geometry: { ...original.geometry, x: original.geometry.x + 30 } })
+  // 옮긴 위치는 저장 대기 시간이 지나면 저장된다
+  await tick(700)
+  await settle()
+  expect(serverElement().geometry.x).toBe(original.geometry.x + 10)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+  expect(serverElement().geometry.x).toBe(original.geometry.x + 10)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement().geometry.x).toBe(original.geometry.x)
+})
+
+test('되살리기 응답을 잃은 뒤 다시 시도해도 요소가 하나만 생긴다', async () => {
+  const { open, control, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  await a.deleteElement(bodyId)
+  await settle()
+  control.dropNextPostResponse = true
+  await expect(a.undo()).rejects.toThrow()
+  await settle()
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(1)
+
+  // 다시 실행하면 그 요소가 지워진다
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(0)
 })

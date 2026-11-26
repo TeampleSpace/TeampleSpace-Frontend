@@ -335,6 +335,12 @@ export function createMockServer(
     const body = JSON.parse(String(init.body)) as { generation: number; clientMutationId: string; element: Element }
     const slide = doc.slides.find((candidate) => candidate.id === slideId)
     if (!slide) return Promise.resolve(json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')))
+    // 같은 요소를 다시 보내면 처음 결과를 돌려준다. 멱등 키 재시도와 같은 결과다
+    const existing = slide.elements.find((candidate) => candidate.id === body.element.id)
+    if (existing) {
+      const change = { resource: existing, elementVersion: existing.version, slideVersion: slide.version, presentationVersion: doc.version, generation: doc.generation }
+      return Promise.resolve(json(200, { clientMutationId: body.clientMutationId, ...change, eventId: String(events.length) }))
+    }
     const parsed = elementSchema.safeParse({ ...body.element, slideId, version: 1, sourceRefs: [] })
     if (!parsed.success || body.element.type === 'image') {
       return Promise.resolve(json(statusOf('VALIDATION_FAILED'), errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })))
