@@ -330,6 +330,44 @@ export function createMockServer(
     return json(status, response)
   }
 
+  // 요소 추가와 삭제. ponytail: 멱등 결과 재사용은 생략한다. 재시도 시험이 필요하면 saveElement처럼 저장한다
+  function createElement(actorId: string, slideId: string, init: RequestInit): Promise<Response> {
+    const body = JSON.parse(String(init.body)) as { generation: number; clientMutationId: string; element: Element }
+    const slide = doc.slides.find((candidate) => candidate.id === slideId)
+    if (!slide) return Promise.resolve(json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')))
+    const parsed = elementSchema.safeParse({ ...body.element, slideId, version: 1, sourceRefs: [] })
+    if (!parsed.success || body.element.type === 'image') {
+      return Promise.resolve(json(statusOf('VALIDATION_FAILED'), errorBody('VALIDATION_FAILED', '입력을 확인해 주세요.', { fieldErrors: [] })))
+    }
+    slide.elements.push(parsed.data)
+    slide.elementIds.push(parsed.data.id)
+    slide.version += 1
+    doc.version += 1
+    const change = { resource: parsed.data, elementVersion: 1, slideVersion: slide.version, presentationVersion: doc.version, generation: doc.generation }
+    const { eventId } = emit('element.updated', actorId, { clientMutationId: body.clientMutationId, resourceId: parsed.data.id }, change)
+    return Promise.resolve(json(200, { clientMutationId: body.clientMutationId, ...change, eventId }))
+  }
+
+  function deleteElement(actorId: string, slideId: string, elementId: string, init: RequestInit): Promise<Response> {
+    const body = JSON.parse(String(init.body)) as { generation: number; baseVersion: number; clientMutationId: string }
+    const slide = doc.slides.find((candidate) => candidate.id === slideId)
+    const index = slide?.elements.findIndex((candidate) => candidate.id === elementId) ?? -1
+    if (!slide || index < 0) return Promise.resolve(json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.')))
+    const element = slide.elements[index]
+    if (element.version !== body.baseVersion || body.generation !== doc.generation) {
+      return Promise.resolve(json(statusOf('VERSION_CONFLICT'), errorBody('VERSION_CONFLICT', '이후 수정이 있어요.', { fieldErrors: [] })))
+    }
+    // 스냅샷에서 빠지도록 문서에서 뺀다
+    slide.elements.splice(index, 1)
+    slide.elementIds = slide.elementIds.filter((id) => id !== elementId)
+    slide.version += 1
+    doc.version += 1
+    const tombstone = { resourceType: 'element', id: elementId, version: element.version + 1, deletedAt: new Date(now()).toISOString() }
+    const change = { tombstone, elementVersion: tombstone.version, slideVersion: slide.version, presentationVersion: doc.version }
+    const { eventId } = emit('element.deleted', actorId, { clientMutationId: body.clientMutationId, resourceId: elementId }, change)
+    return Promise.resolve(json(200, { clientMutationId: body.clientMutationId, ...change, eventId }))
+  }
+
   // 문서와 이벤트 커서를 같은 시점에서 읽는다
   function snapshot(): EditorSnapshot {
     const presentation = structuredClone(doc)
@@ -428,6 +466,10 @@ export function createMockServer(
     const save =
       method === 'PATCH' && path.match(/^\/v1\/slides\/([^/]+)\/elements\/([^/]+)$/)
     if (save) return saveElement(actorId, path, save[1], save[2], init)
+    const create = method === 'POST' && path.match(/^\/v1\/slides\/([^/]+)\/elements$/)
+    if (create) return createElement(actorId, create[1], init)
+    const remove = method === 'DELETE' && path.match(/^\/v1\/slides\/([^/]+)\/elements\/([^/]+)$/)
+    if (remove) return deleteElement(actorId, remove[1], remove[2], init)
     return json(statusOf('NOT_FOUND'), errorBody('NOT_FOUND', '대상을 찾을 수 없어요.'))
   }
 

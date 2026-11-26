@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import type { Element, Presentation, Slide } from '../../../entities/presentation/schema.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
@@ -29,6 +29,46 @@ const saveLabels: Record<SaveStatus, string> = {
 }
 
 const typeLabels = { text: '텍스트', shape: '도형', image: '이미지' }
+
+const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? 'Cmd' : 'Ctrl'
+
+const shortcuts: [string, string][] = [
+  [`${mod} + Z`, '실행 취소'],
+  [`${mod} + Shift + Z, ${mod} + Y`, '다시 실행'],
+  [`${mod} + C`, '선택한 요소 복사'],
+  [`${mod} + X`, '선택한 요소 잘라내기'],
+  [`${mod} + V`, '복사한 요소 붙여넣기'],
+  [`${mod} + D`, '선택한 요소 복제'],
+  ['Delete, Backspace', '선택한 요소 삭제'],
+  ['방향키', '선택한 요소 1px 이동, Shift를 함께 누르면 10px 이동'],
+  ['Enter', '선택한 글상자 수정'],
+  ['Esc', '글 수정 끝내기, 선택 해제'],
+  ['Tab', '다음 요소 선택'],
+  ['Page Up, Page Down', '이전 슬라이드, 다음 슬라이드'],
+  ['Home, End', '첫 슬라이드, 마지막 슬라이드'],
+  [`${mod} + S`, '남은 입력 바로 저장'],
+  ['?', '단축키 안내 열기'],
+]
+
+// 붙여넣기에 쓰는 복사한 요소. 현재 탭에만 둔다
+let clipboard: Element | undefined
+
+// 입력창, 선택 상자, 모달 안에서는 단축키를 쓰지 않고 기본 입력을 따른다
+function typing(target: EventTarget | null) {
+  return target instanceof HTMLElement && Boolean(target.closest('input, textarea, select, [contenteditable="true"], dialog'))
+}
+
+// 같은 자리에 겹치지 않게 옮기고 맨 위에 놓는다
+function placed(source: Element, slide: Slide): Element {
+  const others = slide.elements.filter((element) => !element.deletedAt)
+  let { x, y } = source.geometry
+  while (others.some((element) => element.geometry.x === x && element.geometry.y === y)) {
+    x += 20
+    y += 20
+  }
+  const z = Math.max(0, ...others.map((element) => element.geometry.z)) + 1
+  return { ...source, geometry: { ...source.geometry, x, y, z } } as Element
+}
 
 const rejectionMessages: Record<number, string> = {
   401: '로그인이 만료되었습니다. 다시 로그인해 주세요',
@@ -137,6 +177,7 @@ type Props = {
 
 export function SlideEditor({ projectId, projectName, session, slideId, onCreateSample, generate, aiRevision = false }: Props) {
   const state = useSyncExternalStore(session.subscribe, session.getState)
+  const navigate = useNavigate()
   const base = `/projects/${projectId}/slides`
   const view = state.view
   useProjectFonts(projectId, view?.slides.flatMap((slide) =>
@@ -243,6 +284,11 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
           heading={`${String(index + 1).padStart(2, '0')} / ${slideName(slide, index)}`}
           label={`${String(index + 1).padStart(2, '0')}번 - ${slideName(slide, index)}`}
           aiRevision={aiRevision}
+          onGo={(target) => {
+            const last = view.slides.length - 1
+            const next = { prev: index - 1, next: index + 1, first: 0, last }[target]
+            if (next >= 0 && next <= last && next !== index) navigate(`${base}/${view.slides[next].id}`)
+          }}
         />
       </div>
     </>
@@ -258,6 +304,7 @@ function Workspace({
   heading,
   label,
   aiRevision,
+  onGo,
 }: {
   session: EditorSession
   state: SessionState
@@ -266,6 +313,7 @@ function Workspace({
   heading: string
   label: string
   aiRevision: boolean
+  onGo: (target: 'prev' | 'next' | 'first' | 'last') => void
 }) {
 
   const [selectedId, setSelectedId] = useState<string>()
@@ -277,6 +325,9 @@ function Workspace({
   // 맞춤 배율에 쓰는 편집 영역 크기. 높이는 화면 아래까지 남은 공간이다
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 })
   const selectedRef = useRef<string | undefined>(undefined)
+  const [help, setHelp] = useState(false)
+  // 단축키 결과 안내. 화면 읽기 도구에도 읽힌다
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (!area) return
@@ -311,7 +362,7 @@ function Workspace({
   const modified = slide.elements.some((element) =>
     ['dirty', 'saving', 'failed', 'conflict'].includes(statusOf(element.id)),
   )
-  const selected = slide.elements.find((element) => element.id === selectedId)
+  const selected = slide.elements.find((element) => element.id === selectedId && !element.deletedAt)
   const conflict = slide.elements.find((element) => statusOf(element.id) === 'conflict')
   const latest = conflict ? state.elements[conflict.id]?.serverLatest : undefined
 
@@ -338,6 +389,82 @@ function Workspace({
     // 이미 열려 있던 입력창이면 모달이 닫힌 뒤 포커스를 다시 준다
     requestAnimationFrame(() => area?.querySelector('textarea')?.focus())
   }
+
+  // 새로 생긴 요소를 고르고 키보드로 이어서 다룰 수 있게 포커스를 준다
+  function focusElement(id: string) {
+    select(id)
+    requestAnimationFrame(() => area?.querySelector<HTMLElement>(`[data-element="${id}"]`)?.focus())
+  }
+
+  function run(work: Promise<unknown>, done?: string) {
+    work.then(() => done && setMessage(done)).catch((error: unknown) =>
+      setMessage(error instanceof Error && !(error instanceof TypeError) ? error.message : '처리하지 못했어요. 다시 시도해 주세요'))
+  }
+
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || typing(event.target)) return
+    const command = event.ctrlKey || event.metaKey
+    // 한글 자판에서도 같은 자리의 글쇠로 동작하도록 글쇠 위치를 먼저 본다
+    const key = command ? (event.code || `Key${event.key.toUpperCase()}`) : event.key
+    const handle = (action: () => void) => {
+      event.preventDefault()
+      action()
+    }
+    if (!command) {
+      if (event.altKey) return
+      if (key === '?' || (event.shiftKey && (key === '/' || event.code === 'Slash'))) return handle(() => setHelp(true))
+      if (key === 'PageUp') return handle(() => onGo('prev'))
+      if (key === 'PageDown') return handle(() => onGo('next'))
+      if (key === 'Home') return handle(() => onGo('first'))
+      if (key === 'End') return handle(() => onGo('last'))
+      if ((key === 'Delete' || key === 'Backspace') && selected) {
+        return handle(() => {
+          const id = selected.id
+          run(session.deleteElement(id).then(() => select(undefined)), `삭제했어요. ${mod} + Z로 되돌릴 수 있어요`)
+        })
+      }
+      return
+    }
+    if (event.altKey) return
+    // 페이지의 글을 골라 둔 상태면 브라우저 복사를 그대로 둔다
+    const hasTextSelection = Boolean(window.getSelection()?.toString())
+    if (key === 'KeyS') return handle(() => setMessage(session.flush() ? '저장하지 못한 입력이 있어요' : '저장했어요'))
+    if (key === 'KeyZ' || key === 'KeyY') {
+      const redo = key === 'KeyY' || event.shiftKey
+      return handle(() =>
+        run(
+          (redo ? session.redo() : session.undo()).then((applied) => {
+            if (!applied) throw new Error(redo ? '다시 실행할 작업이 없어요' : '되돌릴 작업이 없어요')
+          }),
+          redo ? '다시 실행했어요' : '되돌렸어요',
+        ))
+    }
+    if ((key === 'KeyC' || key === 'KeyX') && selected && !hasTextSelection) {
+      return handle(() => {
+        if (selected.type === 'image') return setMessage('이미지는 아직 복사할 수 없어요')
+        clipboard = selected
+        if (key === 'KeyC') return setMessage('복사했어요')
+        const id = selected.id
+        run(session.deleteElement(id).then(() => select(undefined)), '잘라냈어요')
+      })
+    }
+    if (key === 'KeyV' && clipboard) {
+      const source = clipboard
+      return handle(() => run(session.createElement(slide.id, placed(source, slide)).then((created) => focusElement(created.id)), '붙여넣었어요'))
+    }
+    if (key === 'KeyD' && selected) {
+      return handle(() => {
+        if (selected.type === 'image') return setMessage('이미지는 아직 복제할 수 없어요')
+        run(session.createElement(slide.id, placed(selected, slide)).then((created) => focusElement(created.id)), '복제했어요')
+      })
+    }
+  })
+
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onShortcut(event)
+    window.addEventListener('keydown', listener)
+    return () => window.removeEventListener('keydown', listener)
+  }, [])
 
   return (
     <>
@@ -377,6 +504,10 @@ function Workspace({
         </div>
         <div className={styles.stageFoot}>
           <p>요소를 클릭해 선택하고 더블클릭해 글을 수정해요. 끌면 다른 요소와 가운데에 맞춰지고 Alt를 누르면 그대로 옮겨요</p>
+          <p aria-live="polite" className={styles.shortcutMessage}>{message}</p>
+          <Button variant="text" onClick={() => setHelp(true)}>
+            단축키
+          </Button>
           <label>
             배율
             <select value={zoom} onChange={(event) => setZoom(Number(event.target.value))}>
@@ -479,6 +610,16 @@ function Workspace({
       >
         <p className={styles.compare}>서버의 최신 내용: {summarize(latest, conflict)}</p>
         <p className={styles.compare}>내가 입력한 내용: {summarize(conflict, latest)}</p>
+      </Modal>
+      <Modal open={help} title="단축키" description="글을 고치는 중에는 입력창의 기본 단축키가 먼저 적용돼요." onClose={() => setHelp(false)}>
+        <dl className={styles.shortcuts}>
+          {shortcuts.map(([keys, action]) => (
+            <div key={keys}>
+              <dt>{keys}</dt>
+              <dd>{action}</dd>
+            </div>
+          ))}
+        </dl>
       </Modal>
     </>
   )

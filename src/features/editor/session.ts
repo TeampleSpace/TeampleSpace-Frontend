@@ -1,6 +1,7 @@
 import {
   editorSnapshotSchema,
   elementChangeSchema,
+  elementDeletedSchema,
   elementSaveResultSchema,
   presenceUpdatedSchema,
 } from '../../entities/presentation/schema.ts'
@@ -75,6 +76,13 @@ type Entry = {
   deferred?: Element
 }
 
+// 실행 취소 한 단계. 수정은 바꾸기 전과 뒤의 항목 값을, 추가와 삭제는 요소 전체를 든다
+type Op =
+  | { kind: 'edit'; id: string; before: ElementPatch; after: ElementPatch }
+  | { kind: 'create' | 'delete'; element: Element }
+
+const historyLimit = 100
+
 // 계약에 따라 보낸 항목은 통째로 교체된다
 export function applyPatch(element: Element, patch: ElementPatch): Element {
   return { ...element, ...patch } as Element
@@ -137,6 +145,13 @@ export function createEditorSession(options: {
     stats: { ...stats },
   }
   const listeners = new Set<() => void>()
+  // 내 편집의 실행 취소 기록. 현재 탭에만 둔다
+  const undoStack: Op[] = []
+  const redoStack: Op[] = []
+  // 편집을 끝내기 전까지 바뀐 항목의 처음 값
+  const before = new Map<string, Record<string, unknown>>()
+  let replaying = false
+  let stepping = false
 
   function publish() {
     const elements: Record<string, ElementView> = {}
@@ -219,6 +234,12 @@ export function createEditorSession(options: {
     const entry = entryOf(elementId)
     if (entry.status === 'conflict') return false
 
+    if (!replaying) {
+      const current = viewOf(elementId) as Record<string, unknown>
+      const saved = before.get(elementId) ?? {}
+      for (const key of Object.keys(patch)) if (!(key in saved)) saved[key] = structuredClone(current[key])
+      before.set(elementId, saved)
+    }
     entry.draft = { ...entry.draft, ...patch }
     entry.seq += 1
     entry.composing = input.composing ?? false
@@ -239,6 +260,7 @@ export function createEditorSession(options: {
 
   // 포커스를 잃거나 선택이 다른 요소로 옮겨 가면 남은 입력을 바로 저장하고 묶음을 닫는다
   function endEdit(elementId: string) {
+    record(elementId)
     const entry = entries.get(elementId)
     if (!entry) return
     entry.composing = false
@@ -259,6 +281,160 @@ export function createEditorSession(options: {
         (connection !== 'online' && Boolean(entry.draft || entry.flight)) ||
         (entry.draft !== undefined && entry.flight?.seq !== entry.seq),
     )
+  }
+
+  // 화면에 보이는 요소. 서버 확인본 위에 아직 보내지 못한 입력을 얹는다
+  function viewOf(elementId: string): Element {
+    const element = locate(elementId).element
+    const draft = entries.get(elementId)?.draft
+    return draft ? applyPatch(element, draft) : element
+  }
+
+  // 실행 취소 기록
+
+  function push(op: Op) {
+    undoStack.push(op)
+    if (undoStack.length > historyLimit) undoStack.shift()
+    redoStack.length = 0
+  }
+
+  // 편집을 끝낼 때 처음 값과 지금 값을 한 단계로 남긴다
+  function record(elementId: string) {
+    const saved = before.get(elementId)
+    if (!saved) return
+    before.delete(elementId)
+    if (!find(elementId)) return
+    const current = viewOf(elementId) as Record<string, unknown>
+    const after = Object.fromEntries(Object.keys(saved).map((key) => [key, structuredClone(current[key])]))
+    if (JSON.stringify(after) === JSON.stringify(saved)) return
+    push({ kind: 'edit', id: elementId, before: saved as ElementPatch, after: after as ElementPatch })
+  }
+
+  // 지운 요소를 되살리면 새 식별자를 받는다. 남은 기록이 새 요소를 가리키게 한다
+  function remap(from: string, to: Element) {
+    for (const op of [...undoStack, ...redoStack]) {
+      if (op.kind === 'edit' && op.id === from) op.id = to.id
+      if (op.kind !== 'edit' && op.element.id === from) op.element = { ...op.element, id: to.id }
+    }
+  }
+
+  async function step(from: Op[], to: Op[], forward: boolean): Promise<boolean> {
+    if (stepping || !doc || connection !== 'online') return false
+    for (const elementId of [...before.keys()]) record(elementId)
+    const op = from.pop()
+    if (!op) return false
+    stepping = true
+    try {
+      if (op.kind === 'edit') {
+        const target = find(op.id)
+        if (!target || target.element.deletedAt) return false
+        replaying = true
+        const applied = edit(op.id, forward ? op.after : op.before)
+        replaying = false
+        if (!applied) return false
+        endEdit(op.id)
+      } else if ((op.kind === 'create') !== forward) {
+        // 추가를 되돌리거나 삭제를 다시 한다
+        await remove(op.element.id)
+      } else {
+        const created = await add(op.element.slideId, op.element)
+        remap(op.element.id, created)
+        op.element = created
+      }
+      to.push(op)
+      return true
+    } finally {
+      stepping = false
+      publish()
+    }
+  }
+
+  // 요소 추가와 삭제
+
+  function insert(element: Element) {
+    if (find(element.id)) return
+    const slide = doc?.slides.find((candidate) => candidate.id === element.slideId)
+    if (!slide) return
+    slide.elements.push(element)
+    slide.elementIds.push(element.id)
+  }
+
+  function markDeleted(elementId: string, version: number, deletedAt: string) {
+    const found = find(elementId)
+    if (!found || found.element.deletedAt) return
+    found.slide.elements[found.index] = { ...found.element, version: Math.max(version, found.element.version), deletedAt }
+    const entry = entries.get(elementId)
+    clearTimeout(entry?.saveTimer)
+    clearTimeout(entry?.retryTimer)
+    entries.delete(elementId)
+    before.delete(elementId)
+  }
+
+  function requireOnline() {
+    if (!doc || connection !== 'online') throw new Error('연결이 복구된 뒤 다시 시도해 주세요')
+    return doc
+  }
+
+  // 같은 내용으로 새 요소를 만든다. 이미지는 파일 연결 경로가 생길 때 연다
+  async function add(slideId: string, source: Element): Promise<Element> {
+    const current = requireOnline()
+    if (source.type === 'image') throw new Error('이미지는 아직 복사할 수 없어요')
+    const { type, geometry, content, style } = source
+    const result = await client.request(`/slides/${slideId}/elements`, elementSaveResultSchema, {
+      method: 'POST',
+      body: {
+        generation: current.generation,
+        clientMutationId: crypto.randomUUID(),
+        element: { id: crypto.randomUUID(), type, geometry, content, style },
+      },
+      idempotencyKey: crypto.randomUUID(),
+      timeoutMs: requestTimeoutMs,
+    })
+    insert(result.resource)
+    bumpVersions(result.resource.id, result)
+    publish()
+    return result.resource
+  }
+
+  async function remove(elementId: string) {
+    const current = requireOnline()
+    const entry = entries.get(elementId)
+    if (entry?.flight || entry?.status === 'conflict') throw new Error('저장이 끝난 뒤 다시 시도해 주세요')
+    const { slide, element } = locate(elementId)
+    if (element.type === 'image') throw new Error('이미지는 아직 삭제할 수 없어요')
+    // 지우는 동안 남은 입력을 보내지 않는다. 실패하면 이어서 보낸다
+    clearTimeout(entry?.saveTimer)
+    if (entry) entry.saveTimer = undefined
+    try {
+      const result = await client.request(`/slides/${slide.id}/elements/${elementId}`, elementDeletedSchema, {
+        method: 'DELETE',
+        body: { generation: current.generation, baseVersion: element.version, clientMutationId: crypto.randomUUID() },
+        idempotencyKey: crypto.randomUUID(),
+        timeoutMs: requestTimeoutMs,
+      })
+      bumpVersions(elementId, result)
+      markDeleted(elementId, result.tombstone.version, result.tombstone.deletedAt)
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'VERSION_CONFLICT') resync()
+      if (entry?.draft) send(elementId)
+      throw error
+    } finally {
+      publish()
+    }
+  }
+
+  // 사용자가 직접 한 추가와 삭제. 실행 취소 기록에 남긴다
+  async function createElement(slideId: string, source: Element): Promise<Element> {
+    const created = await add(slideId, source)
+    push({ kind: 'create', element: created })
+    return created
+  }
+
+  async function deleteElement(elementId: string) {
+    record(elementId)
+    const shown = viewOf(elementId)
+    await remove(elementId)
+    push({ kind: 'delete', element: shown })
   }
 
   // 편집 종료와 이동처럼 화면에서만 알 수 있는 종료를 서버에 알린다
@@ -551,6 +727,7 @@ export function createEditorSession(options: {
     setConfirmed(entry.serverLatest)
     entry.serverLatest = undefined
     if (keep === 'server') {
+      before.delete(elementId)
       entry.draft = undefined
       entry.status = 'clean'
     } else {
@@ -630,6 +807,16 @@ export function createEditorSession(options: {
         resync()
       }
     }
+    if (event.type === 'element.deleted') {
+      const result = elementDeletedSchema.safeParse(event.payload)
+      if (result.success && find(result.data.tombstone.id)) {
+        const { tombstone } = result.data
+        bumpVersions(tombstone.id, result.data)
+        markDeleted(tombstone.id, tombstone.version, tombstone.deletedAt)
+      } else if (!result.success) {
+        resync()
+      }
+    }
     publish()
   }
 
@@ -669,8 +856,17 @@ export function createEditorSession(options: {
           for (const slide of incoming.slides) {
             const local = doc.slides.find((candidate) => candidate.id === slide.id)
             if (local) local.version = Math.max(local.version, slide.version)
-            // ponytail: 요소 추가와 삭제가 생기면 여기서 문서 구성도 맞춘다
-            for (const element of slide.elements) if (find(element.id)) reconcile(element)
+            for (const element of slide.elements) {
+              if (find(element.id)) reconcile(element)
+              else insert(element)
+            }
+            // 스냅샷에는 지운 요소가 없다. 보내는 중인 입력이 없는 요소만 지운 것으로 본다
+            // ponytail: 스냅샷을 읽는 사이 내가 추가한 요소는 다음 스냅샷까지 남지 않을 수 있다. 문제가 되면 추가 중인 요소를 따로 센다
+            for (const element of local?.elements ?? []) {
+              const kept = slide.elements.some((candidate) => candidate.id === element.id)
+              const entry = entries.get(element.id)
+              if (!kept && !entry?.draft && !entry?.flight) markDeleted(element.id, element.version, new Date().toISOString())
+            }
           }
         }
         streamVersion = incoming.version
@@ -846,6 +1042,10 @@ export function createEditorSession(options: {
     edit,
     endEdit,
     flush,
+    createElement,
+    deleteElement,
+    undo: () => step(undoStack, redoStack, false),
+    redo: () => step(redoStack, undoStack, true),
     retry,
     resolveConflict,
     accept,
