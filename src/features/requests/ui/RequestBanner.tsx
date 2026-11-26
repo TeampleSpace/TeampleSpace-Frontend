@@ -128,6 +128,9 @@ export function RequestBanner({ projectId }: { projectId: string }) {
         setNotices((items) => items.filter((item) => item.id !== request.id))
       }}>닫기</Button>
     </div>)}
-    <RequestError error={failure} />
+    <RequestError error={failure} action={<Button variant="text" aria-label="오류 알림 닫기" onClick={() => {
+      focusNext.current = ''
+      setFailure(undefined)
+    }}>닫기</Button>} />
   </section>
 }

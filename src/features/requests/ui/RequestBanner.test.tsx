@@ -84,4 +84,6 @@ test('이미 처리된 요청을 승인하면 이유를 보여 주고 목록을 
   expect(await screen.findByText('이미 처리된 요청이에요.')).toBeTruthy()
   expect(await screen.findByText('박팀원님이 김다혜님의 AI 구성 만들기 요청을 거절했어요')).toBeTruthy()
   await waitFor(() => expect(screen.queryByRole('button', { name: '승인하기' })).toBeNull())
+  fireEvent.click(screen.getByRole('button', { name: '오류 알림 닫기' }))
+  expect(screen.queryByText('이미 처리된 요청이에요.')).toBeNull()
 })
