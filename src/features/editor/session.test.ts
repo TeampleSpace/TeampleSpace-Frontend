@@ -39,7 +39,10 @@ async function settle() {
 function setup() {
   const server = createMockServer(exampleSnapshot)
   const calls: Call[] = []
-  const control = { failNextPatch: false }
+  const control: { failNextPatch: boolean; failNextDelete: boolean; snapshotGate?: Promise<void> } = {
+    failNextPatch: false,
+    failNextDelete: false,
+  }
 
   function tracked(actor: string, silentEvents: boolean): typeof fetch {
     const inner = server.fetchAs(actorIds[actor])
@@ -64,6 +67,15 @@ function setup() {
       if (silentEvents && path.endsWith('/events')) {
         // 연결은 됐지만 이벤트가 오지 않는 상황
         return Promise.resolve(new Response(new ReadableStream()))
+      }
+      if (method === 'DELETE' && control.failNextDelete) {
+        control.failNextDelete = false
+        return Promise.reject(new TypeError('연결 실패'))
+      }
+      if (path.endsWith('/sync-snapshot') && control.snapshotGate) {
+        // 지금 시점의 스냅샷을 만들어 두고 응답만 늦춘다
+        const gate = control.snapshotGate
+        return inner(input, init).then((response) => gate.then(() => response))
       }
       return inner(input, init)
     }
@@ -817,4 +829,41 @@ test('붙여넣은 요소를 되돌리면 지운다', async () => {
   expect(await a.undo()).toBe(true)
   await settle()
   expect(serverElement(created.id)).toBeUndefined()
+})
+
+test('되돌리기 요청이 실패하면 기록을 남겨 다시 시도할 수 있다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const created = await a.createElement(slideId, serverElement())
+  await settle()
+  control.failNextDelete = true
+  await expect(a.undo()).rejects.toThrow()
+  expect(serverElement(created.id)).toBeDefined()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+})
+
+test('늦게 도착한 스냅샷이 그사이 추가한 요소를 지우지 않는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.snapshotGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const stale = a.refresh()
+  await settle()
+  const created = await a.createElement(slideId, serverElement())
+  control.snapshotGate = undefined
+  release()
+  await stale
+  await settle()
+
+  const live = a.getState().view!.slides.flatMap((slide) => slide.elements).find((element) => element.id === created.id)
+  expect(live?.deletedAt).toBeUndefined()
 })
