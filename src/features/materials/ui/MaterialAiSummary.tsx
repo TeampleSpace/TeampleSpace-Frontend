@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { TransportError } from '../../../shared/api/client.ts'
+import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { useSession } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
 import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
-import type { Job, Material } from '../../../entities/material/model.ts'
+import type { Job, Material, MaterialAnalysis } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
+import own from './MaterialAiSummary.module.css'
 
 function inProgress(job?: Job | null) {
   return job?.status === 'queued' || job?.status === 'running'
@@ -42,7 +43,7 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
       try {
         const latest = await materialsApi.get(material.id, controller.signal)
         if (controller.signal.aborted) return
-        if (latest.status === 'ready' && latest.currentRevision?.id === polledRevisionId && !latest.summaryJob && !latest.currentRevision?.summary) {
+        if (latest.status === 'ready' && latest.currentRevision?.id === polledRevisionId && !latest.summaryJob && !latest.currentRevision?.analysis) {
           throw new TransportError('invalid_response')
         }
         setPollError(undefined)
@@ -82,6 +83,16 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
       key.current = undefined
       setOpen(false)
     } catch (reason) {
+      // 다른 화면이나 팀원이 먼저 요청했으면 자료를 다시 읽어 진행 상태를 보여 준다
+      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS') {
+        const latest = await materialsApi.get(material.id).catch(() => undefined)
+        if (latest?.currentRevision?.id === revisionId && inProgress(latest.summaryJob)) {
+          key.current = undefined
+          onChanged(latest)
+          setOpen(false)
+          return
+        }
+      }
       if (!isUncertain(reason)) key.current = undefined
       onError(reason)
       setError(reason)
@@ -91,27 +102,49 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
     }
   }
 
+  const analysis = material.currentRevision?.analysis
   const summary = material.currentRevision?.summary
   const failed = job?.status === 'failed' || job?.status === 'canceled'
   const close = () => { if (!busy) setOpen(false) }
+  const status = activeId ? <p role="status" className={styles.listNote}>
+    {job?.status === 'queued' ? '분석 대기 중' : 'AI가 자료를 분석하는 중'}
+  </p> : failed ? <p role="alert" className={styles.listNote}>
+    {job?.status === 'canceled' ? '분석이 취소됐어요.' : job?.error?.message ?? '분석 정리를 만들지 못했어요.'}
+  </p> : null
   return <section className={`${styles.section} ${styles.summary}`}>
     <div className={styles.sectionHeader}>
-      <h3 className={styles.sectionTitle}>AI 요약</h3>
-      {!summary && enabled && !activeId && <Button variant="secondary" onClick={() => { setError(undefined); setOpen(true) }}>
-        {failed ? '요약 다시 요청' : 'AI 요약 만들기'}
+      <h3 className={styles.sectionTitle}>AI 분석 정리</h3>
+      {!analysis && enabled && !activeId && <Button variant="secondary" onClick={() => { setError(undefined); setOpen(true) }}>
+        {failed ? '분석 다시 요청' : 'AI 분석 만들기'}
       </Button>}
     </div>
-    {summary ? <p className={styles.plain}>{summary}</p> : activeId ? <p role="status" className={styles.listNote}>
-      {job?.status === 'queued' ? '요약 대기 중' : 'AI 요약 중'}
-    </p> : failed ? <p role="alert" className={styles.listNote}>
-      {job?.status === 'canceled' ? '요약이 취소됐어요.' : job?.error?.message ?? '요약을 만들지 못했어요.'}
-    </p> : <p className={styles.listNote}>{enabled ? '아직 요약이 없어요.' : '이 환경에서는 AI 요약을 만들 수 없어요.'}</p>}
+    {analysis ? <AnalysisView analysis={analysis} /> : <>
+      {summary && <p className={styles.plain}>{summary}</p>}
+      {status ?? (!summary && <p className={styles.listNote}>{enabled ? '아직 분석 정리가 없어요.' : '이 환경에서는 AI 분석을 만들 수 없어요.'}</p>)}
+    </>}
     <RequestError error={pollError} action={<Button variant="text" onClick={() => setAttempt((value) => value + 1)}>상태 다시 확인</Button>} />
-    <Modal open={open} size="confirm" title="자료를 AI로 요약할까요?"
-      description="이 자료의 제목과 원문 일부가 AI 서비스로 전달돼요." onClose={close}
+    <Modal open={open} size="confirm" title="자료를 AI로 분석할까요?"
+      description="이 자료의 제목과 원문 일부가 AI 서비스로 전달돼요. 개요, 주요 논점과 근거, 발표 포인트로 정리해요." onClose={close}
       footer={<><Button variant="secondary" disabled={busy} onClick={close}>취소</Button>
-        <Button loading={busy} onClick={() => void submit()}>요약 요청</Button></>}>
+        <Button loading={busy} onClick={() => void submit()}>분석 요청</Button></>}>
       <RequestError error={error} />
     </Modal>
   </section>
+}
+
+function AnalysisView({ analysis }: { analysis: MaterialAnalysis }) {
+  return <div className={own.analysis}>
+    <p className={styles.plain}>{analysis.overview}</p>
+    <h4 className={own.heading}>주요 논점과 근거</h4>
+    <ol className={own.list}>
+      {analysis.keyPoints.map((point, index) => <li key={index}>
+        <span>{point.claim}</span>
+        {point.evidence && <span className={own.evidence}>근거 {point.evidence}</span>}
+      </li>)}
+    </ol>
+    <h4 className={own.heading}>발표 포인트</h4>
+    <ul className={own.list}>
+      {analysis.presentationPoints.map((point, index) => <li key={index}>{point}</li>)}
+    </ul>
+  </div>
 }

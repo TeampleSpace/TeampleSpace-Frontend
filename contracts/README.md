@@ -220,7 +220,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | AI 수정 적용 | `POST /v1/ai-proposals/{proposalId}/apply` | `SlideRevisionApplied` | 구현. 제안 식별자는 작업 식별자다. 요청자만 적용한다. 모든 대상이 기준 버전 그대로일 때만 요소 수정 경로로 한 번에 반영하고, 하나라도 바뀌었으면 아무것도 바꾸지 않고 `VERSION_CONFLICT`다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
 | 커서 위치 | `POST /v1/projects/{projectId}/presence` | `PresenceUpdateRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 10초 동안 새 위치가 없거나 `slideId`가 null이면 목록에서 빠진다. 같은 사람의 여러 탭은 마지막 위치 하나다 | 4단계 |
-| 보는 탭 | `PUT /v1/projects/{projectId}/viewing` | `ViewingRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 20초 동안 새 알림이 없거나 `tab`이 null이면 목록에서 빠진다. 같은 사람의 여러 창은 마지막 알림 하나다. `viewId`를 실으면 떠남은 마지막으로 알린 창의 것만 반영한다 | 4단계 |
+| 보는 탭 | `PUT /v1/projects/{projectId}/viewing` | `ViewingRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 20초 동안 새 알림이 없거나 `tab`이 null이면 목록에서 빠진다. 같은 사람의 여러 창은 마지막 알림 하나다. `viewId`를 실으면 떠남은 마지막으로 알린 창의 것만 반영하고, `seq`를 실으면 같은 창에서 늦게 도착한 이전 알림은 버린다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | `scope=editor`만 구현. 그 밖의 값은 `VALIDATION_FAILED`다. 요소가 자료를 참조하기 전이라 `materials`는 비어 있다 | 4단계 |
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |

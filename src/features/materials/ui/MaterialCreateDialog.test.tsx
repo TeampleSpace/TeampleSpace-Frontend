@@ -126,6 +126,76 @@ test('업로드 실패는 다시 올리고 분석 실패는 자료에 남아 따
   expect(mock.count()).toBe(2)
 })
 
+test('여러 PDF는 차례로 올리고 실패한 파일만 이유와 함께 남겨 다시 올린다', async () => {
+  mount()
+  await openAdd()
+  const files = [pdf('첫 번째 조사.pdf'), pdf('두 번째 조사.pdf', '%PDF-1.4 두 번째 본문')]
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files } })
+  expect(dialog().getByText('파일 2개')).toBeTruthy()
+  expect(dialog().queryByLabelText(/자료 이름/)).toBeNull()
+  mock.faults.failNext = { match: 'PUT /v1/storage/uploads/', code: 'FILE_URL_EXPIRED' }
+  submit()
+  const list = within(await dialog().findByRole('list', { name: '고른 파일' }))
+  expect(await list.findByText('추가됨')).toBeTruthy()
+  expect(list.getByText(/업로드 주소가 만료됐어요/)).toBeTruthy()
+  expect(await dialog().findByText(/실패한 파일만 올려요/)).toBeTruthy()
+  expect(mock.count()).toBe(2)
+  // 다시 누르면 실패한 첫 파일만 준비부터 다시 올리고 모두 끝나면 닫는다
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(mock.count()).toBe(3)
+  const prepared = calls('POST /v1/projects').filter((call) => call.path.endsWith('/uploads')).map((call) => (call.body as { fileName: string }).fileName)
+  expect(prepared).toEqual(['첫 번째 조사.pdf', '두 번째 조사.pdf', '첫 번째 조사.pdf'])
+  expect(calls('/materials/file')).toHaveLength(2)
+})
+
+test('서버가 PDF가 아니라고 거절한 파일은 다시 올리지 않는다', async () => {
+  mount()
+  await openAdd()
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files: [pdf('정상.pdf'), pdf('가짜.pdf', 'plain text')] } })
+  submit()
+  const list = within(await dialog().findByRole('list', { name: '고른 파일' }))
+  expect(await list.findByText(/PDF 형식이 아니에요/)).toBeTruthy()
+  expect(list.getByText('추가됨')).toBeTruthy()
+  await waitFor(() => expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', true))
+  expect(dialog().queryByText(/실패한 파일만 올려요/)).toBeNull()
+  expect(mock.count()).toBe(2)
+})
+
+test('여러 파일 중 Retry-After 응답을 받으면 남은 파일을 멈추고 그 시간 동안 다시 시도를 막는다', async () => {
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await mock.fetchAs(mock.ownerId)(input, init)
+    if (!response.ok) response.headers.set('Retry-After', '1')
+    return response
+  })
+  mount()
+  await openAdd()
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files: [pdf('가.pdf'), pdf('나.pdf')] } })
+  mock.faults.failNext = { match: '/materials/file', code: 'RATE_LIMITED' }
+  submit()
+  expect(await dialog().findByText(/실패한 파일만 올려요/)).toBeTruthy()
+  // 첫 파일에서 멈추고 두 번째 파일은 보내지 않는다
+  expect(calls('POST /v1/projects').filter((call) => call.path.endsWith('/uploads'))).toHaveLength(1)
+  expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', true)
+  await waitFor(() => expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', false), { timeout: 2000 })
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(mock.count()).toBe(3)
+})
+
+test('파일 선택 창에서 여러 파일을 고를 수 있다', async () => {
+  mount()
+  await openAdd()
+  const input = dialog().getByLabelText('PDF 파일') as HTMLInputElement
+  expect(input.multiple).toBe(true)
+  fireEvent.change(input, { target: { files: [pdf('가.pdf'), new File(['text'], '나.txt', { type: 'text/plain' })] } })
+  const list = within(dialog().getByRole('list', { name: '고른 파일' }))
+  expect(list.getByText('PDF 파일만 올릴 수 있어요')).toBeTruthy()
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(calls('/materials/file')).toHaveLength(1)
+})
+
 test('PDF가 아니거나 허용 크기를 넘는 파일은 올리기 전에 막는다', async () => {
   mount()
   await openAdd()
@@ -156,7 +226,7 @@ test('링크는 실패해도 입력을 남기고 결과를 모르는 재시도�
   expect(url.value).toBe('https://example.com/campus-reuse')
   expect((dialog().getByLabelText('팀에 남길 설명 · 선택') as HTMLInputElement).value).toBe('운영 사례 확인')
   submit()
-  expect(await screen.findByRole('link', { name: 'https://example.com/campus-reuse' })).toBeTruthy()
+  expect((await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기/ })).getAttribute('href')).toBe('https://example.com/campus-reuse')
   expect(screen.getByText('운영 사례 확인')).toBeTruthy()
   const sent = calls('/materials/link')
   expect(sent).toHaveLength(2)

@@ -38,6 +38,8 @@ export type OutlineAiSlotProps = {
   projectId: string
   version: number
   outlineHasItems: boolean
+  // 구성 항목에 이미 근거로 연결한 자료
+  linkedSourceIds: string[]
   dirty: boolean
   onGenerated: () => Promise<boolean>
   onAccessError: (reason: unknown) => void
@@ -390,6 +392,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
       </div>}
       <div className={`${styles.actions} ${styles.headerActions}`}>
         {Ai && <Ai projectId={project.id} version={outline.version} outlineHasItems={!empty}
+          linkedSourceIds={outline.items.flatMap((item) => item.sourceRefs.map((ref) => ref.materialId))}
           dirty={generatedBlocked} onGenerated={onGenerated} onAccessError={onAiAccessError} />}
         {empty ? <Button variant={noMaterials ? 'text' : 'secondary'} onClick={add}>직접 목차 추가</Button>
           : slots.designReady && <Link className={styles.linkAction} to={`${projectPath}/design`} state={{ fromOutline: true }}>디자인 선택</Link>}
