@@ -224,6 +224,17 @@ test('링크 자료는 원문 팝업에서, 메모 자료는 상세에서 바로
   expect(next.getByText('https://example.com/reuse-cup')).toBeTruthy()
 })
 
+test('구글 문서 링크는 원문 팝업 안에 미리보기로 보여 주고 원본은 새 탭으로 연다', async () => {
+  const url = 'https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz_0123456789/edit?usp=sharing'
+  const doc = mock.seed('link', '조사 계획서', { url, text: '수집한 글자' })
+  mount(`?material=${doc}`)
+  const popup = await openViewer()
+  const frame = await popup.findByTitle('조사 계획서 구글 문서 미리보기')
+  expect(frame.getAttribute('src')).toBe('https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz_0123456789/preview')
+  expect(popup.getByRole('link', { name: /^docs\.google\.com 원본 페이지 열기/ }).getAttribute('href')).toBe(url)
+  expect(popup.queryByText('수집한 글자')).toBeNull()
+})
+
 test('고정된 개정이 있으면 최신 메모 대신 연결 당시 원문을 조회한다', async () => {
   const id = mock.seed('memo', '회의 메모', { markdown: '연결 당시 메모' })
   const material = mock.get(id)!
