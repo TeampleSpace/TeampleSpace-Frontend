@@ -187,6 +187,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - `slide.created`, `slide.deleted`, `slide.order.updated`의 `payload`는 해당 응답과 같은 항목을 쓰고 바뀐 뒤의 전체 순서 `slideIds`를 싣는다. 받는 쪽은 자기 목록을 이 순서로 맞춘다
 - 변경 묶음 이벤트의 `payload`는 `changeId`와 `groupState`다
 - `presence.updated`는 일시적인 커서 표시라 SSE `id` 없이 오고 다시 받을 수 있다고 보장하지 않는다. `data`는 `PresenceUpdated` 형식으로 나를 뺀 팀원의 현재 커서 전체 목록이며, 목록이 바뀔 때만 온다. 목록에 없는 팀원의 커서는 지운다
+- `viewers.updated`는 팀원이 지금 보는 탭 표시라 SSE `id` 없이 온다. `data`는 `ViewersUpdated` 형식으로 나를 뺀 팀원의 탭 전체 목록이며, 목록이 바뀔 때만 온다. 다시 연결하면 빈 목록에서 시작한다. 목록에 없는 팀원은 프로젝트 화면을 떠난 것이다
 
 ### 다시 연결할 때
 
@@ -219,6 +220,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | AI 수정 적용 | `POST /v1/ai-proposals/{proposalId}/apply` | `SlideRevisionApplied` | 구현. 제안 식별자는 작업 식별자다. 요청자만 적용한다. 모든 대상이 기준 버전 그대로일 때만 요소 수정 경로로 한 번에 반영하고, 하나라도 바뀌었으면 아무것도 바꾸지 않고 `VERSION_CONFLICT`다 | 4단계 |
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
 | 커서 위치 | `POST /v1/projects/{projectId}/presence` | `PresenceUpdateRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 10초 동안 새 위치가 없거나 `slideId`가 null이면 목록에서 빠진다. 같은 사람의 여러 탭은 마지막 위치 하나다 | 4단계 |
+| 보는 탭 | `PUT /v1/projects/{projectId}/viewing` | `ViewingRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 20초 동안 새 알림이 없거나 `tab`이 null이면 목록에서 빠진다. 같은 사람은 열린 창 가운데 마지막으로 알린 탭으로 보인다. `viewId`를 실으면 떠남은 그 창만 지우고 같은 사람의 다른 창은 남으며, `seq`를 실으면 같은 창에서 늦게 도착한 이전 알림은 버린다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | `scope=editor`만 구현. 그 밖의 값은 `VALIDATION_FAILED`다. 요소가 자료를 참조하기 전이라 `materials`는 비어 있다 | 4단계 |
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |
