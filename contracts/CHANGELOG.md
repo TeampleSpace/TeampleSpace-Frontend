@@ -7,7 +7,7 @@
 
 ## 2026-11-26 프로젝트 탭 접속 현황 추가
 
-- 보는 탭 경로 `PUT /v1/projects/{projectId}/viewing`과 `ViewingRequest`, `ProjectTab`, `ViewersUpdated` 형식을 추가. 창마다 다른 `viewId`를 실으면 떠남은 마지막으로 알린 창의 것만 반영하고, 창마다 늘리는 `seq`를 실으면 늦게 도착한 이전 알림은 버린다
+- 보는 탭 경로 `PUT /v1/projects/{projectId}/viewing`과 `ViewingRequest`, `ProjectTab`, `ViewersUpdated` 형식을 추가. 창마다 다른 `viewId`를 실으면 떠남은 그 창만 지우고 같은 사람의 다른 창은 남으며, 창마다 늘리는 `seq`를 실으면 늦게 도착한 이전 알림은 버린다
 - 이벤트 구독은 나를 뺀 팀원의 탭 목록이 바뀔 때 `viewers.updated`를 SSE `id` 없이 보낸다. 이벤트 순번과 재연결 커서에는 영향이 없다
 
 ## 2026-11-26 발표 생성 문구 규칙 보완

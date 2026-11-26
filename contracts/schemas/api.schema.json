@@ -404,7 +404,7 @@
       "required": ["tab"],
       "properties": {
         "tab": { "anyOf": [{ "$ref": "#/$defs/ProjectTab" }, { "type": "null" }] },
-        "viewId": { "type": "string", "minLength": 1, "maxLength": 64, "description": "창마다 다른 값. 떠남은 같은 값으로 마지막에 알린 창일 때만 반영한다" },
+        "viewId": { "type": "string", "minLength": 1, "maxLength": 64, "description": "창마다 다른 값. 떠남은 그 창만 지우고 같은 사람의 다른 창은 남는다" },
         "seq": { "type": "integer", "minimum": 0, "description": "같은 창에서 보낼 때마다 늘리는 순번. 같은 viewId로 이미 받은 순번 이하의 알림은 버린다" }
       }
     },
