@@ -1183,3 +1183,28 @@ test('출처가 있는 요소를 지웠다가 되돌리면 출처도 돌아온�
     .find((element) => element.type === 'text' && element.content.text === '조사 결과 요약')!
   expect(restored.sourceRefs).toEqual(sourceRefs)
 })
+
+test('연달아 복제해도 차례가 왔을 때의 슬라이드를 보고 자리를 정한다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  // 같은 자리에 요소가 있으면 20씩 비켜 놓는다
+  const arrange = (slide: { elements: { geometry: { x: number } }[] }) => {
+    let x = source.geometry.x
+    while (slide.elements.some((element) => element.geometry.x === x)) x += 20
+    return { ...source, geometry: { ...source.geometry, x } }
+  }
+  const first = a.createElement(slideId, arrange)
+  const second = a.createElement(slideId, arrange)
+  await settle()
+  control.postGate = undefined
+  release()
+  const [one, two] = await Promise.all([first, second])
+  expect(serverElement(one.id).geometry.x).not.toBe(serverElement(two.id).geometry.x)
+})
