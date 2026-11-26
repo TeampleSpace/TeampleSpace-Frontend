@@ -81,3 +81,11 @@
 .revisionList { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
 .revisionList li { display: flex; flex-direction: column; gap: var(--space-8); }
 .stageActions { display: flex; align-items: center; gap: var(--space-12); flex-shrink: 0; }
+
+/* 단축키 결과 안내와 단축키 목록 */
+.shortcutMessage, .stageFoot > button { flex-shrink: 0; white-space: nowrap; }
+.shortcutMessage { color: var(--color-secondary); }
+.shortcuts { display: flex; flex-direction: column; gap: var(--space-8); margin: 0; }
+.shortcuts div { display: grid; grid-template-columns: minmax(160px, auto) 1fr; gap: var(--space-16); font: var(--text-body); }
+.shortcuts dt { font-weight: 600; color: var(--color-ink); }
+.shortcuts dd { margin: 0; color: var(--color-secondary); }
