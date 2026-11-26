@@ -114,13 +114,13 @@
 
 .title {
   font: var(--text-dialog-title);
-  letter-spacing: -0.2px;
+  letter-spacing: var(--tracking-heading);
 }
 
 .viewer .title,
 .form .title, .team .title, .invite .title {
   font: var(--text-modal-title);
-  letter-spacing: -0.24px;
+  letter-spacing: var(--tracking-heading);
 }
 
 .description {
@@ -173,7 +173,7 @@
 }
 .preview .header { grid-area: header; flex-direction: column-reverse; align-items: stretch; gap: var(--space-24); }
 .preview .header > button { align-self: flex-end; }
-.preview .title { font: 600 28px/1.45 var(--font-body); letter-spacing: 0; }
+.preview .title { font: var(--text-title); letter-spacing: 0; }
 .preview .content { display: contents; }
 .preview .footer { grid-area: footer; padding-top: var(--space-12); }
 .preview .footer > button { width: 100%; }

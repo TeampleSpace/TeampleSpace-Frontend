@@ -121,9 +121,9 @@
 }
 
 .small {
-  min-height: 32px;
+  min-height: var(--button-height-small);
   padding: 4px 12px;
-  font: 600 13px/20px var(--font-body);
+  font: var(--text-meta-strong);
 }
 
 .text:disabled,

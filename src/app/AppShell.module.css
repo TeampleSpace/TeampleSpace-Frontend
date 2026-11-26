@@ -1,8 +1,8 @@
 .shell { min-height: 100dvh; display: flex; }
 .sidebar { width: 256px; flex-shrink: 0; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--space-20); display: flex; gap: var(--space-20); flex-direction: column; position: sticky; top: 0; height: 100dvh; overflow-y: auto; }
-.brand { display: flex; gap: var(--space-8); align-items: center; padding-left: 4px; color: var(--color-ink); font: 700 18px/28px var(--font-body); letter-spacing: -0.4px; text-decoration: none; }
+.brand { display: flex; gap: var(--space-8); align-items: center; padding-left: 4px; color: var(--color-ink); font: var(--text-subsection); letter-spacing: var(--tracking-heading); text-decoration: none; }
 .brand { font-family: var(--font-title); }
-.brand span { color: #fff; background: var(--color-accent-bright); width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 800 16px/26px var(--font-title); transition: rotate var(--motion-slow) var(--motion-spring); }
+.brand span { color: #fff; background: var(--color-accent-bright); width: 26px; height: 26px; border-radius: var(--radius-md); display: grid; place-items: center; font: 800 16px/26px var(--font-title); transition: rotate var(--motion-slow) var(--motion-spring); }
 .brand:hover span { rotate: -12deg; }
 .navigation { display: flex; flex-direction: column; gap: 2px; }
 .navigation a, .account, .managementLinks a { display: flex; gap: var(--space-8); align-items: center; color: var(--color-ink); text-decoration: none; padding: 10px 12px; min-height: 44px; border-radius: var(--radius-md); font: var(--text-nav); color: var(--color-secondary); }
@@ -18,17 +18,17 @@
 .managementLinks { display: flex; flex-direction: column; gap: 4px; }
 .managementLinks a:hover, .projectChildren a:hover, .projectRow a:hover { background: var(--color-subtle); }
 .managementLinks a[aria-current='page'] { color: var(--color-ink); background: var(--color-subtle); font-weight: 700; }
-.caption { padding-left: 12px; font: 600 13px/19px var(--font-body); color: var(--color-tertiary); }
+.caption { padding-left: 12px; font: var(--text-meta-strong); color: var(--color-tertiary); }
 .explorer { display: flex; flex-direction: column; gap: 12px; }
 .explorer ul { display: flex; flex-direction: column; gap: 12px; padding: 0; margin: 0; list-style: none; }
 .projectRow { display: flex; align-items: flex-start; }
-.projectRow button { width: 40px; min-height: 44px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; border-radius: 8px; cursor: pointer; }
+.projectRow button { width: 40px; min-height: 44px; flex-shrink: 0; display: grid; place-items: center; background: none; border: none; border-radius: var(--radius-md); cursor: pointer; }
 .projectRow button:hover { background: var(--color-subtle); }
-.projectRow a { flex: 1; min-width: 0; padding: 11px 4px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
+.projectRow a { flex: 1; min-width: 0; padding: 11px 4px; text-decoration: none; color: var(--color-ink); border-radius: var(--radius-md); }
 .chevron { width: 18px; height: 18px; background: url('/assets/navigation/chevron-down.svg') center no-repeat; transform: rotate(-90deg); transition: transform var(--motion-fast) var(--motion-ease-out); }
 .projectRow button[aria-expanded='true'] .chevron { transform: rotate(0); }
 .projectChildren { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; animation: var(--motion-feedback-enter); }
-.projectChildren a, .projectChildren > span { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
+.projectChildren a, .projectChildren > span { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px; text-decoration: none; color: var(--color-ink); border-radius: var(--radius-md); }
 .projectChildren a { padding-left: 14px; }
 .projectChildren a[aria-current='page'] { background: var(--color-subtle); color: var(--color-ink); font-weight: 700; }
 .projectChildren > span, .projectChildren small { color: var(--color-secondary); }

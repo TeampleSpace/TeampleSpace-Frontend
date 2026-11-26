@@ -37,8 +37,8 @@ h1 {
 }
 
 h2 {
-  font: 600 18px/28px var(--font-body);
-  letter-spacing: -0.2px;
+  font: var(--text-subsection);
+  letter-spacing: var(--tracking-heading);
 }
 
 a {
