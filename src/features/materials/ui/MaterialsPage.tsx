@@ -17,6 +17,7 @@ import { MaterialDetail } from './MaterialDetail.tsx'
 import type { ManageAction } from './MaterialDetail.tsx'
 import { MaterialCreateDialog } from './MaterialCreateDialog.tsx'
 import type { InputType } from './MaterialCreateDialog.tsx'
+import { ResearchDialog } from './ResearchDialog.tsx'
 import { MaterialDialogs } from './MaterialDialogs.tsx'
 import { TeamComments } from './TeamComments.tsx'
 import { MemoPad } from './MemoPad.tsx'
@@ -97,6 +98,9 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   // 열려 있는 자료 추가 모달. edit이 있으면 마크다운 자료 수정이다
   const [create, setCreate] = useState<{ type: InputType; edit?: { material: Material; markdown: string } } | null>(null)
   const [createDirty, setCreateDirty] = useState(false)
+  // AI 자료 조사 창. 작성 중 보호는 자료 추가 창과 같은 값을 쓴다
+  const [researching, setResearching] = useState(false)
+  const researchEnabled = useSession().capabilities?.featureFlags.materialResearch === true
   // 원문을 보고 있는 자료
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [retry, setRetry] = useState<{ busy: boolean; error?: unknown }>({ busy: false })
@@ -292,9 +296,14 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   const add = (type: InputType) => setCreate({ type })
   const heading = <div className={styles.heading}>
     <div className={styles.headingTitle}><h1>자료</h1><p>팀 자료를 추가하고 원문을 확인하세요.</p></div>
-    <Button variant="secondary" onClick={() => add('file')}>자료 추가</Button>
+    <div className={styles.actions}>
+      {researchEnabled && <Button variant="secondary" onClick={() => setResearching(true)}>AI 자료 조사</Button>}
+      <Button variant="secondary" onClick={() => add('file')}>자료 추가</Button>
+    </div>
   </div>
   const overlays = <>
+    {researching && <ResearchDialog project={project} onClose={() => { setResearching(false); setCreateDirty(false) }}
+      onDone={(material) => { setResearching(false); created(material) }} onDirtyChange={setCreateDirty} onError={onError} />}
     {create && <MaterialCreateDialog key={create.edit?.material.id ?? 'new'} project={project} initial={create.type} edit={create.edit}
       onClose={() => { setCreate(null); setCreateDirty(false) }} onDone={created} onAdded={() => setListRevision((value) => value + 1)} onDirtyChange={setCreateDirty} onError={onError} />}
     <UnsavedGuard dirty={noteDirty || memoDirty || createDirty} when={blocks} />
@@ -317,6 +326,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
       <section className={styles.type}><h2>웹 링크</h2><p>웹페이지 주소를 붙여 넣으세요.</p><Button variant="secondary" onClick={() => add('link')}>링크 추가</Button></section>
       <section className={styles.type}><h2>직접 쓴 메모</h2><p>회의 내용이나 아이디어를 마크다운으로 적으세요.</p><Button variant="secondary" onClick={() => add('memo')}>메모 작성</Button></section>
     </div>
+    {researchEnabled && <div className={styles.actions}><p className={styles.hint}>주제만 정했다면 AI로 관련 자료를 찾아 출처와 함께 정리할 수 있어요.</p>
+      <Button variant="secondary" onClick={() => setResearching(true)}>AI 자료 조사</Button></div>}
     <p className={styles.hint}>추가한 자료는 프로젝트 팀원과 공유돼요.</p>
   </div>{overlays}</>
 

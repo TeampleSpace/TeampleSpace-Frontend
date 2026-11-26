@@ -10,6 +10,13 @@
 - 보는 탭 경로 `PUT /v1/projects/{projectId}/viewing`과 `ViewingRequest`, `ProjectTab`, `ViewersUpdated` 형식을 추가. 창마다 다른 `viewId`를 실으면 떠남은 그 창만 지우고 같은 사람의 다른 창은 남으며, 창마다 늘리는 `seq`를 실으면 늦게 도착한 이전 알림은 버린다
 - 이벤트 구독은 나를 뺀 팀원의 탭 목록이 바뀔 때 `viewers.updated`를 SSE `id` 없이 보낸다. 이벤트 순번과 재연결 커서에는 영향이 없다
 
+## 2026-11-26 AI 자료 조사 추가
+
+- 조사 작업 등록 `POST /v1/projects/{projectId}/research-jobs`와 `MaterialResearchJobRequest`, `MaterialResearchResult` 형식을 추가
+- 작업 종류는 `material_research`, 대상은 `project`다. 결과는 작업의 `resultRef`에 담기고 자료로 저장하지 않는다
+- `featureFlags.materialResearch`를 추가
+- 작업 실패 코드 `JOB_RESEARCH_PROVIDER_UNAVAILABLE`, `JOB_RESEARCH_INVALID_RESULT`, `JOB_RESEARCH_ACCESS_REVOKED`를 추가
+
 ## 2026-11-26 발표 생성 문구 규칙 보완
 
 - 발표 생성 고정 입력의 `promptVersion`을 `presentation-v5`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
