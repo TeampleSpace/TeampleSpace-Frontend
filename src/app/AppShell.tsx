@@ -60,7 +60,9 @@ export default function AppShell() {
   const loadedPages = useRef(1)
   const refreshing = useRef(false)
   const current = match?.params.projectId === currentProject?.id ? currentProject : null
-  const selected = match ? current : projects.find((project) => project.id === expanded) ?? projects[0]
+  // 탭을 옮기는 동안 화면이 프로젝트를 다시 불러와도 사이드바는 목록의 프로젝트를 그대로 쓴다
+  const selected = match ? projects.find((project) => project.id === match.params.projectId) ?? current
+    : projects.find((project) => project.id === expanded) ?? projects[0]
   useEffect(() => {
     const controller = new AbortController()
     const request = ++generation.current
