@@ -198,7 +198,8 @@ test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보�
   fireEvent.click(await screen.findByRole('button', { name: '직접 입력' }))
   const code = screen.getByLabelText<HTMLInputElement>('대표 색상')
   const picker = screen.getByLabelText<HTMLInputElement>('색상 선택')
-  const preview = screen.getByRole('region', { name: '슬라이드 미리보기' }).querySelector<HTMLElement>('[style]')
+  const region = screen.getByRole('region', { name: '슬라이드 미리보기' })
+  const heading = () => within(region).getByText('팀 과제', { selector: 'div' })
 
   const forest = screen.getByRole('button', { name: '포레스트' })
   fireEvent.click(forest)
@@ -209,11 +210,50 @@ test('대표 색상 코드와 선택기가 같은 값을 편집하고 미리보�
   fireEvent.change(code, { target: { value: '#7183a0' } })
   expect(forest.getAttribute('aria-pressed')).toBe('false')
   expect(picker.value).toBe('#7183a0')
-  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#7183A0')
+  expect(heading().style.color).toBe('rgb(113, 131, 160)')
+  expect(heading().style.fontFamily).toContain('Pretendard')
 
   fireEvent.change(picker, { target: { value: '#aabbcc' } })
   expect(code.value).toBe('#AABBCC')
-  expect(preview?.style.getPropertyValue('--slide-heading')).toBe('#AABBCC')
+  expect(heading().style.color).toBe('rgb(170, 187, 204)')
+})
+
+test('템플릿을 고르면 옆의 미리보기가 그 템플릿의 실제 배치로 바뀌고 배치를 골라 볼 수 있다', async () => {
+  const editorial = { ...template, id: 'ec85bac3-878f-4b5f-b4bc-5f0bc8c00003', key: 'editorial', name: '에디토리얼' }
+  const element = (value: string) => ({ type: 'text' as const, geometry: { x: 0, y: 0, width: 800, height: 80, rotation: 0, z: 0 },
+    content: { text: value }, style: { fontFamily: 'Pretendard', fontSize: 40, fontWeight: 700, color: '#212735', align: 'left' as const, lineHeight: 1.2 } })
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, editorial], allowedFonts: ['Pretendard'] })
+  vi.mocked(designApi.get).mockResolvedValue(storedTemplate)
+  vi.mocked(designApi.save).mockResolvedValue({ ...storedTemplate, version: 3, templateId: editorial.id })
+  vi.mocked(designApi.preview).mockImplementation(async (id) => ({ templateId: id, templateVersion: 1, canvas: { width: 1280, height: 720, unit: 'px' },
+    slides: [{ layoutId: 'title', elements: [element(`${id === editorial.id ? '에디토리얼' : '클린'} 표지`)] },
+      { layoutId: 'agenda', elements: [element(`${id === editorial.id ? '에디토리얼' : '클린'} 목차`)] }] }))
+  mount()
+  const region = await screen.findByRole('region', { name: '슬라이드 미리보기' })
+  expect(within(region).getByText('클린 리포트')).toBeTruthy()
+  await waitFor(() => expect(within(region).getByRole('figure').textContent).toContain('클린 표지'))
+
+  fireEvent.click(within(region).getByRole('button', { name: '목차 배치' }))
+  expect(within(region).getByRole('button', { name: '목차 배치' }).getAttribute('aria-pressed')).toBe('true')
+  expect(within(region).getByRole('figure').textContent).toContain('클린 목차')
+
+  await choose('에디토리얼')
+  await waitFor(() => expect(within(region).getByRole('figure').textContent).toContain('에디토리얼 표지'))
+  expect(within(region).getByRole('button', { name: '표지 배치' }).getAttribute('aria-pressed')).toBe('true')
+})
+
+test('옆 미리보기를 불러오지 못하면 대표 시안과 다시 시도를 보여 준다', async () => {
+  vi.mocked(designApi.get).mockResolvedValue(storedTemplate)
+  vi.mocked(designApi.preview).mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce({
+    templateId: template.id, templateVersion: 1, canvas: { width: 1280, height: 720, unit: 'px' }, slides: [{ layoutId: 'title', elements: [] }],
+  })
+  mount()
+  const region = await screen.findByRole('region', { name: '슬라이드 미리보기' })
+  const alert = await within(region).findByRole('alert')
+  expect(region.querySelector('[data-template="clean-report"]')).toBeTruthy()
+  fireEvent.click(within(alert).getByRole('button', { name: '다시 시도' }))
+  await waitFor(() => expect(within(region).getByRole('figure').textContent).toContain('표지'))
+  expect(within(region).queryByRole('alert')).toBeNull()
 })
 
 test('글꼴 업로드가 끝난 뒤 저장하고 기본 글꼴로 바꾸면 업로드 글꼴 ID를 지운다', async () => {
