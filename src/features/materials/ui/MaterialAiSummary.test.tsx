@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
-import { TransportError } from '../../../shared/api/client.ts'
+import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import { SessionContext } from '../../../entities/session/sessionContext.ts'
 import { authCapabilitiesSchema } from '../../../entities/session/model.ts'
 import sampleCapabilities from '../../../../contracts/examples/capabilities.json'
@@ -62,4 +62,18 @@ test('요약은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 �
   expect(summarize.mock.calls[1]).toEqual(summarize.mock.calls[0])
   expect(summarize.mock.calls[1].slice(0, 2)).toEqual(['material', 'revision'])
   expect(get).toHaveBeenCalledWith('material', expect.any(AbortSignal))
+})
+
+test('다른 곳에서 이미 요청한 요약은 다시 요청하지 않고 진행 상태를 보여 준다', async () => {
+  const summarize = vi.spyOn(materialsApi, 'summarize').mockRejectedValue(new ApiError(409, {
+    error: { code: 'REQUEST_IN_PROGRESS', message: '같은 요청을 처리하고 있어요.', retryable: true }, requestId: 'request',
+  }))
+  vi.spyOn(materialsApi, 'get').mockResolvedValue({ ...material, summaryJob: { ...job, id: 'other', status: 'running' } })
+  mount(material, true)
+  fireEvent.click(screen.getByRole('button', { name: 'AI 요약 만들기' }))
+  fireEvent.click(screen.getByRole('button', { name: '요약 요청' }))
+  expect(await screen.findByText('AI 요약 중')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'AI 요약 만들기' })).toBeNull()
+  expect(screen.queryByText('같은 요청을 처리하고 있어요.')).toBeNull()
+  expect(summarize).toHaveBeenCalledTimes(1)
 })
