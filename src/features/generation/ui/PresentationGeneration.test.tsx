@@ -78,7 +78,7 @@ test('저장한 구성과 디자인으로 생성하고 완료되면 결과를 �
   const { onCompleted, router } = mount()
   fireEvent.click(screen.getByRole('button', { name: 'PPT 만들기' }))
   const confirm = await screen.findByRole('dialog', { name: 'PPT 초안 만들기' })
-  expect(await within(confirm).findByText('발표 구성 2장, 표지와 정리를 더해 4장')).toBeTruthy()
+  expect(await within(confirm).findByText('발표 구성 2개 항목을 목차로, 내용이 많은 항목은 여러 장으로 만들어요')).toBeTruthy()
   expect(within(confirm).getByText('연결된 근거 자료 1개, 본문 아래에 출처 표시')).toBeTruthy()
   expect(within(confirm).getByText('클린 리포트')).toBeTruthy()
 
