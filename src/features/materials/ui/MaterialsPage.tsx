@@ -296,7 +296,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
   </div>
   const overlays = <>
     {create && <MaterialCreateDialog key={create.edit?.material.id ?? 'new'} project={project} initial={create.type} edit={create.edit}
-      onClose={() => { setCreate(null); setCreateDirty(false) }} onDone={created} onDirtyChange={setCreateDirty} onError={onError} />}
+      onClose={() => { setCreate(null); setCreateDirty(false) }} onDone={created} onAdded={() => setListRevision((value) => value + 1)} onDirtyChange={setCreateDirty} onError={onError} />}
     <UnsavedGuard dirty={noteDirty || memoDirty || createDirty} when={blocks} />
   </>
 
