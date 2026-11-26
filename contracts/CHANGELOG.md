@@ -5,6 +5,16 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-26 프로젝트 탭 접속 현황 추가
+
+- 보는 탭 경로 `PUT /v1/projects/{projectId}/viewing`과 `ViewingRequest`, `ProjectTab`, `ViewersUpdated` 형식을 추가. 창마다 다른 `viewId`를 실으면 떠남은 마지막으로 알린 창의 것만 반영한다
+- 이벤트 구독은 나를 뺀 팀원의 탭 목록이 바뀔 때 `viewers.updated`를 SSE `id` 없이 보낸다. 이벤트 순번과 재연결 커서에는 영향이 없다
+
+## 2026-11-26 발표 생성 결과 검증 실패의 재시도
+
+- `JOB_PRESENTATION_INVALID_RESULT`의 `retryable`을 true로 바꿨다. 결과가 맞지 않으면 남은 시도 횟수 안에서 다시 생성하고, 시도를 다 쓴 뒤에도 사용자가 다시 요청할 수 있다
+- 핵심 문장과 수치가 길이를 넘으면 작업을 실패시키지 않고 빈 값으로 둔다
+
 ## 2026-11-26 구성 항목마다 여러 장의 본문 생성
 
 - 발표 생성 고정 입력의 `promptVersion`을 `presentation-v4`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다

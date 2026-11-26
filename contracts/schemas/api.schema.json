@@ -380,7 +380,8 @@
         "comment.created",
         "job.updated",
         "export.ready",
-        "presence.updated"
+        "presence.updated",
+        "viewers.updated"
       ]
     },
     "PresenceUpdateRequest": {
@@ -395,6 +396,41 @@
       },
       "if": { "properties": { "slideId": { "type": "string" } } },
       "then": { "required": ["x", "y"] }
+    },
+    "ViewingRequest": {
+      "description": "프로젝트 화면에서 지금 보는 탭. tab이 null이면 프로젝트 화면을 떠난 것이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tab"],
+      "properties": {
+        "tab": { "anyOf": [{ "$ref": "#/$defs/ProjectTab" }, { "type": "null" }] },
+        "viewId": { "type": "string", "minLength": 1, "maxLength": 64, "description": "창마다 다른 값. 떠남은 같은 값으로 마지막에 알린 창일 때만 반영한다" }
+      }
+    },
+    "ProjectTab": {
+      "type": "string",
+      "enum": ["overview", "materials", "outline", "design", "slides", "settings"]
+    },
+    "ViewersUpdated": {
+      "description": "viewers.updated 신호의 data. 나를 뺀 팀원이 지금 보는 탭 전체 목록이며 SSE id 없이 바뀔 때만 온다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId", "viewers"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/Uuid" },
+        "viewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["userId", "tab"],
+            "properties": {
+              "userId": { "$ref": "#/$defs/Uuid" },
+              "tab": { "$ref": "#/$defs/ProjectTab" }
+            }
+          }
+        }
+      }
     },
     "PresenceUpdated": {
       "description": "presence.updated 신호의 data. 나를 뺀 팀원의 현재 커서 전체 목록이며 SSE id 없이 바뀔 때만 온다",
