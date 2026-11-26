@@ -68,10 +68,10 @@
 /* 슬라이드 편집 화면은 바깥 여백을 줄여 캔버스에 폭을 더 준다 */
 .shell[data-editor] .workspace { padding: var(--space-12) var(--space-24) var(--space-20); gap: var(--space-16); }
 .shell[data-collapsed] .workspace { padding-left: 60px; }
-/* 넓은 화면에서 사이드바를 접고 펼 때 옆으로 밀어 넣고 꺼낸다 */
+/* 넓은 화면에서 사이드바를 접고 펼 때 너비를 줄이고 늘린다. 안의 글은 줄바꿈하지 않고 가려진다 */
 @media (min-width: 801px) {
-  .shell[data-ready] .sidebar { transition: margin-left var(--motion-enter) var(--motion-ease-out), opacity var(--motion-enter) ease-out, display var(--motion-enter) allow-discrete; }
-  .shell[data-ready] .sidebar[hidden] { display: none; margin-left: -256px; opacity: 0; }
-  @starting-style { .shell[data-ready] .sidebar:not([hidden]) { margin-left: -256px; opacity: 0; } }
-  .shell[data-ready] .workspace { transition: padding-left var(--motion-enter) var(--motion-ease-out); }
+  .sidebar { transition: width var(--motion-enter) var(--motion-ease-out), padding var(--motion-enter) var(--motion-ease-out), visibility 0s; }
+  .sidebar > * { min-width: 216px; }
+  .sidebar[hidden] { display: flex; width: 0; padding-left: 0; padding-right: 0; border-right-width: 0; overflow: hidden; visibility: hidden; transition: width var(--motion-enter) var(--motion-ease-out), padding var(--motion-enter) var(--motion-ease-out), visibility 0s linear var(--motion-enter); }
+  .workspace { transition: padding-left var(--motion-enter) var(--motion-ease-out); }
 }
