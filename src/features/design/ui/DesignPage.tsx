@@ -12,6 +12,8 @@ import { needsApproval, requestsApi, useRequestApproved } from '../../../entitie
 import { DesignFontField } from './DesignFontField.tsx'
 import type { CustomDesign, DesignCatalog, DesignInput, DesignSettings, DesignTemplate, TemplateSelection } from '../api.ts'
 import { DesignPreview } from './DesignPreview.tsx'
+import { TemplateSlidePreview } from './DesignSlidePreview.tsx'
+import { customSlide } from './customSlide.ts'
 import { TemplateCover } from './TemplateCover.tsx'
 import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import { TemplateGallery } from './TemplateGallery.tsx'
@@ -35,7 +37,6 @@ const fields = { name: '템플릿 이름', font: '폰트', primaryColor: '대표
 const layoutNames: Record<string, string> = {
   title: '제목', agenda: '목차', content: '본문', compare: '비교', chart: '차트', summary: '요약',
 }
-const defaultPreview: PreviewStyle = { backgroundColor: '#FFFFFF', headingColor: '#20242D' }
 const defaultCustomColor = '#2864E8'
 const palette = [
   { name: '블루', color: defaultCustomColor }, { name: '네이비', color: '#2F4D8E' },
@@ -177,11 +178,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
   const customColor = designColor.test(configuredCustom.primaryColor)
     ? configuredCustom.primaryColor
     : base.custom?.primaryColor ?? defaultCustomColor
-  const preview = mode === 'template' ? (template ? previewOf(template) : defaultPreview) : {
-    ...defaultPreview,
-    headingColor: customColor,
-    font: previewFont ?? (allowedFonts.includes(custom.font) ? custom.font : undefined),
-  }
+  const customFont = previewFont ?? (allowedFonts.includes(custom.font) ? custom.font : allowedFonts[0] ?? 'Pretendard')
 
   useEffect(() => () => operation.current?.abort(), [])
   const reportFontError = useCallback((reason: unknown) => {
@@ -398,7 +395,7 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
     </div> : <RequestError error={error} action={error && !pending && readyToSave && !Object.values(inputErrors).some(Boolean)
       ? <Button variant="secondary" disabled={uploadingFont || !!waitingUntil} onClick={() => void save()}>저장 다시 시도</Button> : undefined} />}
     {pending && <p className={styles.notice} role="status">저장 결과를 확인하면 디자인을 다시 수정할 수 있어요.</p>}
-    <div className={mode === 'template' ? styles.galleryLayout : styles.columns}>
+    <div className={mode === 'template' ? styles.templateLayout : styles.columns}>
       <form id={formId} className={styles.controls} noValidate onSubmit={(event) => { event.preventDefault(); void save() }}>
         {mode === 'custom' && modes}
         {mode === 'template' ? <>
@@ -410,7 +407,6 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
               action={pending || readyToSave ? saveButton : null} />
           </div>
           {inputErrors.template && <p className={styles.fieldError}>{inputErrors.template}</p>}
-          <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
         </> : <fieldset className={styles.custom} disabled={inputLocked}>
           <legend className={styles.visuallyHidden}>직접 디자인 입력</legend>
           <Field label={fields.name} id={`${formId}-name`} value={custom.name} maxLength={80} required error={inputErrors.name}
@@ -441,11 +437,19 @@ function DesignSettingsForm({ settings, catalog, projectId, projectName, back, o
             error={inputErrors.guidelines} onChange={(event) => changeCustom('guidelines', event.target.value)} />
         </fieldset>}
       </form>
-      {mode === 'custom' && <section className={styles.preview} aria-labelledby={`${formId}-preview`}>
+      {mode === 'template' ? <>
+        <section className={`${styles.preview} ${styles.sidePreview}`} aria-labelledby={`${formId}-preview`}>
+          <h2 id={`${formId}-preview`}>슬라이드 미리보기</h2>
+          {previewName && <p className={styles.previewName}>{previewName}</p>}
+          <TemplateSlidePreview template={template} projectName={projectName} />
+          {template && <p className={styles.previewCaption}>생성한 발표에 쓰이는 배치예요. 작은 슬라이드를 누르면 다른 배치를 볼 수 있어요.</p>}
+        </section>
+        <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
+      </> : <section className={styles.preview} aria-labelledby={`${formId}-preview`}>
         <h2 id={`${formId}-preview`}>슬라이드 미리보기</h2>
         {previewName && <p className={styles.previewName}>{previewName}</p>}
-        <DesignPreview projectName={projectName} preview={preview} />
-        <p className={styles.previewCaption}>색상, 글꼴과 레이아웃 스타일을 미리 볼 수 있어요.</p>
+        <StudioPreview slide={customSlide(customFont, customColor, projectName)} />
+        <p className={styles.previewCaption}>색상과 글꼴을 바꾸면 미리보기에 바로 적용돼요.</p>
         <Link className={styles.returnLink} to={back.path}>{back.label}</Link>
       </section>}
     </div>
