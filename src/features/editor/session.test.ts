@@ -1113,3 +1113,30 @@ test('추가를 다시 실행하는 응답을 기다리는 사이 한 편집을 
   expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
   expect(live()).toBe(withCopy)
 })
+
+test('복제 응답을 기다리는 사이 한 편집을 먼저 되돌린다', async () => {
+  const { open, control, serverText, serverElement, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const creating = a.createElement(slideId, serverElement())
+  await settle()
+  a.edit(titleId, text('기다리는 사이 고친 제목'))
+  a.endEdit(titleId)
+  await settle()
+  control.postGate = undefined
+  release()
+  await creating
+  await settle()
+  const withCopy = live()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
+  expect(live()).toBe(withCopy)
+})
