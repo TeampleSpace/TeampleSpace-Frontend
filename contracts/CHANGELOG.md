@@ -5,6 +5,11 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-27 메모 편집 커서 공유 추가
+
+- 메모 커서 상태 `POST /v1/materials/{materialId}/memo-awareness` 경로와 `MemoAwarenessRequest`, `MemoAwareness` 형식을 추가
+- 커서 상태는 저장하지 않고 같은 프로젝트의 구독에 `memo.awareness`로 SSE `id` 없이 바로 넘긴다. 처음 보는 팀원의 상태를 받으면 자기 상태를 한 번 다시 보내 새로 들어온 팀원도 커서를 보게 한다
+
 ## 2026-11-27 메모 공유 편집 추가
 
 - 메모 조각 목록 `GET /v1/materials/{materialId}/memo-updates`, 추가 `POST`, 압축 `POST .../compaction` 경로와 `MemoUpdateRequest`, `MemoUpdateCreated`, `MemoUpdateList`, `MemoCompactRequest`, `MemoUpdated` 형식을 추가

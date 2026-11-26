@@ -1,10 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import * as Y from 'yjs'
+import { Awareness } from 'y-protocols/awareness'
 import { Editor } from '@tiptap/react'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { materialsApi } from '../../../entities/material/api.ts'
+import { useSession } from '../../../entities/session/sessionContext.ts'
+import { colorOf } from '../../presence/viewers.ts'
 import type { Material } from '../../../entities/material/model.ts'
 import { remote, startMemoSync } from '../memoSync.ts'
 import type { SyncState } from '../memoSync.ts'
@@ -34,8 +37,10 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const fieldId = useId()
   const [attempt, setAttempt] = useState(0)
   // 다시 불러오면 이전 시도의 문서와 상태는 쓰지 않는다
-  const [opened, setOpened] = useState<{ attempt: number; doc?: Y.Doc; sync: SyncState }>()
+  const [opened, setOpened] = useState<{ attempt: number; doc?: Y.Doc; awareness?: Awareness; sync: SyncState }>()
   const doc = opened?.attempt === attempt ? opened.doc : undefined
+  const awareness = opened?.attempt === attempt ? opened.awareness : undefined
+  const { user } = useSession()
   const sync = opened?.attempt === attempt ? opened.sync : { ready: false, unsent: false, offline: false }
   const retry = useRef<() => void>(undefined)
   // 본문 저장. 같은 자료의 다른 경로 수정으로 버전이 바뀌면 최신 버전으로 다시 보낸다
@@ -53,13 +58,14 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   const { id, projectId } = material
   useEffect(() => {
     const next = new Y.Doc()
+    const cursors = new Awareness(next)
     const session = startMemoSync({
-      projectId, materialId: id, doc: next,
+      projectId, materialId: id, doc: next, awareness: cursors,
       seed: () => seedFrom(latest.current),
-      onState: (state) => setOpened({ attempt, doc: state.ready ? next : undefined, sync: state }),
+      onState: (state) => setOpened({ attempt, doc: state.ready ? next : undefined, awareness: cursors, sync: state }),
     })
     retry.current = session.retry
-    return () => { session.stop(); next.destroy() }
+    return () => { session.stop(); cursors.destroy(); next.destroy() }
   }, [id, projectId, attempt])
   useEffect(() => () => clearTimeout(timer.current), [])
   // 내 입력으로 공유 문서가 바뀌었을 때만 본문을 저장한다. 팀원의 변경이나 처음 그릴 때의 변경은 그 사람이 저장한다
@@ -154,7 +160,8 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     </div>
     <p className={styles.noteAuthor}>팀원과 함께 고치는 메모예요. 입력하면 바로 함께 보여요</p>
     <div onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && saving === 'waiting') void save() }}>
-      <MarkdownEditor id={fieldId} value="" doc={doc} onChange={change} />
+      <MarkdownEditor id={fieldId} value="" doc={doc} onChange={change}
+        cursors={awareness && user ? { awareness, user: { name: user.name, color: colorOf(user.id) } } : undefined} />
     </div>
     {sync.offline && <RequestError error={sync.error} action={<Button variant="secondary" onClick={() => retry.current?.()}>다시 보내기</Button>} />}
     <RequestError error={saveError} action={saving === 'failed'

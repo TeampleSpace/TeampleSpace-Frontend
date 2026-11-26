@@ -1,4 +1,6 @@
 import * as Y from 'yjs'
+import { applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness'
+import type { Awareness } from 'y-protocols/awareness'
 import { z } from 'zod'
 import { ApiError } from '../../shared/api/client.ts'
 import { api } from '../../entities/session/api.ts'
@@ -14,6 +16,9 @@ const retryDelaysMs = [1000, 3000, 10000]
 const listSchema = z.object({ updates: z.array(z.object({ seq: z.number().int(), data: z.string() })), hasMore: z.boolean() })
 const createdSchema = z.object({ seq: z.number().int() })
 const updatedSchema = z.object({ materialId: z.string(), seq: z.number().int(), data: z.string() })
+const awarenessSchema = z.object({ materialId: z.string(), data: z.string() })
+// 커서를 옮기는 동안 상태를 이 간격으로 모아 보낸다
+const awarenessDelayMs = 120
 
 const emptyBody = z.unknown()
 
@@ -35,6 +40,8 @@ export function startMemoSync(options: {
   projectId: string
   materialId: string
   doc: Y.Doc
+  // 주면 커서와 선택 영역을 팀원과 주고받는다
+  awareness?: Awareness
   seed: () => Promise<Uint8Array>
   onState: (state: SyncState) => void
 }) {
@@ -116,6 +123,47 @@ export function startMemoSync(options: {
     if (pending.length > 0 && !offline) void send()
   }
 
+  // 바뀐 커서 상태를 모아 보낸다. 처음 보는 팀원이 오면 내 상태를 다시 보내 그 팀원도 내 커서를 본다
+  const { awareness } = options
+  const changedClients = new Set<number>()
+  let awarenessTimer: ReturnType<typeof setTimeout> | undefined
+  function sendAwareness(keepalive = false) {
+    clearTimeout(awarenessTimer)
+    awarenessTimer = undefined
+    if (!awareness || changedClients.size === 0) return
+    const data = toBase64(encodeAwarenessUpdate(awareness, [...changedClients]))
+    changedClients.clear()
+    void api.request(`/materials/${materialId}/memo-awareness`, emptyBody, { method: 'POST', body: { data }, keepalive, timeoutMs: 10000 }).catch(() => {})
+  }
+  // 이미 예약한 전송은 그대로 두어 계속 움직이는 동안에도 정해진 간격마다 최신 상태를 보낸다
+  function scheduleAwareness() {
+    if (awarenessTimer === undefined) awarenessTimer = setTimeout(() => sendAwareness(), awarenessDelayMs)
+  }
+  const onAwareness = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
+    if (origin === remote || !awareness) return
+    for (const client of [...added, ...updated, ...removed]) if (client === awareness.clientID) changedClients.add(client)
+    if (changedClients.size === 0 || !ready) return
+    scheduleAwareness()
+  }
+  awareness?.on('update', onAwareness)
+  // 창을 닫거나 주소를 옮기면 화면 정리 없이 사라지므로 이때 내 커서를 지운다
+  // 뒤로 가기 캐시에서 되살아나면 지웠던 내 상태를 다시 알린다
+  let hidden: Record<string, unknown> | null = null
+  function leaveCursor() {
+    if (!awareness || !ready) return
+    hidden = awareness.getLocalState()
+    removeAwarenessStates(awareness, [awareness.clientID], 'local')
+    changedClients.add(awareness.clientID)
+    sendAwareness(true)
+  }
+  window.addEventListener('pagehide', leaveCursor)
+  const restoreCursor = (event: PageTransitionEvent) => {
+    if (!event.persisted || !awareness || !hidden || stopped) return
+    awareness.setLocalState(hidden)
+    hidden = null
+  }
+  window.addEventListener('pageshow', restoreCursor)
+
   const onUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === remote) return
     pending.push(update)
@@ -132,6 +180,18 @@ export function startMemoSync(options: {
       void send()
     },
     onMessage: (message) => {
+      if (message.event === 'memo.awareness' && awareness && ready) {
+        let state
+        try { state = awarenessSchema.safeParse(JSON.parse(message.data)) } catch { return }
+        if (!state.success || state.data.materialId !== materialId) return
+        const known = new Set(awareness.getStates().keys())
+        applyAwarenessUpdate(awareness, fromBase64(state.data.data), remote)
+        if ([...awareness.getStates().keys()].some((client) => !known.has(client))) {
+          changedClients.add(awareness.clientID)
+          scheduleAwareness()
+        }
+        return
+      }
       if (message.event !== 'memo.updated') return
       let parsed
       try { parsed = updatedSchema.safeParse(JSON.parse(message.data)) } catch { return }
@@ -169,6 +229,8 @@ export function startMemoSync(options: {
       ready = true
       error = undefined
       report()
+      // 들어왔음을 알려 팀원들이 자기 커서 상태를 다시 보내게 한다
+      if (awareness) { changedClients.add(awareness.clientID); sendAwareness() }
       // 준비하는 동안 버린 팀원의 조각이 있을 수 있어 한 번 더 읽는다
       reload()
     } catch (reason) {
@@ -186,6 +248,11 @@ export function startMemoSync(options: {
       clearTimeout(reloadTimer)
       doc.off('update', onUpdate)
       unsubscribe()
+      window.removeEventListener('pagehide', leaveCursor)
+      window.removeEventListener('pageshow', restoreCursor)
+      // 떠나면 팀원 화면에서 내 커서를 지운다
+      awareness?.off('update', onAwareness)
+      leaveCursor()
     },
   }
 }

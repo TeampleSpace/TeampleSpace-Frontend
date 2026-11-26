@@ -382,7 +382,8 @@
         "export.ready",
         "presence.updated",
         "viewers.updated",
-        "memo.updated"
+        "memo.updated",
+        "memo.awareness"
       ]
     },
     "PresenceUpdateRequest": {
@@ -489,6 +490,23 @@
       "properties": {
         "materialId": { "$ref": "#/$defs/Uuid" },
         "seq": { "type": "integer", "minimum": 1 },
+        "data": { "type": "string", "minLength": 1 }
+      }
+    },
+    "MemoAwarenessRequest": {
+      "description": "메모 편집기의 커서와 선택 영역 상태. data는 base64이고 저장하지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data"],
+      "properties": { "data": { "type": "string", "minLength": 1 } }
+    },
+    "MemoAwareness": {
+      "description": "memo.awareness 신호의 data. 같은 프로젝트의 구독에 SSE id 없이 바로 넘기고 다시 받을 수 있다고 보장하지 않는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "data"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/Uuid" },
         "data": { "type": "string", "minLength": 1 }
       }
     },

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, test, vi } from 'vitest'
 import * as Y from 'yjs'
+import { Awareness } from 'y-protocols/awareness'
 import { ApiError } from '../../shared/api/client.ts'
 import { api } from '../../entities/session/api.ts'
 import { subscribeProjectEvents } from '../presence/projectEvents.ts'
@@ -28,6 +29,10 @@ beforeEach(() => {
       return { updates: log.filter((update) => update.seq > after), hasMore: false }
     }
     const body = options.body as { data: string; initial?: boolean }
+    if (path.endsWith('/memo-awareness')) {
+      setTimeout(() => { for (const listener of listeners) listener.onMessage?.({ event: 'memo.awareness', data: JSON.stringify({ materialId: 'memo', data: body.data }) }) })
+      return undefined
+    }
     if (body.initial && log.length) throw new ApiError(409, { error: { code: 'MATERIAL_STATE_CONFLICT', message: '이미 시작됐어요', retryable: false }, requestId: 'request' })
     const seq = log.length + 1
     log.push({ seq, data: body.data })
@@ -42,11 +47,12 @@ beforeEach(() => {
   })
 })
 
-function client(seedText: string) {
+function client(seedText: string, awareness?: (doc: Y.Doc) => Awareness) {
   const doc = new Y.Doc()
+  const cursors = awareness?.(doc)
   const states: { ready: boolean }[] = []
   const sync = startMemoSync({
-    projectId: 'project', materialId: 'memo', doc,
+    projectId: 'project', materialId: 'memo', doc, awareness: cursors,
     seed: async () => {
       const seeded = new Y.Doc()
       seeded.getText('body').insert(0, seedText)
@@ -54,7 +60,7 @@ function client(seedText: string) {
     },
     onState: (state) => states.push(state),
   })
-  return { doc, text: () => doc.getText('body').toString(), ready: () => states.at(-1)?.ready === true, sync }
+  return { doc, cursors, text: () => doc.getText('body').toString(), ready: () => states.at(-1)?.ready === true, sync }
 }
 
 test('처음 연 두 사람 중 한 사람의 초기 내용만 남고 입력이 서로에게 바로 간다', async () => {
@@ -135,6 +141,47 @@ test('목록을 다시 읽는 중에 받은 조각은 읽기가 실패해도 잠
   listeners[1].onOpen?.()
   first.doc.getText('body').insert(0, '읽는 중 ')
   await vi.waitFor(() => expect(second.text()).toBe('읽는 중 본문'), { timeout: 5000 })
+  first.sync.stop()
+  second.sync.stop()
+})
+
+test('커서 상태는 팀원에게 바로 가고 나중에 들어온 사람도 받으며 떠나면 지워진다', async () => {
+  const first = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(first.ready()).toBe(true))
+  first.cursors!.setLocalStateField('user', { name: '김팀원' })
+  const second = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(second.ready()).toBe(true))
+  // 나중에 들어온 사람이 알리면 먼저 있던 사람이 자기 상태를 다시 보낸다
+  await vi.waitFor(() => expect(second.cursors!.getStates().get(first.doc.clientID)).toEqual({ user: { name: '김팀원' } }))
+  first.sync.stop()
+  await vi.waitFor(() => expect(second.cursors!.getStates().has(first.doc.clientID)).toBe(false))
+  second.sync.stop()
+})
+
+test('커서를 쉬지 않고 옮기는 동안에도 정해진 간격마다 상태를 보낸다', async () => {
+  const only = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(only.ready()).toBe(true))
+  const sent = () => vi.mocked(api.request).mock.calls.filter((call) => String(call[0]).endsWith('/memo-awareness')).length
+  const before = sent()
+  // 50ms마다 600ms 동안 옮긴다
+  for (let step = 0; step < 12; step += 1) {
+    only.cursors!.setLocalStateField('cursor', { at: step })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  expect(sent() - before).toBeGreaterThanOrEqual(3)
+  only.sync.stop()
+})
+
+test('뒤로 가기 캐시로 숨었다가 돌아오면 내 커서 상태를 다시 알린다', async () => {
+  const first = client('본문', (doc) => new Awareness(doc))
+  const second = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(first.ready() && second.ready()).toBe(true))
+  first.cursors!.setLocalStateField('user', { name: '김팀원' })
+  await vi.waitFor(() => expect(second.cursors!.getStates().get(first.doc.clientID)).toEqual({ user: { name: '김팀원' } }))
+  window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: true }))
+  await vi.waitFor(() => expect(second.cursors!.getStates().has(first.doc.clientID)).toBe(false))
+  window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }))
+  await vi.waitFor(() => expect(second.cursors!.getStates().get(first.doc.clientID)).toEqual({ user: { name: '김팀원' } }))
   first.sync.stop()
   second.sync.stop()
 })

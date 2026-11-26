@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { memoExtensions } from '../memoExtensions.ts'
+import type { CaretUser } from '../memoExtensions.ts'
+import type { Awareness } from 'y-protocols/awareness'
 import type * as Y from 'yjs'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { limits } from '../../../entities/material/model.ts'
@@ -23,8 +25,9 @@ const tools: Tool[] = [
 
 // 쓰는 자리에서 서식이 바로 보이는 마크다운 편집기. 바깥에는 마크다운 문자열만 주고받는다
 // doc을 주면 여러 명이 함께 고치는 공유 문서를 보여 주고 value는 쓰지 않는다
-export function MarkdownEditor({ id, value, disabled, onChange, doc }: {
+export function MarkdownEditor({ id, value, disabled, onChange, doc, cursors }: {
   id: string; value: string; disabled?: boolean; onChange: (value: string) => void; doc?: Y.Doc
+  cursors?: { awareness: Awareness; user: CaretUser }
 }) {
   // 편집기에서 마지막으로 내보낸 값. 같은 값이 다시 들어오면 내용을 덮어쓰지 않는다
   const emitted = useRef(value)
@@ -32,7 +35,7 @@ export function MarkdownEditor({ id, value, disabled, onChange, doc }: {
   useEffect(() => { onChangeRef.current = onChange })
 
   const editor = useEditor({
-    extensions: memoExtensions(doc),
+    extensions: memoExtensions(doc, cursors),
     ...(doc ? {} : { content: value, contentType: 'markdown' as const }),
     editable: !disabled,
     editorProps: {
