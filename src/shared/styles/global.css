@@ -79,13 +79,13 @@ select {
   transition: border-color var(--motion-fast) ease-out, box-shadow var(--motion-normal) ease-out;
 }
 
-select:not(:disabled):hover {
-  border-color: var(--color-secondary);
+select:not(:disabled, :focus-visible):hover {
+  border-color: var(--color-tertiary);
 }
 
 select:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
+  outline: none;
+  border-color: var(--color-ink);
   box-shadow: var(--focus-ring);
 }
 
@@ -97,6 +97,8 @@ select:disabled {
 
 @media (forced-colors: active) {
   select { appearance: auto; }
+  /* 고대비 모드는 그림자를 지우므로 입력창 포커스를 외곽선으로 보인다 */
+  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid Highlight; }
 }
 
 :focus-visible {
