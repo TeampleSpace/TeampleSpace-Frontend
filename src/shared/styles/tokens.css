@@ -90,7 +90,7 @@
   --shadow-sm: 0 1px 2px rgb(28 28 26 / 0.04), 0 8px 20px rgb(28 28 26 / 0.06);
   --shadow-popover: 0 0 0 1px rgb(28 28 26 / 0.06), 0 8px 24px rgb(28 28 26 / 0.1);
   --shadow-dialog: 0 24px 64px rgb(28 28 26 / 0.18);
-  --focus-ring: 0 0 0 3px rgb(242 107 29 / 0.28);
+  --focus-ring: 0 0 0 3px rgb(28 28 26 / 0.1);
 
   /* 큰 제목만 자간을 조금 좁힌다 */
   --tracking-title: -0.5px;
