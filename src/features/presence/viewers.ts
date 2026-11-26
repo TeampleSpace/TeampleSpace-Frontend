@@ -92,9 +92,14 @@ export function useProjectViewers(projectId: string | undefined, tab: Tab | unde
           })
         } catch (error) {
           // 로그인이 끝났거나 팀원이 아니면 다시 연결하지 않는다
-          if (error instanceof StreamRejectedError) return
+          if (error instanceof StreamRejectedError) {
+            if (!controller.signal.aborted) setRaw({ projectId, viewers: [] })
+            return
+          }
         }
         if (controller.signal.aborted) return
+        // 연결이 끊긴 동안에는 팀원이 떠나도 알 수 없으니 목록을 비운다
+        setRaw({ projectId, viewers: [] })
         await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)]))
       }
     })()

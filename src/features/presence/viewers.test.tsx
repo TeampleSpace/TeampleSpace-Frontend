@@ -30,6 +30,22 @@ describe('프로젝트 탭 접속 현황', () => {
     expect(colorOf('u1')).toBe(colorOf('u1'))
   })
 
+  it('이벤트 연결이 끊기면 받은 목록을 비운다', async () => {
+    vi.mocked(api.request).mockResolvedValue(undefined)
+    vi.mocked(allMembers).mockResolvedValue([])
+    let drop: (error: Error) => void = () => {}
+    vi.mocked(openEventStream).mockImplementationOnce(({ onOpen, onMessage }) => new Promise((_, reject) => {
+      onOpen()
+      onMessage({ event: 'viewers.updated', data: JSON.stringify({ projectId: 'p1', viewers: [{ userId: 'u2', tab: 'design' }] }) })
+      drop = reject
+    })).mockImplementation(({ signal }) => new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve())))
+    const { result, unmount } = renderHook(() => useProjectViewers('p1', 'materials'))
+    await waitFor(() => expect(result.current).toHaveLength(1))
+    act(() => drop(new Error('연결 끊김')))
+    await waitFor(() => expect(result.current).toEqual([]))
+    unmount()
+  })
+
   it('알림마다 순번을 늘리고 팀원 이름을 읽지 못하면 잠시 뒤 다시 읽는다', async () => {
     vi.mocked(api.request).mockResolvedValue(undefined)
     vi.mocked(openEventStream).mockImplementation(async ({ onOpen, onMessage, signal }) => {
