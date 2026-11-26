@@ -188,6 +188,7 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 - 변경 묶음 이벤트의 `payload`는 `changeId`와 `groupState`다
 - `presence.updated`는 일시적인 커서 표시라 SSE `id` 없이 오고 다시 받을 수 있다고 보장하지 않는다. `data`는 `PresenceUpdated` 형식으로 나를 뺀 팀원의 현재 커서 전체 목록이며, 목록이 바뀔 때만 온다. 목록에 없는 팀원의 커서는 지운다
 - `viewers.updated`는 팀원이 지금 보는 탭 표시라 SSE `id` 없이 온다. `data`는 `ViewersUpdated` 형식으로 나를 뺀 팀원의 탭 전체 목록이며, 목록이 바뀔 때만 온다. 다시 연결하면 빈 목록에서 시작한다. 목록에 없는 팀원은 프로젝트 화면을 떠난 것이다
+- `memo.updated`는 메모 공유 편집의 변경 조각이라 SSE `id` 없이 바로 넘긴다. `data`는 `MemoUpdated` 형식이다. 조각은 순서와 중복에 상관없이 적용해도 같은 결과이고, 받은 `seq`가 아는 순번보다 2 이상 크거나 다시 연결했으면 조각 목록 경로로 놓친 조각을 읽는다
 
 ### 다시 연결할 때
 
@@ -221,6 +222,9 @@ const validateError = ajv.getSchema("api.schema.json#/$defs/ErrorResponse");
 | 이벤트 구독 | `GET /v1/projects/{projectId}/events` | `Event`, `SnapshotRequired` | 구현. `Last-Event-ID`가 없으면 연결한 뒤의 이벤트만 보낸다. 참여 권한을 잃으면 연결을 끝낸다 | 4단계 |
 | 커서 위치 | `POST /v1/projects/{projectId}/presence` | `PresenceUpdateRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 10초 동안 새 위치가 없거나 `slideId`가 null이면 목록에서 빠진다. 같은 사람의 여러 탭은 마지막 위치 하나다 | 4단계 |
 | 보는 탭 | `PUT /v1/projects/{projectId}/viewing` | `ViewingRequest` | 구현. 204로 응답하고 서버 메모리에만 둔다. 20초 동안 새 알림이 없거나 `tab`이 null이면 목록에서 빠진다. 같은 사람은 열린 창 가운데 마지막으로 알린 탭으로 보인다. `viewId`를 실으면 떠남은 그 창만 지우고 같은 사람의 다른 창은 남으며, `seq`를 실으면 같은 창에서 늦게 도착한 이전 알림은 버린다 | 4단계 |
+| 메모 조각 목록 | `GET /v1/materials/{materialId}/memo-updates?after=` | `MemoUpdateList` | 구현. 메모 자료만 쓰고 한 번에 500개까지 돌려준다 | 4단계 |
+| 메모 조각 추가 | `POST /v1/materials/{materialId}/memo-updates` | `MemoUpdateRequest`, `MemoUpdateCreated` | 구현. 201로 응답하고 같은 프로젝트 구독에 `memo.updated`를 보낸다. 조각은 512KB까지다. `initial`이 true인데 조각이 이미 있으면 `MATERIAL_STATE_CONFLICT`이고 목록부터 다시 읽는다 | 4단계 |
+| 메모 조각 압축 | `POST /v1/materials/{materialId}/memo-updates/compaction` | `MemoCompactRequest` | 구현. 204로 응답한다. 덩어리는 8MB까지다 | 4단계 |
 | 동기화 스냅샷 | `GET /v1/projects/{projectId}/sync-snapshot` | `SyncSnapshot` | `scope=editor`만 구현. 그 밖의 값은 `VALIDATION_FAILED`다. 요소가 자료를 참조하기 전이라 `materials`는 비어 있다 | 4단계 |
 | 기능 지원 정보 | `GET /v1/capabilities` | `Capabilities` | 제공자와 약관 설정을 반영한 HTTP 응답 구현 | 1단계 |
 | 세션 초기 정보 | `GET /v1/auth/bootstrap` | `AuthBootstrap` | 쿠키 기반 익명 및 인증 세션과 CSRF 토큰 발급 구현 | 1단계 |

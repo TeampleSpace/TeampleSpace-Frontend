@@ -5,6 +5,13 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-27 메모 공유 편집 추가
+
+- 메모 조각 목록 `GET /v1/materials/{materialId}/memo-updates`, 추가 `POST`, 압축 `POST .../compaction` 경로와 `MemoUpdateRequest`, `MemoUpdateCreated`, `MemoUpdateList`, `MemoCompactRequest`, `MemoUpdated` 형식을 추가
+- 조각은 편집기가 만든 공유 문서 변경이고 서버는 합치지 않고 순번대로 쌓는다. 처음 조각을 `initial`로 보냈는데 이미 조각이 있으면 `MATERIAL_STATE_CONFLICT`다
+- 이벤트 구독은 같은 프로젝트의 새 조각을 `memo.updated`로 SSE `id` 없이 보낸다. 놓친 조각은 순번으로 목록에서 다시 읽는다
+- 메모 본문은 지금처럼 자료 수정 경로로 개정을 남긴다
+
 ## 2026-11-26 프로젝트 탭 접속 현황 추가
 
 - 보는 탭 경로 `PUT /v1/projects/{projectId}/viewing`과 `ViewingRequest`, `ProjectTab`, `ViewersUpdated` 형식을 추가. 창마다 다른 `viewId`를 실으면 떠남은 그 창만 지우고 같은 사람의 다른 창은 남으며, 창마다 늘리는 `seq`를 실으면 늦게 도착한 이전 알림은 버린다
