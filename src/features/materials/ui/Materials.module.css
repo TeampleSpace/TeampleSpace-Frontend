@@ -13,7 +13,7 @@
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: var(--text-body); }
 .search input::placeholder { color: var(--color-tertiary); }
 .filters { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); font: var(--text-nav); }
-.filters a { color: var(--color-secondary); text-decoration: none; border-radius: 4px; transition: color var(--motion-fast) ease-out; }
+.filters a { color: var(--color-secondary); text-decoration: none; border-radius: var(--radius-sm); transition: color var(--motion-fast) ease-out; }
 .filters a:hover, .filters a[aria-current='true'] { color: var(--color-primary); }
 .rows { display: flex; flex-direction: column; gap: 4px; list-style: none; margin: 0; padding: 0; }
 .row { display: flex; flex-direction: column; gap: 2px; padding: var(--space-8) var(--space-12) 10px; border-radius: var(--radius-md); color: var(--color-ink); text-decoration: none; overflow-wrap: anywhere; transition: background-color var(--motion-fast) ease-out; }
@@ -31,11 +31,11 @@
 .detail { flex: 1; min-width: 0; min-height: 420px; display: flex; flex-direction: column; gap: var(--space-20); padding: var(--space-20) var(--space-24); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-xs); }
 .detailHeader { display: flex; flex-direction: column; gap: var(--space-8); }
 .titleRow { display: flex; align-items: center; gap: var(--space-16); }
-.titleRow h2 { flex: 1; min-width: 0; font: var(--text-modal-title); letter-spacing: -0.24px; overflow-wrap: anywhere; }
+.titleRow h2 { flex: 1; min-width: 0; font: var(--text-modal-title); letter-spacing: var(--tracking-heading); overflow-wrap: anywhere; }
 .meta { display: flex; flex-wrap: wrap; gap: 4px var(--space-16); font: var(--text-meta); color: var(--color-secondary); }
 .status { color: var(--color-primary); }
 .summary { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-subtle); }
-.sectionTitle { font: 400 18px/26px var(--font-body); }
+.sectionTitle { font: var(--text-emphasis); }
 .provenance { font: var(--text-meta); color: var(--color-tertiary); }
 .section { display: flex; flex-direction: column; gap: var(--space-12); }
 .sectionHeader { display: flex; align-items: flex-start; gap: var(--space-16); }
@@ -54,17 +54,17 @@
 
 /* 검색 결과가 없을 때 상세 자리에 가운데로 안내한다 */
 .guidance { margin: auto; width: min(480px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--space-24); text-align: center; }
-.guidance > p:first-child { font: 400 18px/26px var(--font-body); color: var(--color-secondary); }
+.guidance > p:first-child { font: var(--text-emphasis); color: var(--color-secondary); }
 .guidance .actions { justify-content: center; }
 
 /* 자료가 없을 때. 피그마의 작업 영역 여백 48px에 맞춘다 */
 .empty { display: flex; flex-direction: column; gap: var(--space-24); }
 .empty > .project { color: var(--color-secondary); }
-.empty h1 { font: 700 28px/40px var(--font-title); }
+.empty h1 { font: var(--text-title); }
 .emptyLead { font: var(--text-lead); color: var(--color-secondary); }
 .types { display: flex; gap: var(--space-24); }
 .type { flex: 1; min-width: 0; min-height: 260px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-16); padding: var(--space-24); border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); }
-.type h2 { font: 700 20px/30px var(--font-title); }
+.type h2 { font: var(--text-section); }
 .type p { max-width: 280px; color: var(--color-secondary); }
 .type button { margin-top: auto; }
 .hint { font: var(--text-meta); color: var(--color-tertiary); }
@@ -93,7 +93,7 @@
 .conflict > p:first-child { color: var(--color-accent); }
 
 .markdown { display: flex; flex-direction: column; gap: var(--space-8); overflow-wrap: anywhere; }
-.markdown h1, .markdown h2, .markdown h3 { font: 600 16px/26px var(--font-body); }
+.markdown h1, .markdown h2, .markdown h3 { font: var(--text-status-title); }
 .markdown ul, .markdown ol { margin: 0; padding-left: var(--space-20); }
 .markdown blockquote { margin: 0; padding-left: var(--space-12); border-left: 3px solid var(--color-border); color: var(--color-secondary); }
 .markdown pre, .markdown code { font: 13px/20px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -122,7 +122,7 @@
 .form { display: flex; flex-direction: column; gap: var(--space-16); }
 .drop { min-height: 224px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-16); padding: var(--space-16); border: 1px solid transparent; border-radius: var(--radius-lg); background: var(--color-subtle); text-align: center; transition: border-color var(--motion-fast) ease-out, background-color var(--motion-fast) ease-out; }
 .drop[data-over='true'] { border-color: var(--color-primary); background: var(--color-primary-soft); }
-.drop > p:first-child { font: 400 18px/26px var(--font-body); overflow-wrap: anywhere; }
+.drop > p:first-child { font: var(--text-emphasis); overflow-wrap: anywhere; }
 .drop > p:nth-child(2) { color: var(--color-secondary); }
 .guide { font: var(--text-meta); color: var(--color-secondary); }
 .fieldError { font: var(--text-meta); color: var(--color-danger); }
@@ -141,13 +141,13 @@
 .editorInput { flex: 1; min-height: 220px; width: 100%; padding: var(--space-16) var(--space-20); color: var(--color-ink); font: var(--text-lead); outline: none; overflow-wrap: anywhere; white-space: pre-wrap; }
 .editorInput > * + * { margin-top: 10px; }
 .editorInput p { margin: 0; }
-.editorInput h1, .editorInput h2, .editorInput h3 { margin: 18px 0 0; font: 700 20px/30px var(--font-body); letter-spacing: -0.2px; }
+.editorInput h1, .editorInput h2, .editorInput h3 { margin: 18px 0 0; font: var(--text-section); letter-spacing: var(--tracking-heading); }
 .editorInput h1 { font-size: 24px; line-height: 34px; }
 .editorInput > :first-child { margin-top: 0; }
 .editorInput ul, .editorInput ol { margin: 0; padding-left: 22px; }
 .editorInput li p { margin: 0; }
 .editorInput blockquote { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--color-border-strong); color: var(--color-secondary); }
-.editorInput code { padding: 1px 5px; border-radius: 4px; background: var(--color-muted); font: 14px/22px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.editorInput code { padding: 1px 5px; border-radius: var(--radius-sm); background: var(--color-muted); font: 14px/22px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .editorInput pre { margin: 0; padding: var(--space-12); border-radius: var(--radius-md); background: var(--color-muted); overflow-x: auto; }
 .editorInput pre code { padding: 0; background: none; }
 .editorInput a { color: var(--color-primary); text-decoration: underline; cursor: text; }
@@ -158,7 +158,7 @@
 
 /* 원문 보기. 피그마의 문서 영역은 회색 면, 여백 24px, 간격 20px */
 .document { display: flex; flex-direction: column; gap: var(--space-20); min-height: 320px; padding: var(--space-24); border-radius: var(--radius-lg); background: var(--color-subtle); }
-.document h3 { font: var(--text-dialog-title); letter-spacing: -0.2px; overflow-wrap: anywhere; }
+.document h3 { font: var(--text-dialog-title); letter-spacing: var(--tracking-heading); overflow-wrap: anywhere; }
 .documentMeta { font: var(--text-meta); color: var(--color-secondary); }
 .documentBody { font: var(--text-lead); }
 .pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }

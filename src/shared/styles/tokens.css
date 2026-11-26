@@ -44,6 +44,13 @@
   --text-status-title: 600 16px/24px var(--font-body);
   --text-meta: 400 13px/19px var(--font-body);
   --text-nav: 500 15px/22px var(--font-body);
+  --text-section: 700 20px/30px var(--font-title);
+  --text-subsection: 700 18px/28px var(--font-title);
+  --text-emphasis: 400 18px/28px var(--font-body);
+  --text-label: 600 14px/20px var(--font-body);
+  --text-meta-strong: 600 13px/20px var(--font-body);
+  --text-caption: 400 12px/18px var(--font-body);
+  --text-serif-lead: 400 17px/28px var(--font-serif);
 
   /* 간격 */
   --space-8: 8px;
@@ -62,6 +69,7 @@
   /* 치수 */
   --button-height-primary: 44px;
   --button-height-regular: 40px;
+  --button-height-small: 32px;
   --control-height: 48px;
   --content-width: 1176px;
   --dialog-width: 560px;
@@ -86,6 +94,7 @@
 
   /* 큰 제목만 자간을 조금 좁힌다 */
   --tracking-title: -0.5px;
+  --tracking-heading: -0.3px;
 
   /* 움직임 */
   --motion-fast: 140ms;

@@ -40,7 +40,7 @@
 .content h3 { font: var(--text-nav); }
 .actions, .orderActions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); }
 .orderActions { margin-top: var(--space-8); }
-.orderActions button { min-height: 36px; padding: 0 var(--space-8); }
+.orderActions button { min-height: var(--button-height-small); padding: 0 var(--space-8); }
 .empty { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'title' 'ready' 'actions'; gap: var(--space-24); }
 .empty .readyCount { max-width: 760px; background: var(--color-subtle); }
 .empty .emptyLead { margin-top: var(--space-12); }
