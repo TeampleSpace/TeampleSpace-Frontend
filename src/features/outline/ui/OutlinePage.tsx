@@ -399,7 +399,7 @@ function OutlineWorkspace({ project, initial, slots, onAccessError, onProjectErr
       <div className={styles.workspace}>
         <nav className={styles.flow} aria-label="발표 흐름">
           <h2>발표 흐름</h2>
-          <p>{outline.items.length}장</p>
+          <p>항목 {outline.items.length}개</p>
           <OutlineFlowList items={outline.items} selectedId={selected.id} disabled={evidenceDirty || blockers || !!operation}
             onSelect={(id) => { setSelection(id); setEvidenceRequest(0) }}
             onMove={(id, destination) => open({ kind: 'move', id, ...destination })} />

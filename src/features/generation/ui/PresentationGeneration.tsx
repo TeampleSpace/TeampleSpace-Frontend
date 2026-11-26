@@ -259,7 +259,6 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
     {!showJob && hint && <span className={styles.note} id={hintId}>{hint}</span>}
   </span>
   const regenerationBlocked = writeError instanceof ApiError && writeError.code === 'REGENERATION_NOT_ENABLED'
-  const itemLabel = summary ? `발표 구성 ${summary.items}장` : '발표 구성'
 
   return <>
     {children ? children(trigger) : trigger}
@@ -275,7 +274,7 @@ function Generation({ projectId, projectName, onCompleted, children }: Props) {
       {summary && <div className={styles.summary}>
         {projectName && <h3>{projectName}</h3>}
         {summary.items > 0 && <>
-          <p>{itemLabel}, 표지와 정리를 더해 {summary.items + 2}장</p>
+          <p>발표 구성 {summary.items}개 항목을 목차로, 내용이 많은 항목은 여러 장으로 만들어요</p>
           <p>연결된 근거 자료 {summary.request.sourceIds.length}개, 본문 아래에 출처 표시</p>
         </>}
         <p className={styles.label}>선택한 디자인</p>
