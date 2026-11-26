@@ -1,0 +1,8 @@
+/* AI 자료 조사 창. 피그마 화면이 없어 자료 추가 창의 글자와 간격 토큰을 따른다 */
+.progress { font-weight: 600; color: var(--color-ink); }
+.label { font: var(--text-meta); color: var(--color-secondary); }
+.result { max-height: 360px; overflow: auto; padding: var(--space-16) var(--space-20); border-radius: var(--radius-lg); background: var(--color-subtle); }
+.heading { margin: 0 0 var(--space-8); font: var(--text-meta); font-weight: 600; color: var(--color-ink); }
+.sources { display: grid; gap: var(--space-8); margin: 0; padding-left: var(--space-20); }
+.sources a { color: var(--color-link); overflow-wrap: anywhere; }
+.host { margin-left: var(--space-8); font: var(--text-meta); color: var(--color-tertiary); }
