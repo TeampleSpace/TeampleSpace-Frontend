@@ -21,7 +21,12 @@ vi.mock('../pdf.ts', () => ({
     const document = {
       numPages: 3,
       getPage: async (page: number) => ({
-        getViewport: () => ({ width: 100, height: 140 }),
+        getViewport: () => ({ width: 100, height: 140, convertToViewportPoint: (x: number, y: number) => [x, 140 - y] }),
+        getAnnotations: async () => [
+          { subtype: 'Link', url: 'https://example.com/pdf-link', rect: [10, 100, 60, 128] },
+          { subtype: 'Link', url: 'javascript:alert(1)', rect: [10, 10, 60, 20] },
+          { subtype: 'Widget', rect: [10, 10, 60, 20] },
+        ],
         render: () => {
           const failed = pdf.failRender > 0 && (pdf.failRender -= 1) >= 0
           if (!failed) pdf.rendered.push(page)
@@ -128,6 +133,18 @@ test('PDF 원문은 실제 쪽수로 이전과 다음을 정하고 전체 보기
   expect(screen.queryByRole('dialog', { name: '자료 보기' })).toBeNull()
   expect(screen.getByRole('heading', { level: 2, name: '교내 일회용품 조사.pdf' })).toBeTruthy()
   expect(pdf.opened).toHaveLength(1)
+})
+
+test('PDF 쪽 안의 웹 링크를 같은 자리에 새 탭 링크로 두고 위험한 주소는 빼낸다', async () => {
+  mock.seed('file', '링크가 있는 보고서.pdf')
+  mount()
+  const popup = await openViewer()
+  const link = await popup.findByRole('link', { name: /^1쪽의 링크 https:\/\/example\.com\/pdf-link ?\(새 탭에서 열림\)$/ })
+  expect(link.getAttribute('href')).toBe('https://example.com/pdf-link')
+  expect(link.getAttribute('target')).toBe('_blank')
+  const spot = link.parentElement as HTMLElement
+  expect([spot.style.left, spot.style.top, spot.style.width, spot.style.height]).toEqual(['10%', '8.57143%', '50%', '20%'])
+  expect(popup.queryByRole('link', { name: /javascript/ })).toBeNull()
 })
 
 test('원문 주소가 만료되면 다시 발급받고 보던 쪽을 유지한다', async () => {
