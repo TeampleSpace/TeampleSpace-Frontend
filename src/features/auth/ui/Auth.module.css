@@ -37,6 +37,7 @@
 .hint { font: var(--text-meta); color: var(--color-tertiary); }
 .consent { display: flex; gap: var(--space-12); align-items: center; cursor: pointer; }
 .consent input { appearance: none; flex-shrink: 0; width: 22px; height: 22px; margin: 0; border: 0; background: url('/assets/auth/checkbox.svg') center no-repeat; }
+.consent input:not(:checked) { filter: invert(var(--icon-invert)); }
 .consent input:checked { appearance: auto; accent-color: var(--color-primary); background: none; }
 .links { display: flex; gap: var(--space-16); flex-wrap: wrap; }
 .notice { color: var(--color-secondary); background: var(--color-subtle); padding: var(--space-16); border-radius: var(--radius-lg); }

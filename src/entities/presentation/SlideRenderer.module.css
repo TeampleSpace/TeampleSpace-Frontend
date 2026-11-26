@@ -9,6 +9,8 @@
   top: 0;
   left: 0;
   background: #ffffff;
+  /* 흰 슬라이드 위의 선택 표시는 다크 테마에서도 라이트 색을 쓴다 */
+  color-scheme: light;
   transform-origin: top left;
 }
 

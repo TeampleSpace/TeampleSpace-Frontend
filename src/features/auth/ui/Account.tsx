@@ -9,6 +9,8 @@ import { Field } from '../../../shared/ui/Field.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { UnsavedGuard } from '../../../shared/ui/UnsavedGuard.tsx'
+import { applyTheme, readTheme } from '../../../shared/lib/theme.ts'
+import type { Theme } from '../../../shared/lib/theme.ts'
 import page from '../../../shared/ui/PageLayout.module.css'
 import buttonStyles from '../../../shared/ui/Button.module.css'
 import authStyles from './Auth.module.css'
@@ -31,6 +33,7 @@ export default function Account() {
   const [notice, setNotice] = useState('')
   const [retryAt, setRetryAt] = useState(0)
   const [now, setNow] = useState(() => Date.now())
+  const [theme, setTheme] = useState(readTheme)
   const dirty = !!user && name !== user.name
   useEffect(() => {
     if (new URLSearchParams(location.hash.slice(1)).has('reauthProof')) {
@@ -91,6 +94,13 @@ export default function Account() {
       {!modal && <RequestError error={error} action={<Button variant="text" onClick={() => void act(async () => { const next = await refresh(); if (next) setName(next.name) })}>최신 정보 다시 불러오기</Button>} />}
       <section className={account.providers}><h2>로그인 수단</h2>
         <ul className={account.identities}>{(['email', 'kakao', 'naver', 'google'] as const).map((provider) => <li key={provider} data-connected={user.identities.some((identity) => identity.provider === provider)}>{providerNames[provider]} <span>{user.identities.some((identity) => identity.provider === provider) ? '연결됨' : '미연결'}</span></li>)}</ul>
+      </section>
+      <section className={page.section} aria-labelledby="account-theme">
+        <h2 id="account-theme">화면 테마</h2>
+        <p>시스템 설정을 고르면 기기의 라이트, 다크 모드를 따라가요</p>
+        <div><select aria-labelledby="account-theme" value={theme} onChange={(event) => { const next = event.target.value as Theme; setTheme(next); applyTheme(next) }}>
+          <option value="system">시스템 설정</option><option value="light">라이트</option><option value="dark">다크</option>
+        </select></div>
       </section>
       <section className={page.section} aria-labelledby="account-subscription">
         <h2 id="account-subscription">구독 및 결제</h2>

@@ -6,7 +6,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f7f6f3" />
+    <meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1b1a" media="(prefers-color-scheme: dark)" />
+    <!-- 저장한 테마를 첫 화면 전에 적용해 밝은 화면이 깜빡이지 않게 한다 -->
+    <script>
+      try { var theme = localStorage.getItem('theme'); if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme } catch {}
+    </script>
     <title>TeamPleSpace</title>
     <meta name="description" content="팀플 자료부터 발표 PPT까지 팀원과 함께 모으고 정리하고 편집하는 협업 공간" />
     <!-- 카카오톡 등 링크 공유 미리보기 -->

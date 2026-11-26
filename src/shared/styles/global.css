@@ -20,6 +20,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* 회색으로 고정된 아이콘은 다크에서 반전해 밝게 보인다 */
+img[src^='/assets/navigation/'], img[src^='/assets/materials/'] {
+  filter: invert(var(--icon-invert));
+}
+
 ::selection {
   background: rgb(242 107 29 / 0.2);
 }
@@ -73,7 +78,7 @@ select {
   padding: 0 32px 0 12px;
   border: 1px solid var(--color-border-control);
   border-radius: var(--radius-md);
-  background: var(--color-surface) url('/assets/navigation/chevron-down.svg') right 8px center / 16px no-repeat;
+  background: var(--color-surface) var(--select-chevron) right 8px center / 16px no-repeat;
   box-shadow: var(--shadow-xs);
   cursor: pointer;
   transition: border-color var(--motion-fast) ease-out, box-shadow var(--motion-normal) ease-out;
