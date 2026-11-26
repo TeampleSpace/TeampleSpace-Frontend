@@ -71,6 +71,23 @@ test('조사가 실패해도 주제를 남기고 다시 조사하며 결과를 �
   expect(screen.getByText('과제 조사에 많이 쓴다 [1]')).toBeTruthy()
 })
 
+test('주제를 바꾸면 새 키로 보내고 취소 전에 끝난 조사는 결과를 보여 준다', async () => {
+  const start = vi.spyOn(researchApi, 'start').mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(queued)
+  vi.spyOn(materialsApi, 'job').mockResolvedValue({ ...queued, status: 'running' })
+  vi.spyOn(materialsApi, 'cancelJob').mockResolvedValue({ ...queued, status: 'succeeded', resultRef: result })
+  mount()
+  const field = screen.getByLabelText('조사할 주제')
+  fireEvent.change(field, { target: { value: '처음 주제' } })
+  fireEvent.click(screen.getByRole('button', { name: '조사 시작' }))
+  await screen.findByText(/서버에 연결할 수 없습니다/)
+  fireEvent.change(field, { target: { value: '바꾼 주제' } })
+  fireEvent.click(screen.getByRole('button', { name: '조사 시작' }))
+  fireEvent.click(await screen.findByRole('button', { name: '조사 취소' }))
+  await screen.findByText('과제 조사에 많이 쓴다 [1]')
+  expect(start.mock.calls[1][1]).toBe('바꾼 주제')
+  expect(start.mock.calls[1][2]).not.toBe(start.mock.calls[0][2])
+})
+
 test('출처 제목의 대괄호를 이스케이프해 메모 본문에 출처 목록을 남긴다', () => {
   expect(researchMarkdown(result)).toContain('1. [이용 조사 \\[2026\\]](<https://example.com/survey>)')
   expect(researchMarkdown(result)).toContain('## 출처')
