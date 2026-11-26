@@ -13,6 +13,7 @@ import type { PdfDocument } from './PdfCanvas.tsx'
 import { SourceLink } from './ExternalLink.tsx'
 import styles from './Materials.module.css'
 import linkStyles from './Links.module.css'
+import { sharedPreview } from './sharedDocs.ts'
 
 const Markdown = lazy(() => import('./Markdown.tsx'))
 const returnNote = '닫으면 이전 화면의 작업을 그대로 이어갑니다.'
@@ -92,6 +93,8 @@ export function SourceViewer({ material, revisionId, onClose, onError }: {
     : pdf && pdf.url === fileUrl
       ? <PdfCanvas document={pdf.document} page={current} title={material.title} onError={onFileError} onRendered={onRendered} />
       : <StatusPanel kind="loading" title="원문을 불러오고 있어요" />
+  // 근거로 고정한 개정은 연결 당시 본문을 보여야 해서 지금 문서 미리보기를 쓰지 않는다
+  const preview = source?.link && !revisionId ? sharedPreview(source.link.url) : null
   const footer = (close: () => void) => <><p className={styles.returnNote}>{returnNote}</p><Button onClick={close}>이전 화면으로 돌아가기</Button></>
 
   return <>
@@ -119,7 +122,12 @@ export function SourceViewer({ material, revisionId, onClose, onError }: {
           {source.link && <>
             <p className={styles.documentMeta}>{kindLabels.link} · <SourceLink url={source.link.url} /></p>
             <p className={linkStyles.address}>{source.link.url}</p>
-            <p className={`${styles.documentBody} ${styles.plain} ${linkStyles.text}`}>{source.link.text ? <LinkedText text={source.link.text} /> : '추출한 본문이 없어요'}</p>
+            {preview && <>
+              <p className={styles.documentMeta}>{preview.label} 미리보기예요. 링크가 있는 모든 사용자에게 공유되지 않은 문서는 구글 로그인이나 권한 요청 화면이 보일 수 있어요. 이때는 위의 원본 페이지 열기로 확인해 주세요.</p>
+              <iframe className={linkStyles.preview} src={preview.src} title={`${source.title} ${preview.label} 미리보기`}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />
+            </>}
+            {!preview && <p className={`${styles.documentBody} ${styles.plain} ${linkStyles.text}`}>{source.link.text ? <LinkedText text={source.link.text} /> : '추출한 본문이 없어요'}</p>}
           </>}
         </>}
       </div>
