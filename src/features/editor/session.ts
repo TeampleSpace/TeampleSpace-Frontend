@@ -79,7 +79,11 @@ type Entry = {
 // 실행 취소 한 단계. 수정은 바꾸기 전과 뒤의 항목 값을, 추가와 삭제는 요소 전체를 든다
 type Op =
   | { kind: 'edit'; id: string; before: ElementPatch; after: ElementPatch }
-  | { kind: 'create' | 'delete'; element: Element }
+  | { kind: 'create' | 'delete'; element: Element; retry?: AddAttempt }
+
+// 요소 추가 요청 한 건의 식별자들. 결과가 불확실하면 같은 값으로 다시 보낸다
+type AddAttempt = { id: string; key: string; mutationId: string }
+const newAttempt = (): AddAttempt => ({ id: crypto.randomUUID(), key: crypto.randomUUID(), mutationId: crypto.randomUUID() })
 
 const historyLimit = 100
 
@@ -323,7 +327,7 @@ export function createEditorSession(options: {
 
   async function step(from: Op[], to: Op[], forward: boolean): Promise<boolean> {
     if (stepping || !doc || connection !== 'online') return false
-    for (const elementId of [...before.keys()]) record(elementId)
+    recordAll()
     const op = from.pop()
     if (!op) return false
     stepping = true
@@ -342,12 +346,16 @@ export function createEditorSession(options: {
             // 추가를 되돌리거나 삭제를 다시 한다
             await remove(op.element.id)
           } else {
-            const created = await add(op.element.slideId, op.element)
+            op.retry ??= newAttempt()
+            const created = await add(op.element.slideId, op.element, op.retry)
+            op.retry = undefined
             remap(op.element.id, created)
             op.element = created
           }
         } catch (error) {
           // 요청이 실패하면 기록을 남겨 두고 다시 시도할 수 있게 한다
+          // 서버가 거절한 추가는 새 요청으로, 결과를 모르는 추가는 같은 요청으로 다시 보낸다
+          if (error instanceof ApiError && error.status < 500) op.retry = undefined
           from.push(op)
           throw error
         }
@@ -387,7 +395,7 @@ export function createEditorSession(options: {
   }
 
   // 같은 내용으로 새 요소를 만든다. 이미지는 파일 연결 경로가 생길 때 연다
-  async function add(slideId: string, source: Element): Promise<Element> {
+  async function add(slideId: string, source: Element, attempt = newAttempt()): Promise<Element> {
     const current = requireOnline()
     if (source.type === 'image') throw new Error('이미지는 아직 복사할 수 없어요')
     const { type, geometry, content, style } = source
@@ -395,10 +403,10 @@ export function createEditorSession(options: {
       method: 'POST',
       body: {
         generation: current.generation,
-        clientMutationId: crypto.randomUUID(),
-        element: { id: crypto.randomUUID(), type, geometry, content, style },
+        clientMutationId: attempt.mutationId,
+        element: { id: attempt.id, type, geometry, content, style },
       },
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: attempt.key,
       timeoutMs: requestTimeoutMs,
     })
     addedAt.set(result.resource.id, (addSeq += 1))
@@ -436,14 +444,20 @@ export function createEditorSession(options: {
   }
 
   // 사용자가 직접 한 추가와 삭제. 실행 취소 기록에 남긴다
+  // 아직 끝내지 않은 편집을 먼저 기록해 되돌리는 순서를 지킨다
+  function recordAll() {
+    for (const elementId of [...before.keys()]) record(elementId)
+  }
+
   async function createElement(slideId: string, source: Element): Promise<Element> {
+    recordAll()
     const created = await add(slideId, source)
     push({ kind: 'create', element: created })
     return created
   }
 
   async function deleteElement(elementId: string) {
-    record(elementId)
+    recordAll()
     const shown = viewOf(elementId)
     await remove(elementId)
     push({ kind: 'delete', element: shown })
