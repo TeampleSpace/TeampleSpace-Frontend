@@ -43,13 +43,14 @@ function setup() {
     failNextPatch: boolean
     // 이 횟수만큼 삭제 요청이 서버에 닿지 못한다
     failDeletes: number
-    dropNextPostResponse: boolean
+    // 이 횟수만큼 요소 추가가 서버에 반영되고 응답만 잃는다
+    dropPosts: number
     dropNextDeleteResponse: boolean
     snapshotGate?: Promise<void>
   } = {
     failNextPatch: false,
     failDeletes: 0,
-    dropNextPostResponse: false,
+    dropPosts: 0,
     dropNextDeleteResponse: false,
   }
 
@@ -85,9 +86,9 @@ function setup() {
         control.dropNextDeleteResponse = false
         return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
       }
-      if (method === 'POST' && path.endsWith('/elements') && control.dropNextPostResponse) {
+      if (method === 'POST' && path.endsWith('/elements') && control.dropPosts > 0) {
         // 서버는 반영하고 응답만 잃는다
-        control.dropNextPostResponse = false
+        control.dropPosts -= 1
         return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
       }
       if (path.endsWith('/sync-snapshot') && control.snapshotGate) {
@@ -920,7 +921,8 @@ test('되살리기 응답을 잃은 뒤 다시 시도해도 요소가 하나만 
 
   await a.deleteElement(bodyId)
   await settle()
-  control.dropNextPostResponse = true
+  // 같은 키로 한 번 더 보낸 응답까지 잃는다
+  control.dropPosts = 2
   await expect(a.undo()).rejects.toThrow()
   await settle()
   expect(await a.undo()).toBe(true)
@@ -963,4 +965,39 @@ test('보내지 못한 입력이 남은 요소가 다른 팀원에게 지워지�
   const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
   expect(element?.deletedAt).toBeDefined()
   expect(a.getState().pending).toBe(false)
+})
+
+test('복제 응답을 잃어도 같은 요청으로 다시 받아 하나만 만든다', async () => {
+  const { open, control, server, serverElement } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  const count = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+  const before = count()
+
+  control.dropPosts = 1
+  const created = await a.createElement(slideId, serverElement())
+  expect(count()).toBe(before + 1)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+  expect(count()).toBe(before)
+})
+
+test('같은 요소를 연달아 지워도 삭제 기록은 하나다', async () => {
+  const { open, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  await Promise.all([a.deleteElement(bodyId), a.deleteElement(bodyId)])
+  await a.deleteElement(bodyId)
+  await settle()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(await a.undo()).toBe(false)
+  expect(sameText()).toHaveLength(1)
 })
