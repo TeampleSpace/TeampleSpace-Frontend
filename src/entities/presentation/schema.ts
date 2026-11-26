@@ -190,6 +190,14 @@ export const elementSaveResultSchema = elementChangeSchema.extend({
 })
 export type ElementSaveResult = z.infer<typeof elementSaveResultSchema>
 
+// 요소 삭제 응답과 삭제 이벤트 payload
+export const elementDeletedSchema = z.object({
+  tombstone: z.object({ resourceType: z.literal('element'), id: z.string(), version, deletedAt: z.string() }),
+  elementVersion: version.optional(),
+  slideVersion: version.optional(),
+  presentationVersion: version.optional(),
+})
+
 // 편집 화면 동기화 스냅샷. 문서와 각 버전, 이벤트 커서를 같은 시점에서 읽은 묶음이다
 export const editorSnapshotSchema = z.object({
   scope: z.literal('editor'),

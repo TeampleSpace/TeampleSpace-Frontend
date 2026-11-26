@@ -39,7 +39,23 @@ async function settle() {
 function setup() {
   const server = createMockServer(exampleSnapshot)
   const calls: Call[] = []
-  const control = { failNextPatch: false }
+  const control: {
+    failNextPatch: boolean
+    // 이 횟수만큼 삭제 요청이 서버에 닿지 못한다
+    failDeletes: number
+    // 이 횟수만큼 요소 추가가 서버에 반영되고 응답만 잃는다
+    dropPosts: number
+    dropNextDeleteResponse: boolean
+    snapshotGate?: Promise<void>
+    // 저장은 반영하고 응답만 늦춘다
+    patchGate?: Promise<void>
+    postGate?: Promise<void>
+  } = {
+    failNextPatch: false,
+    failDeletes: 0,
+    dropPosts: 0,
+    dropNextDeleteResponse: false,
+  }
 
   function tracked(actor: string, silentEvents: boolean): typeof fetch {
     const inner = server.fetchAs(actorIds[actor])
@@ -64,6 +80,32 @@ function setup() {
       if (silentEvents && path.endsWith('/events')) {
         // 연결은 됐지만 이벤트가 오지 않는 상황
         return Promise.resolve(new Response(new ReadableStream()))
+      }
+      if (method === 'DELETE' && control.failDeletes > 0) {
+        control.failDeletes -= 1
+        return Promise.reject(new TypeError('연결 실패'))
+      }
+      if (method === 'DELETE' && control.dropNextDeleteResponse) {
+        control.dropNextDeleteResponse = false
+        return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
+      }
+      if (method === 'POST' && path.endsWith('/elements') && control.dropPosts > 0) {
+        // 서버는 반영하고 응답만 잃는다
+        control.dropPosts -= 1
+        return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
+      }
+      if (method === 'POST' && path.endsWith('/elements') && control.postGate) {
+        const gate = control.postGate
+        return inner(input, init).then((response) => gate.then(() => response))
+      }
+      if (method === 'PATCH' && control.patchGate) {
+        const gate = control.patchGate
+        return inner(input, init).then((response) => gate.then(() => response))
+      }
+      if (path.endsWith('/sync-snapshot') && control.snapshotGate) {
+        // 지금 시점의 스냅샷을 만들어 두고 응답만 늦춘다
+        const gate = control.snapshotGate
+        return inner(input, init).then((response) => gate.then(() => response))
       }
       return inner(input, init)
     }
@@ -750,4 +792,443 @@ test('내 커서를 짧은 간격으로 모아 보내고 다른 팀원의 커서
   await settle()
   expect(b.getState().cursors).toEqual([])
   b.stop()
+})
+
+test('요소를 지우고 되돌리면 같은 내용의 새 요소가 생기고 다시 실행하면 다시 지운다', async () => {
+  const { open, server, eventCount } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+  const liveIds = (session: EditorSession) =>
+    session.getState().view!.slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => !element.deletedAt).map((element) => element.id)
+
+  await a.deleteElement(bodyId)
+  await settle()
+  expect(liveIds(a)).not.toContain(bodyId)
+  // 다른 팀원 화면에서도 지워진다
+  expect(liveIds(b)).not.toContain(bodyId)
+  expect(eventCount('element.deleted')).toBe(1)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  const restored = server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.at(-1)!
+  expect(restored.id).not.toBe(bodyId)
+  expect(restored.type === 'text' && restored.content.text).toBe('조사 결과 요약')
+  expect(liveIds(a)).toContain(restored.id)
+  // 다른 팀원 화면에도 추가 이벤트로 바로 나타난다
+  expect(liveIds(b)).toContain(restored.id)
+
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(liveIds(a)).not.toContain(restored.id)
+  expect(await a.redo()).toBe(false)
+})
+
+test('편집을 끝낸 단위로 되돌리고 다시 실행한다', async () => {
+  const { open, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('가'))
+  a.edit(bodyId, text('가나'))
+  a.endEdit(bodyId)
+  await settle()
+  expect(serverText()).toBe('가나')
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('조사 결과 요약')
+  expect(await a.undo()).toBe(false)
+
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('가나')
+})
+
+test('붙여넣은 요소를 되돌리면 지운다', async () => {
+  const { open, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const source = serverElement()
+  const created = await a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 20 } })
+  await settle()
+  expect(serverElement(created.id).geometry.x).toBe(source.geometry.x + 20)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+})
+
+test('되돌리기 요청이 실패하면 기록을 남겨 다시 시도할 수 있다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const created = await a.createElement(slideId, serverElement())
+  await settle()
+  // 같은 키로 한 번 더 물어보는 것까지 실패한다
+  control.failDeletes = 2
+  await expect(a.undo()).rejects.toThrow()
+  expect(serverElement(created.id)).toBeDefined()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+})
+
+test('늦게 도착한 스냅샷이 그사이 추가한 요소를 지우지 않는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.snapshotGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const stale = a.refresh()
+  await settle()
+  const created = await a.createElement(slideId, serverElement())
+  control.snapshotGate = undefined
+  release()
+  await stale
+  await settle()
+
+  const live = a.getState().view!.slides.flatMap((slide) => slide.elements).find((element) => element.id === created.id)
+  expect(live?.deletedAt).toBeUndefined()
+})
+
+test('방향키로 옮긴 뒤 복제하면 복제부터 되돌린다', async () => {
+  const { open, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const original = serverElement()
+  a.edit(bodyId, { geometry: { ...original.geometry, x: original.geometry.x + 10 } })
+  const created = await a.createElement(slideId, { ...original, geometry: { ...original.geometry, x: original.geometry.x + 30 } })
+  // 옮긴 위치는 저장 대기 시간이 지나면 저장된다
+  await tick(700)
+  await settle()
+  expect(serverElement().geometry.x).toBe(original.geometry.x + 10)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+  expect(serverElement().geometry.x).toBe(original.geometry.x + 10)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement().geometry.x).toBe(original.geometry.x)
+})
+
+test('되살리기 응답을 잃은 뒤 다시 시도해도 요소가 하나만 생긴다', async () => {
+  const { open, control, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  await a.deleteElement(bodyId)
+  await settle()
+  // 같은 키로 한 번 더 보낸 응답까지 잃는다
+  control.dropPosts = 2
+  await expect(a.undo()).rejects.toThrow()
+  await settle()
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(1)
+
+  // 다시 실행하면 그 요소가 지워진다
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(0)
+})
+
+test('삭제 응답을 잃어도 같은 요청으로 확인하고 되돌릴 수 있다', async () => {
+  const { open, control, server } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  control.dropNextDeleteResponse = true
+  await a.deleteElement(bodyId)
+  expect(sameText()).toHaveLength(0)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(sameText()).toHaveLength(1)
+})
+
+test('보내지 못한 입력이 남은 요소가 다른 팀원에게 지워지면 스냅샷에서 지운다', async () => {
+  const { open } = setup()
+  const a = open('user-a', { silentEvents: true, saveDelayMs: 60000 })
+  const b = open('user-b')
+  await tick()
+
+  a.edit(bodyId, text('보내지 못한 입력'))
+  await b.deleteElement(bodyId)
+  await a.refresh()
+
+  const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
+  expect(element?.deletedAt).toBeDefined()
+  expect(a.getState().pending).toBe(false)
+})
+
+test('복제 응답을 잃어도 같은 요청으로 다시 받아 하나만 만든다', async () => {
+  const { open, control, server, serverElement } = setup()
+  const a = open('user-a', { silentEvents: true })
+  await tick()
+  const count = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+  const before = count()
+
+  control.dropPosts = 1
+  const created = await a.createElement(slideId, serverElement())
+  expect(count()).toBe(before + 1)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+  expect(count()).toBe(before)
+})
+
+test('같은 요소를 연달아 지워도 삭제 기록은 하나다', async () => {
+  const { open, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sameText = () =>
+    server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => element.type === 'text' && element.content.text === '조사 결과 요약')
+
+  await Promise.all([a.deleteElement(bodyId), a.deleteElement(bodyId)])
+  await a.deleteElement(bodyId)
+  await settle()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(await a.undo()).toBe(false)
+  expect(sameText()).toHaveLength(1)
+})
+
+test('삭제를 확인한 뒤 늦게 온 저장 응답이 요소를 되살리지 않는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a', { silentEvents: true })
+  const b = open('user-b')
+  await tick()
+
+  let release = () => {}
+  control.patchGate = new Promise((resolve) => {
+    release = resolve
+  })
+  a.edit(bodyId, text('늦게 확인되는 입력'))
+  a.endEdit(bodyId)
+  await settle()
+  expect(serverElement().version).toBe(2)
+  control.patchGate = undefined
+
+  await settle()
+  await b.deleteElement(bodyId)
+  await a.refresh()
+  release()
+  await settle()
+
+  const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
+  expect(element?.deletedAt).toBeDefined()
+})
+
+test('충돌 때문에 적용하지 못한 되돌리기는 충돌을 해결한 뒤 다시 할 수 있다', async () => {
+  const { open, saveDirectly, serverText } = setup()
+  const a = open('user-a', { saveDelayMs: 60000 })
+  await tick()
+
+  a.edit(bodyId, text('내 입력'))
+  await saveDirectly('user-b', '팀원 입력')
+  await settle()
+  expect(statusOf(a)).toBe('conflict')
+
+  expect(await a.undo()).toBe(false)
+  a.resolveConflict(bodyId, 'mine')
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('조사 결과 요약')
+})
+
+test('스냅샷을 읽는 동안 팀원이 연달아 추가한 요소가 모두 보인다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+
+  let release = () => {}
+  control.snapshotGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const stale = a.refresh()
+  await settle()
+  const first = await b.createElement(slideId, serverElement())
+  const second = await b.createElement(slideId, serverElement())
+  await settle()
+  control.snapshotGate = undefined
+  release()
+  await stale
+  await settle()
+
+  const live = a.getState().view!.slides.flatMap((slide) => slide.elements).filter((element) => !element.deletedAt).map((element) => element.id)
+  expect(live).toEqual(expect.arrayContaining([first.id, second.id]))
+})
+
+test('추가를 다시 실행하는 응답을 기다리는 사이 한 편집을 먼저 되돌린다', async () => {
+  const { open, control, serverText, serverElement, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+
+  await a.createElement(slideId, serverElement())
+  await settle()
+  const withCopy = live()
+  expect(await a.undo()).toBe(true)
+  await settle()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const redoing = a.redo()
+  await settle()
+  a.edit(titleId, text('기다리는 사이 고친 제목'))
+  a.endEdit(titleId)
+  await settle()
+  control.postGate = undefined
+  release()
+  expect(await redoing).toBe(true)
+  await settle()
+  expect(live()).toBe(withCopy)
+
+  // 가장 최근 편집인 제목 수정부터 되돌리고 다시 만든 요소는 남는다
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
+  expect(live()).toBe(withCopy)
+})
+
+test('복제 응답을 기다리는 사이 한 편집을 먼저 되돌린다', async () => {
+  const { open, control, serverText, serverElement, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const creating = a.createElement(slideId, serverElement())
+  await settle()
+  a.edit(titleId, text('기다리는 사이 고친 제목'))
+  a.endEdit(titleId)
+  await settle()
+  control.postGate = undefined
+  release()
+  await creating
+  await settle()
+  const withCopy = live()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
+  expect(live()).toBe(withCopy)
+})
+
+test('연달아 복제하면 마지막 복제본부터 되돌린다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  const first = a.createElement(slideId, source)
+  const second = a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 40 } })
+  await settle()
+  control.postGate = undefined
+  release()
+  const [firstCopy, secondCopy] = await Promise.all([first, second])
+  await settle()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(secondCopy.id)).toBeUndefined()
+  expect(serverElement(firstCopy.id)).toBeDefined()
+})
+
+test('출처가 있는 요소를 지웠다가 되돌리면 출처도 돌아온다', async () => {
+  const { open, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sourceRefs = [{ materialId: 'material-1', revisionId: 'revision-1', sourceVersion: 1, page: 3 }]
+
+  a.edit(bodyId, { sourceRefs })
+  a.endEdit(bodyId)
+  await settle()
+  await a.deleteElement(bodyId)
+  await settle()
+  expect(await a.undo()).toBe(true)
+  await settle()
+
+  const restored = server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+    .find((element) => element.type === 'text' && element.content.text === '조사 결과 요약')!
+  expect(restored.sourceRefs).toEqual(sourceRefs)
+})
+
+test('연달아 복제해도 차례가 왔을 때의 슬라이드를 보고 자리를 정한다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  // 같은 자리에 요소가 있으면 20씩 비켜 놓는다
+  const arrange = (slide: { elements: { geometry: { x: number } }[] }) => {
+    let x = source.geometry.x
+    while (slide.elements.some((element) => element.geometry.x === x)) x += 20
+    return { ...source, geometry: { ...source.geometry, x } }
+  }
+  const first = a.createElement(slideId, arrange)
+  const second = a.createElement(slideId, arrange)
+  await settle()
+  control.postGate = undefined
+  release()
+  const [one, two] = await Promise.all([first, second])
+  expect(serverElement(one.id).geometry.x).not.toBe(serverElement(two.id).geometry.x)
+})
+
+test('차례를 기다리는 추가가 있으면 미저장으로 알리고 떠나기 전에 막는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  const first = a.createElement(slideId, source)
+  const second = a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 40 } })
+  await settle()
+  expect(a.getState().pending).toBe(true)
+  expect(a.flush()).toBe(true)
+
+  control.postGate = undefined
+  release()
+  await Promise.all([first, second])
+  await settle()
+  expect(a.getState().pending).toBe(false)
+  expect(a.flush()).toBe(false)
 })

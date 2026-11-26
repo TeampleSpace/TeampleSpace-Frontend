@@ -258,6 +258,10 @@ export function SlideStage({
                 if (element.type === 'text' && !locked(element.id)) onEditingChange(element.id)
               }}
               onKeyDown={(event) => onKeyDown(event, element)}
+              // Tab으로 옮겨 온 요소를 선택해 단축키가 포커스된 요소에 적용되게 한다
+              onFocus={() => {
+                if (element.id !== selectedId) onSelect(element.id)
+              }}
             />
           )
         })}
