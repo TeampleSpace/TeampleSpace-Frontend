@@ -12,7 +12,7 @@ import type { Job, MaterialSummary } from '../../../entities/material/model.ts'
 import { JobProgress } from '../../../entities/material/JobProgress.tsx'
 import { outlineGenerationApi, outlineResultSchema } from '../api.ts'
 import { needsApproval, requestsApi, useRequestApproved } from '../../../entities/request/api.ts'
-import type { GenerationInput } from '../api.ts'
+import type { GenerationInput, GenerationMode } from '../api.ts'
 import styles from './OutlineGeneration.module.css'
 
 type Props = {
@@ -20,6 +20,7 @@ type Props = {
   version: number
   dirty: boolean
   outlineHasItems: boolean
+  linkedSourceIds?: string[]
   onGenerated: () => Promise<boolean>
   onAccessError: (reason: unknown) => void
 }
@@ -65,7 +66,7 @@ export default function OutlineGeneration(props: Props) {
   return <GenerationControls key={props.projectId} {...props} />
 }
 
-function GenerationControls({ projectId, version, dirty, outlineHasItems, onGenerated, onAccessError }: Props) {
+function GenerationControls({ projectId, version, dirty, outlineHasItems, linkedSourceIds = [], onGenerated, onAccessError }: Props) {
   const { capabilities } = useSession()
   const enabled = capabilities?.featureFlags.outlineGeneration === true
   const [view, setView] = useState<'form' | 'job' | null>(null)
@@ -74,6 +75,10 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const [choicesLoading, setChoicesLoading] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [instructions, setInstructions] = useState('')
+  const [modeChoice, setModeChoice] = useState<GenerationMode>('extend')
+  const mode: GenerationMode = outlineHasItems ? modeChoice : 'replace'
+  // 새 자료 반영으로 창을 열면 구성에 아직 연결하지 않은 자료를 골라 둔다
+  const preselect = useRef(false)
   const [job, setJob] = useState<Job>()
   const [jobError, setJobError] = useState<unknown>()
   const [writeError, setWriteError] = useState<unknown>()
@@ -88,6 +93,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
   const refreshLock = useRef(false)
   const writeLock = useRef(false)
   const hintId = useId()
+  const modeName = useId()
 
   const active = isActive(job)
   const activeJobId = active ? job?.id : undefined
@@ -257,7 +263,11 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           }
         }
         const readyIds = new Set(ready.map((item) => item.id))
-        setSelected((ids) => ids.filter((id) => readyIds.has(id)))
+        if (preselect.current) {
+          preselect.current = false
+          const fresh = ready.filter((item) => !linkedSourceIds.includes(item.id)).map((item) => item.id)
+          setSelected((ids) => ids.length ? ids.filter((id) => readyIds.has(id)) : fresh.slice(0, maxSources))
+        } else setSelected((ids) => ids.filter((id) => readyIds.has(id)))
       }
       const shown = [...listed, ...ready.filter((item) => !listed.some((entry) => entry.id === item.id))]
       setChoices((current) => ({
@@ -296,6 +306,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
 
   function openForm() {
     setView('form')
+    preselect.current = mode === 'extend' && !selected.length
     if (!pending && !writeLock.current) void loadChoices()
   }
 
@@ -304,7 +315,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
     const instruction = instructions.trim()
     let command: Request = pending ?? {
       key: crypto.randomUUID(),
-      body: { expectedVersion: version, sourceIds: selected, ...(instruction ? { instructions: instruction } : {}) },
+      body: { expectedVersion: version, sourceIds: selected, ...(instruction ? { instructions: instruction } : {}), ...(outlineHasItems ? { mode } : {}) },
     }
     setPending(command)
     writeLock.current = true
@@ -407,12 +418,25 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           <Button variant="secondary" onClick={() => setView(null)}>닫기</Button>
           {active ? <Button onClick={() => setView('job')}>진행 보기</Button> :
             <Button disabled={!selected.length || choicesLoading || dirty || isConflictError || Boolean(retryUntil)}
-              loading={write === 'create'} onClick={() => void start()}>{pending ? '생성 요청 다시 확인' : '구성 만들기'}</Button>}
+              loading={write === 'create'} onClick={() => void start()}>{pending ? '생성 요청 다시 확인' : mode === 'extend' ? '새 자료 반영' : '구성 만들기'}</Button>}
         </>}>
         {view === 'form' && <>
+          {outlineHasItems && <fieldset className={`${styles.choices} ${styles.modes}`} disabled={freezeInput}>
+            <legend>생성 방식</legend>
+            <label>
+              <input type="radio" name={modeName} checked={mode === 'extend'} onChange={() => setModeChoice('extend')} />
+              기존 구성에 새 자료 반영
+            </label>
+            <label>
+              <input type="radio" name={modeName} checked={mode === 'replace'} onChange={() => setModeChoice('replace')} />
+              구성 새로 만들기
+            </label>
+          </fieldset>}
           {(outlineHasItems || job?.status === 'failed') && <p className={styles.note}>
             {job?.error?.code === 'JOB_INPUT_STALE' && '발표 구성이나 자료가 바뀌었어요. 최신 내용을 확인하고 다시 시도해 주세요. '}
-            {outlineHasItems && '생성이 끝나면 저장된 발표 구성이 새 결과로 바뀌어요.'}
+            {outlineHasItems && (mode === 'extend'
+              ? '지금 항목의 제목과 내용, 근거는 그대로 두고 고른 자료로 새 항목을 더하거나 근거를 연결해요.'
+              : '생성이 끝나면 저장된 발표 구성이 새 결과로 바뀌어요.')}
           </p>}
           <p className={styles.note}>선택한 자료의 제목과 일부 원문, 생성 지시가 AI 서비스에 전달돼요.</p>
           <fieldset className={styles.choices} disabled={freezeInput}>
@@ -442,7 +466,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, onGene
           {active && <JobProgress job={job} label="발표 구성 생성 진행률" />}
           {job.status === 'succeeded' && (resultWaiting || !jobError) && <p role="status">
             {resultWaiting ? '편집을 마치면 생성한 발표 구성을 불러올 수 있어요'
-              : resultApplied ? '발표 구성을 만들었어요' : '생성한 발표 구성을 불러오고 있어요'}
+              : resultApplied ? (mode === 'extend' ? '새 자료를 발표 구성에 반영했어요' : '발표 구성을 만들었어요') : '생성한 발표 구성을 불러오고 있어요'}
           </p>}
           {completedResult === 'deferred' && !dirty && !jobError && <Button variant="secondary" loading={write === 'refresh'}
             onClick={() => void refresh()}>생성 결과 다시 불러오기</Button>}
