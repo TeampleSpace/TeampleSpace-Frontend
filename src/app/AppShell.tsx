@@ -5,6 +5,8 @@ import type { Project } from '../entities/project/model.ts'
 import { Button } from '../shared/ui/Button.tsx'
 import type { CurrentProject } from '../shared/lib/shellContext.ts'
 import { RequestBanner } from '../features/requests/ui/RequestBanner.tsx'
+import { tabLabels, tabOf, useProjectViewers } from '../features/presence/viewers.ts'
+import { ProjectViewers, TabViewers } from '../features/presence/ProjectViewers.tsx'
 import styles from './AppShell.module.css'
 
 // 좁은 화면에서는 사이드바를 상단 막대의 메뉴 서랍으로 연다
@@ -46,6 +48,7 @@ export default function AppShell() {
     setMenuOpened(false)
     requestAnimationFrame(() => document.getElementById('app-menu-open')?.focus())
   }
+  const viewers = useProjectViewers(match?.params.projectId, tabOf(location.pathname))
   const account = useMatch('/account/*')
   const billingReturn = useMatch('/billing/return')
   const showingProjects = !account && !billingReturn
@@ -129,11 +132,10 @@ export default function AppShell() {
               <NavLink to={`/projects/${project.id}`} end>{project.id === current?.id ? current.name : project.name}</NavLink>
             </div>
             {isExpanded && <div className={styles.projectChildren}>
-              <NavLink to={`/projects/${project.id}`} end>프로젝트 개요</NavLink>
-              <NavLink to={`/projects/${project.id}/materials`}>자료</NavLink>
-              <NavLink to={`/projects/${project.id}/outline`}>발표 구성</NavLink>
-              <NavLink to={`/projects/${project.id}/design`}>디자인 설정</NavLink>
-              <NavLink to={`/projects/${project.id}/slides`}>슬라이드</NavLink>
+              {(['overview', 'materials', 'outline', 'design', 'slides'] as const).map((tab) =>
+                <NavLink key={tab} to={`/projects/${project.id}${tab === 'overview' ? '' : `/${tab}`}`} end={tab === 'overview'}>
+                  {tabLabels[tab]}{project.id === match?.params.projectId && <TabViewers viewers={viewers} tab={tab} />}
+                </NavLink>)}
             </div>}
           </li>
         })}</ul>
@@ -150,6 +152,7 @@ export default function AppShell() {
     </aside>
     <div className={styles.workspace} inert={menuOpen}>
       {!narrow && collapsed && <button type="button" className={styles.unfold} aria-label="메뉴 펼치기" id="app-sidebar-open" aria-controls="app-sidebar" aria-expanded="false" onClick={() => toggle(false)}><span aria-hidden="true" /></button>}
+      <ProjectViewers viewers={viewers} />
       {match?.params.projectId && <RequestBanner key={match.params.projectId} projectId={match.params.projectId} />}
       <Outlet context={{ setCurrentProject }} />
     </div>

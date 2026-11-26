@@ -1,0 +1,7 @@
+.viewers { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-8); margin: 0; padding: 0; list-style: none; font: var(--text-meta); color: var(--color-ink); }
+.viewers li { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px 2px 2px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); }
+.tab { color: var(--color-secondary); }
+.avatar { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font: var(--text-meta-strong); font-size: 12px; line-height: 1; }
+.dots { display: inline-flex; margin-left: auto; }
+.dots .avatar { width: 20px; height: 20px; font-size: 11px; border: 2px solid var(--color-surface); }
+.dots .avatar + .avatar { margin-left: -6px; }
