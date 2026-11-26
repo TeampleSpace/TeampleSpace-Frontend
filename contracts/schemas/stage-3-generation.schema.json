@@ -28,7 +28,8 @@
       "properties": {
         "expectedVersion": { "$ref": "api.schema.json#/$defs/Version" },
         "sourceIds": { "$ref": "#/$defs/MaterialSelection" },
-        "instructions": { "type": "string", "maxLength": 1000 }
+        "instructions": { "type": "string", "maxLength": 1000 },
+        "mode": { "enum": ["replace", "extend"] }
       }
     },
     "OutlineJobInput": {
@@ -46,7 +47,8 @@
         "instructions": { "type": "string", "maxLength": 1000 },
         "model": { "type": "string", "minLength": 1 },
         "schemaVersion": { "const": 1 },
-        "promptVersion": { "const": "outline-v1" }
+        "promptVersion": { "const": "outline-v1" },
+        "mode": { "enum": ["replace", "extend"] }
       }
     },
     "OutlineJobResult": {
@@ -99,7 +101,7 @@
       "properties": {
         "snapshot": { "$ref": "#/$defs/PresentationGenerationSnapshot" },
         "model": { "type": "string", "minLength": 1 },
-        "promptVersion": { "const": "presentation-v4" }
+        "promptVersion": { "const": "presentation-v5" }
       }
     },
     "PresentationJobResult": {

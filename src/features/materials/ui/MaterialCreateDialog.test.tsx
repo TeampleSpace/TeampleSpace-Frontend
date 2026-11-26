@@ -226,7 +226,7 @@ test('링크는 실패해도 입력을 남기고 결과를 모르는 재시도�
   expect(url.value).toBe('https://example.com/campus-reuse')
   expect((dialog().getByLabelText('팀에 남길 설명 · 선택') as HTMLInputElement).value).toBe('운영 사례 확인')
   submit()
-  expect(await screen.findByRole('link', { name: 'https://example.com/campus-reuse' })).toBeTruthy()
+  expect((await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기/ })).getAttribute('href')).toBe('https://example.com/campus-reuse')
   expect(screen.getByText('운영 사례 확인')).toBeTruthy()
   const sent = calls('/materials/link')
   expect(sent).toHaveLength(2)

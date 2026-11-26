@@ -658,5 +658,10 @@
     "example": "invalid/element-create-request-image.json",
     "schema": "api.schema.json#/$defs/ElementCreateRequest",
     "valid": false
+  },
+  {
+    "example": "material-research-result.json",
+    "schema": "stage-2.schema.json#/$defs/MaterialResearchResult",
+    "valid": true
   }
 ]

@@ -10,7 +10,9 @@ export const outlineResultSchema = z.object({
   outlineVersion: z.number().int().positive(),
 })
 
-export type GenerationInput = { expectedVersion: number; sourceIds: string[]; instructions?: string }
+// extend는 기존 항목을 그대로 두고 새 자료로 항목과 근거를 더한다
+export type GenerationMode = 'replace' | 'extend'
+export type GenerationInput = { expectedVersion: number; sourceIds: string[]; instructions?: string; mode?: GenerationMode }
 
 export const outlineGenerationApi = {
   create: (projectId: string, body: GenerationInput, key: string) =>

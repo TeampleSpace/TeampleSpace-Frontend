@@ -52,7 +52,7 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
-test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, AI 요약 영역을 보여 준다', async () => {
+test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, AI 분석 정리 영역을 보여 준다', async () => {
   mock.seed('file', '교내 일회용품 조사.pdf', { text: '반납 장소까지의 거리가 영향을 주었다.', pageCount: 6 })
   mock.seed('link', '감축 사례', { createdBy: member, description: '함께 볼 사례' })
   mock.seed('memo', '다회용컵 인터뷰', { createdBy: member, markdown: '반납함이 멀다' })
@@ -67,11 +67,11 @@ test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, AI �
   await detailTitle('교내 일회용품 조사.pdf')
   expect(screen.getByText(/PDF · 6쪽 · 팀원 1 님이 추가/)).toBeTruthy()
   expect(screen.getByText('분석 완료')).toBeTruthy()
-  expect(screen.getByRole('heading', { name: 'AI 요약' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'AI 분석 정리' })).toBeTruthy()
   expect(screen.getByRole('button', { name: '원문 보기' })).toBeTruthy()
   expect(screen.queryByText('반납 장소까지의 거리가 영향을 주었다.')).toBeNull()
   fireEvent.click(await row('감축 사례'))
-  expect(await screen.findByRole('link', { name: 'https://example.com/reuse-cup' })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기/ })).toBeTruthy()
   expect(screen.getByText('함께 볼 사례')).toBeTruthy()
   // 유형 필터는 주소에 남는다
   fireEvent.click(filters.getByRole('link', { name: '메모 1' }))
@@ -450,12 +450,12 @@ test.each([
 
   const router = mount(`?material=${id}`)
   await detailTitle('요약 중인 회의록')
-  expect(await screen.findByText('AI 요약 중')).toBeTruthy()
+  expect(await screen.findByText('AI가 자료를 분석하는 중')).toBeTruthy()
   mock.get(id)!.deleted = true
   releasePoll()
   expect(await screen.findByText(message)).toBeTruthy()
   expect(screen.queryByRole('heading', { level: 2, name: '요약 중인 회의록' })).toBeNull()
-  expect(screen.queryByText('AI 요약 중')).toBeNull()
+  expect(screen.queryByText('AI가 자료를 분석하는 중')).toBeNull()
   expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
   expect(screen.queryByRole('button', { name: '자료 관리' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: '자료 목록 보기' }))

@@ -279,7 +279,7 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
           onChange={(event) => { setUrl(event.target.value); setFieldErrors({}) }} onBlur={remember} />
         <Field label="자료 이름 · 선택" placeholder="비워두면 문서 제목으로 저장해요" maxLength={limits.title} value={linkTitle} disabled={busy}
           error={fieldErrors.title} onChange={(event) => setLinkTitle(event.target.value)} onBlur={remember} />
-        <Field label="팀에 남길 설명 · 선택" placeholder="이 자료에서 함께 확인할 내용을 적어 주세요." maxLength={limits.description} value={description} disabled={busy}
+        <Field label="팀에 남길 설명 · 선택" placeholder="이 링크가 무엇이고 팀에 왜 필요한지 적어 주세요." maxLength={limits.description} value={description} disabled={busy}
           error={fieldErrors.description} onChange={(event) => setDescription(event.target.value)} onBlur={remember} />
       </div>}
 

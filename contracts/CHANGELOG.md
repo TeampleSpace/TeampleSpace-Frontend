@@ -5,6 +5,34 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-26 AI 자료 조사 추가
+
+- 조사 작업 등록 `POST /v1/projects/{projectId}/research-jobs`와 `MaterialResearchJobRequest`, `MaterialResearchResult` 형식을 추가
+- 작업 종류는 `material_research`, 대상은 `project`다. 결과는 작업의 `resultRef`에 담기고 자료로 저장하지 않는다
+- `featureFlags.materialResearch`를 추가
+- 작업 실패 코드 `JOB_RESEARCH_PROVIDER_UNAVAILABLE`, `JOB_RESEARCH_INVALID_RESULT`, `JOB_RESEARCH_ACCESS_REVOKED`를 추가
+
+## 2026-11-26 발표 생성 문구 규칙 보완
+
+- 발표 생성 고정 입력의 `promptVersion`을 `presentation-v5`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
+- 생성한 글에서 이모지와 장식 기호를 지우고 공백을 정리한 뒤 길이를 검사한다
+
+## 2026-11-26 기존 구성에 새 자료 반영
+
+- `OutlineJobRequest`와 `OutlineJobInput`에 선택 값 `mode`(`replace`, `extend`)를 추가했다. 값이 없으면 지금처럼 구성 전체를 바꾼다
+- `extend`는 기존 항목을 그대로 두고 새 항목과 근거만 더한다. 저장된 구성이 없으면 422다
+
+## 2026-11-26 자료 AI 요약을 분석 정리로 확장
+
+- 자료 상세의 `currentRevision`에 `analysis`를 추가했다. 개요 `overview`, 주요 논점과 근거 `keyPoints`, 발표 포인트 `presentationPoints`를 담고 분석 전에는 null이다
+- `summary`에는 분석의 개요를 함께 넣는다. 이전에 만든 요약만 있고 `analysis`가 null인 개정은 분석을 다시 요청할 수 있다
+- 요약 작업의 고정 입력 `promptVersion`을 `material-analysis-v1`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
+
+## 2026-11-26 발표 생성 결과 검증 실패의 재시도
+
+- `JOB_PRESENTATION_INVALID_RESULT`의 `retryable`을 true로 바꿨다. 결과가 맞지 않으면 남은 시도 횟수 안에서 다시 생성하고, 시도를 다 쓴 뒤에도 사용자가 다시 요청할 수 있다
+- 핵심 문장과 수치가 길이를 넘으면 작업을 실패시키지 않고 빈 값으로 둔다
+
 ## 2026-11-26 구성 항목마다 여러 장의 본문 생성
 
 - 발표 생성 고정 입력의 `promptVersion`을 `presentation-v4`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
