@@ -45,6 +45,8 @@ export function createMaterialsMock(options: {
   const materials = new Map<string, Stored>()
   const uploads = new Map<string, Upload>()
   const files = new Map<string, Uint8Array>()
+  // 메모 공유 편집의 변경 조각. 서버처럼 합치지 않고 순번대로 쌓는다
+  const memoLogs = new Map<string, { seq: number; data: string }[]>()
   const jobs = new Map<string, StoredJob>()
   const results = new Map<string, { body: string; status: number; response: unknown }>()
   // 나갔거나 제거된 팀원
@@ -234,6 +236,28 @@ export function createMaterialsMock(options: {
         }
       }
       return json(200, publicJob(job))
+    }
+    // 모킹 서버는 이벤트 구독을 주지 않는다. 화면은 거절로 보고 다시 연결하지 않는다
+    if (/^\/v1\/projects\/[^/]+\/events$/.test(path)) return fail('ACCESS_DENIED')
+    const memoMatch = path.match(/^\/v1\/materials\/([^/]+)\/memo-updates(\/compaction)?$/)
+    if (memoMatch) {
+      const target = materials.get(memoMatch[1])
+      if (!target || target.deleted || target.kind !== 'memo') return fail('NOT_FOUND')
+      const log = memoLogs.get(target.id) ?? []
+      memoLogs.set(target.id, log)
+      if (method === 'GET') {
+        const after = Number(url.searchParams.get('after') ?? 0)
+        return json(200, { updates: log.filter((update) => update.seq > after), hasMore: false })
+      }
+      if (memoMatch[2]) {
+        const upTo = Number(body.upTo)
+        memoLogs.set(target.id, [{ seq: upTo, data: String(body.data) }, ...log.filter((update) => update.seq > upTo)])
+        return json(204, null)
+      }
+      if (body.initial === true && log.length > 0) return fail('MATERIAL_STATE_CONFLICT')
+      const seq = (log.at(-1)?.seq ?? 0) + 1
+      log.push({ seq, data: String(body.data) })
+      return json(201, { seq })
     }
     const commentMatch = path.match(/^\/v1\/materials\/([^/]+)\/comments(?:\/([^/]+))?$/)
     if (commentMatch) {
@@ -509,6 +533,9 @@ export function createMaterialsMock(options: {
       addRevision(item, '0193a000-0000-7000-8000-0000000000d2', markdown); item.version += 1
     },
     removeMember(userId: string) { removed.add(userId) },
+    // 메모의 공유 편집 조각
+    memoLog: (materialId: string) => memoLogs.get(materialId) ?? [],
+    setMemoLog(materialId: string, updates: { seq: number; data: string }[]) { memoLogs.set(materialId, updates) },
     get: (materialId: string) => materials.get(materialId),
     count: () => [...materials.values()].filter((item) => !item.deleted).length,
     jobs: () => [...jobs.values()],

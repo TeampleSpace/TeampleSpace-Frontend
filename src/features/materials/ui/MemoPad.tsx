@@ -1,231 +1,146 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import * as Y from 'yjs'
+import { Editor } from '@tiptap/react'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { materialsApi } from '../../../entities/material/api.ts'
-import { isUncertain } from '../../../entities/material/errors.ts'
 import type { Material } from '../../../entities/material/model.ts'
+import { remote, startMemoSync } from '../memoSync.ts'
+import type { SyncState } from '../memoSync.ts'
 import { MarkdownEditor } from './MarkdownEditor.tsx'
+import { memoExtensions } from '../memoExtensions.ts'
 import styles from './Materials.module.css'
 
-// 입력을 멈추고 이만큼 지나면 저장한다
+// 입력을 멈추고 이만큼 지나면 본문을 자료 개정으로 저장한다
 export const memoSaveDelayMs = 1200
+const saveRetryMs = 5000
 
-type Status = 'saved' | 'waiting' | 'saving' | 'failed' | 'conflict'
-const statusLabels: Record<Status, string> = {
-  saved: '저장됨', waiting: '저장 대기', saving: '저장 중', failed: '저장하지 못했어요', conflict: '확인이 필요해요',
+// 아직 공유 편집을 시작하지 않은 메모를 저장된 본문으로 처음 채운 조각
+async function seedFrom(material: Material) {
+  const source = await materialsApi.source(material.id, material.currentRevision?.id)
+  const doc = new Y.Doc()
+  const editor = new Editor({ extensions: memoExtensions(doc) })
+  editor.commands.setContent(source.markdown ?? '', { contentType: 'markdown' })
+  editor.destroy()
+  return Y.encodeStateAsUpdate(doc)
 }
 
-// 자료를 먼저 읽고 그 자료의 현재 개정으로 원문을 읽어 버전과 본문이 같은 시점을 가리키게 한다
-async function latestOf(id: string, signal?: AbortSignal) {
-  const current = await materialsApi.get(id, signal)
-  const source = await materialsApi.source(id, current.currentRevision?.id, signal)
-  return [current, source] as const
-}
-
-// 메모 자료의 본문을 바로 보여 주고 그 자리에서 고친다. 저장할 때마다 새 원문 개정이 생긴다
+// 메모 자료를 여러 명이 함께 고친다. 입력은 바로 팀원에게 가고, 멈추면 본문을 새 원문 개정으로 저장한다
 export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   material: Material; onSaved: (next: Material) => void
   onDirtyChange: (dirty: boolean) => void; onError: (reason: unknown) => void
 }) {
   const fieldId = useId()
-  const [draft, setDraft] = useState<string>()
-  const [saved, setSaved] = useState('')
-  const [status, setStatus] = useState<Status>('saved')
-  const [error, setError] = useState<unknown>()
-  const [loadError, setLoadError] = useState<unknown>()
-  const [revision, setRevision] = useState(0)
-  // 다른 사람이 먼저 바꾼 최신 본문
-  const [latest, setLatest] = useState<{ material: Material; markdown: string }>()
-  // 타이머와 응답에서 바로 쓰는 값은 ref로 둔다
-  const savedRef = useRef('')
-  // 지금 편집기에 보이는 본문의 개정
-  const shown = useRef<string>(undefined)
-  // 다른 팀원의 저장으로 다시 읽는 중에 입력이 생기면 응답으로 덮어쓰지 않는다
-  const reloading = useRef(false)
-  const editedSince = useRef(false)
-  // 이미 반응한 부모 자료의 개정. 본문 조회가 부모보다 최신 개정을 받았거나 읽지 못했어도 같은 개정으로 반복해 읽지 않는다
-  const handled = useRef<string>(undefined)
-  const external = material.currentRevision?.id
-  const externalRef = useRef(external)
-  useEffect(() => { externalRef.current = external })
-  // 본문 조회가 끝날 때마다 늘려 그 사이 바뀐 개정을 다시 확인한다
-  const [settled, setSettled] = useState(0)
+  const [attempt, setAttempt] = useState(0)
+  // 다시 불러오면 이전 시도의 문서와 상태는 쓰지 않는다
+  const [opened, setOpened] = useState<{ attempt: number; doc?: Y.Doc; sync: SyncState }>()
+  const doc = opened?.attempt === attempt ? opened.doc : undefined
+  const sync = opened?.attempt === attempt ? opened.sync : { ready: false, unsent: false, offline: false }
+  const retry = useRef<() => void>(undefined)
+  // 본문 저장. 같은 자료의 다른 경로 수정으로 버전이 바뀌면 최신 버전으로 다시 보낸다
+  const [saving, setSaving] = useState<'idle' | 'waiting' | 'saving' | 'failed'>('idle')
+  const [saveError, setSaveError] = useState<unknown>()
   const version = useRef(material.version)
-  const composing = useRef(false)
-  // 편집기에 보이는 최신 본문. 한글 조합이 끝난 값을 저장할 때 읽는다
-  const typed = useRef('')
-  // 충돌을 고르기 전에는 저장하지 않는다
-  const blocked = useRef(false)
-  const saving = useRef(false)
+  const typed = useRef<string>(undefined)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const busy = useRef(false)
+  const onSavedRef = useRef(onSaved)
+  useEffect(() => { onSavedRef.current = onSaved })
 
+  const latest = useRef(material)
+  useEffect(() => { latest.current = material })
+  const { id, projectId } = material
   useEffect(() => {
-    const controller = new AbortController()
-    // 받은 본문은 조회를 시작할 때의 개정에 고정되니 처리 기준도 이때의 부모 개정으로 둔다
-    const parentAt = externalRef.current
-    void latestOf(material.id, controller.signal)
-      .then(([current, source]) => {
-        if (controller.signal.aborted) return
-        const wasReloading = reloading.current
-        const skip = wasReloading && editedSince.current
-        reloading.current = false
-        setSettled((value) => value + 1)
-        // 입력이 끝나면 다시 읽을 수 있게 둔다
-        if (skip) { handled.current = undefined; return }
-        if (!wasReloading) handled.current = parentAt
-        const text = source.markdown ?? ''
-        version.current = current.version
-        shown.current = current.currentRevision?.id
-        savedRef.current = text
-        setSaved(text)
-        setDraft(text)
-        typed.current = text
-        setLoadError(undefined)
-      })
-      .catch((reason) => {
-        if (controller.signal.aborted) return
-        reloading.current = false
-        setLoadError(reason)
-        onError(reason)
-        setSettled((value) => value + 1)
-      })
-    return () => controller.abort()
-  }, [material.id, revision, onError])
+    const next = new Y.Doc()
+    const session = startMemoSync({
+      projectId, materialId: id, doc: next,
+      seed: () => seedFrom(latest.current),
+      onState: (state) => setOpened({ attempt, doc: state.ready ? next : undefined, sync: state }),
+    })
+    retry.current = session.retry
+    return () => { session.stop(); next.destroy() }
+  }, [id, projectId, attempt])
   useEffect(() => () => clearTimeout(timer.current), [])
-
-  // 보내는 중인 저장이 끝날 때까지도 저장하지 않은 것으로 본다
-  const [sending, setSending] = useState(false)
-  const dirty = draft !== undefined && (draft !== saved || sending)
-  useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
-
-  // 입력 중이 아니면 다른 사람이 저장한 새 개정의 본문을 다시 읽는다. 표시 개정은 읽기에 성공한 뒤에 바꾼다
+  // 내 입력으로 공유 문서가 바뀌었을 때만 본문을 저장한다. 팀원의 변경이나 처음 그릴 때의 변경은 그 사람이 저장한다
+  const edited = useRef(false)
   useEffect(() => {
-    if (!external || shown.current === undefined || external === shown.current || external === handled.current) return
-    if (dirty || blocked.current || saving.current || reloading.current) return
-    reload()
-  }, [external, dirty, settled])
+    if (!doc) return
+    const mark = (_update: Uint8Array, origin: unknown) => { if (origin !== remote) edited.current = true }
+    doc.on('update', mark)
+    return () => doc.off('update', mark)
+  }, [doc])
 
-  function reload() {
-    handled.current = externalRef.current
-    reloading.current = true
-    editedSince.current = false
-    queueMicrotask(() => setRevision((value) => value + 1))
-  }
-  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
-
-  function done(next: Material, text: string) {
-    version.current = next.version
-    shown.current = next.currentRevision?.id
-    savedRef.current = text
-    setSaved(text)
-    onSaved(next)
-  }
-
-  // 한 번에 하나만 보낸다. 보내는 동안 바뀐 입력은 끝난 뒤 이어서 보낸다
   async function save() {
     clearTimeout(timer.current)
-    if (saving.current || composing.current || blocked.current) return
+    if (busy.current || typed.current === undefined) return
     const value = typed.current
-    if (value === savedRef.current) { setStatus('saved'); return }
-    saving.current = true
-    setSending(true)
-    setStatus('saving')
-    setError(undefined)
+    busy.current = true
+    setSaving('saving')
+    setSaveError(undefined)
     try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      for (let tries = 0; ; tries += 1) {
         try {
-          done(await materialsApi.update(material.id, version.current, { markdown: value }), value)
+          const next = await materialsApi.update(material.id, version.current, { markdown: value })
+          version.current = next.version
+          onSavedRef.current(next)
           break
         } catch (reason) {
-          const conflicted = reason instanceof ApiError && reason.code === 'VERSION_CONFLICT'
-          if (!conflicted && !isUncertain(reason)) throw reason
-          // 최신 본문과 비교한다. 같으면 저장된 것이고, 본문이 그대로면 이름만 바뀐 것이라 다시 보낸다
-          const [current, source] = await latestOf(material.id)
-          const text = source.markdown ?? ''
-          if (text === value) { done(current, value); break }
-          if (text === savedRef.current && attempt === 0) { version.current = current.version; continue }
-          if (!conflicted) throw reason
-          blocked.current = true
-          setLatest({ material: current, markdown: text })
-          setStatus('conflict')
-          return
+          if (!(reason instanceof ApiError && reason.code === 'VERSION_CONFLICT') || tries >= 2) throw reason
+          version.current = (await materialsApi.get(material.id)).version
         }
       }
-      if (typed.current !== savedRef.current) {
-        setStatus('waiting')
-        timer.current = setTimeout(() => void save(), memoSaveDelayMs)
-      } else setStatus('saved')
+      if (typed.current !== value) { setSaving('waiting'); timer.current = setTimeout(() => void save(), memoSaveDelayMs) }
+      else { typed.current = undefined; setSaving('idle') }
     } catch (reason) {
-      setError(reason)
-      setStatus('failed')
+      // 연결 문제면 입력은 이미 팀원에게 갔으니 잠시 뒤 본문 저장만 다시 한다
+      if (!(reason instanceof ApiError) || reason.retryable || reason.status >= 500) {
+        setSaving('waiting')
+        timer.current = setTimeout(() => void save(), saveRetryMs)
+        return
+      }
+      setSaveError(reason)
+      setSaving('failed')
       onError(reason)
     } finally {
-      saving.current = false
-      setSending(false)
+      busy.current = false
     }
   }
 
   function change(value: string) {
+    if (!edited.current) return
+    edited.current = false
     typed.current = value
-    editedSince.current = true
-    setDraft(value)
-    if (blocked.current) return
-    setStatus('waiting')
+    if (busy.current) return
+    setSaving('waiting')
     clearTimeout(timer.current)
-    if (!composing.current) timer.current = setTimeout(() => void save(), memoSaveDelayMs)
+    timer.current = setTimeout(() => void save(), memoSaveDelayMs)
   }
 
-  function keepMine() {
-    if (!latest) return
-    version.current = latest.material.version
-    savedRef.current = latest.markdown
-    setSaved(latest.markdown)
-    onSaved(latest.material)
-    blocked.current = false
-    setLatest(undefined)
-    setStatus('waiting')
-    void save()
-  }
+  const dirty = sync.unsent || saving !== 'idle'
+  useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
-  function takeLatest() {
-    if (!latest) return
-    done(latest.material, latest.markdown)
-    blocked.current = false
-    typed.current = latest.markdown
-    setDraft(latest.markdown)
-    setLatest(undefined)
-    setStatus('saved')
-  }
-
-  if (loadError && draft === undefined) return <section className={styles.memoPad} aria-label="메모 본문">
-    <RequestError error={loadError} action={<Button variant="text" onClick={() => setRevision((value) => value + 1)}>다시 불러오기</Button>} />
+  if (!doc && sync.error) return <section className={styles.memoPad} aria-label="메모 본문">
+    <RequestError error={sync.error} action={<Button variant="text" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</Button>} />
   </section>
-  if (draft === undefined) return <section className={styles.memoPad} aria-label="메모 본문">
+  if (!doc) return <section className={styles.memoPad} aria-label="메모 본문">
     <p className={styles.noteAuthor} role="status">메모를 불러오고 있어요</p>
   </section>
 
+  const status = sync.offline ? '연결을 기다리는 중' : sync.unsent ? '보내는 중'
+    : saving === 'failed' ? '저장하지 못했어요' : saving === 'idle' ? '저장됨' : saving === 'saving' ? '저장 중' : '저장 대기'
   return <section className={styles.memoPad} aria-label="메모 본문">
     <div className={styles.sectionHeader}>
       <h3 className={styles.sectionTitle}>메모</h3>
-      <span role="status">{statusLabels[status]}</span>
+      <span role="status">{status}</span>
     </div>
-    <div onCompositionStart={() => { composing.current = true }}
-      onCompositionEnd={() => { composing.current = false; change(typed.current) }}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) void save() }}>
-      <MarkdownEditor id={fieldId} value={draft} disabled={status === 'conflict'} onChange={change} />
+    <p className={styles.noteAuthor}>팀원과 함께 고치는 메모예요. 입력하면 바로 함께 보여요</p>
+    <div onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && saving === 'waiting') void save() }}>
+      <MarkdownEditor id={fieldId} value="" doc={doc} onChange={change} />
     </div>
-    {latest && <div className={styles.conflict} role="alert">
-      <p>다른 팀원이 먼저 메모를 고쳤어요. 내 입력은 그대로 있어요</p>
-      <p className={styles.plain}>{latest.markdown || '내용 없음'}</p>
-      <div className={styles.actions}>
-        <Button onClick={keepMine}>내 내용으로 저장</Button>
-        <Button variant="secondary" onClick={takeLatest}>최신 내용으로 바꾸기</Button>
-      </div>
-    </div>}
-    {/* 다른 팀원이 고친 본문을 읽지 못했다. 고치는 중이면 저장할 때 충돌로 알린다 */}
-    <RequestError error={loadError} action={dirty ? undefined : <Button variant="secondary" onClick={() => { setLoadError(undefined); reload() }}>다시 불러오기</Button>} />
-    <RequestError error={error} action={status === 'failed'
+    {sync.offline && <RequestError error={sync.error} action={<Button variant="secondary" onClick={() => retry.current?.()}>다시 보내기</Button>} />}
+    <RequestError error={saveError} action={saving === 'failed'
       ? <Button variant="secondary" onClick={() => void save()}>다시 저장</Button> : undefined} />
   </section>
 }
