@@ -149,6 +149,19 @@ test('여러 PDF는 차례로 올리고 실패한 파일만 이유와 함께 남
   expect(calls('/materials/file')).toHaveLength(2)
 })
 
+test('서버가 PDF가 아니라고 거절한 파일은 다시 올리지 않는다', async () => {
+  mount()
+  await openAdd()
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files: [pdf('정상.pdf'), pdf('가짜.pdf', 'plain text')] } })
+  submit()
+  const list = within(await dialog().findByRole('list', { name: '고른 파일' }))
+  expect(await list.findByText(/PDF 형식이 아니에요/)).toBeTruthy()
+  expect(list.getByText('추가됨')).toBeTruthy()
+  await waitFor(() => expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', true))
+  expect(dialog().queryByText(/실패한 파일만 올려요/)).toBeNull()
+  expect(mock.count()).toBe(2)
+})
+
 test('파일 선택 창에서 여러 파일을 고를 수 있다', async () => {
   mount()
   await openAdd()

@@ -171,7 +171,10 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
           } catch (reason) {
             if (signal.aborted || isAccessLoss(reason)) throw reason
             failed = true
-            update(item.file, { failure: reason })
+            // PDF가 아니라고 확인된 파일은 다시 올려도 같으므로 재시도에서 뺀다
+            if (reason instanceof ApiError && reason.code === 'UPLOAD_REJECTED' && reason.fieldErrors[0]?.code === 'NOT_PDF') {
+              update(item.file, { error: uploadErrorMessage(reason, rule) })
+            } else update(item.file, { failure: reason })
             onError(reason)
           }
         }
