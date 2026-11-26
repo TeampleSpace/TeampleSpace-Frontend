@@ -1140,3 +1140,46 @@ test('복제 응답을 기다리는 사이 한 편집을 먼저 되돌린다', a
   expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
   expect(live()).toBe(withCopy)
 })
+
+test('연달아 복제하면 마지막 복제본부터 되돌린다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const source = serverElement()
+  const first = a.createElement(slideId, source)
+  const second = a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 40 } })
+  await settle()
+  control.postGate = undefined
+  release()
+  const [firstCopy, secondCopy] = await Promise.all([first, second])
+  await settle()
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(secondCopy.id)).toBeUndefined()
+  expect(serverElement(firstCopy.id)).toBeDefined()
+})
+
+test('출처가 있는 요소를 지웠다가 되돌리면 출처도 돌아온다', async () => {
+  const { open, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const sourceRefs = [{ materialId: 'material-1', revisionId: 'revision-1', sourceVersion: 1, page: 3 }]
+
+  a.edit(bodyId, { sourceRefs })
+  a.endEdit(bodyId)
+  await settle()
+  await a.deleteElement(bodyId)
+  await settle()
+  expect(await a.undo()).toBe(true)
+  await settle()
+
+  const restored = server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+    .find((element) => element.type === 'text' && element.content.text === '조사 결과 요약')!
+  expect(restored.sourceRefs).toEqual(sourceRefs)
+})
