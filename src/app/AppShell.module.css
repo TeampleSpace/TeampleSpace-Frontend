@@ -37,13 +37,6 @@
 .navigation a:active, .account:active, .managementLinks a:active, .projectChildren a:active, .projectRow a:active, .projectRow button:active { background: var(--color-muted); }
 .sidebar > * { flex-shrink: 0; }
 .workspace { flex: 1; min-width: 0; padding: var(--space-page); display: flex; flex-direction: column; gap: var(--space-32); }
-/* 화면을 열면 본문 묶음을 위에서부터 차례로 올린다 */
-.workspace > * > * { animation: teample-rise var(--motion-slow) var(--motion-ease-out) backwards; }
-.workspace > * > :nth-child(2) { animation-delay: 50ms; }
-.workspace > * > :nth-child(3) { animation-delay: 100ms; }
-.workspace > * > :nth-child(4) { animation-delay: 150ms; }
-.workspace > * > :nth-child(n+5) { animation-delay: 200ms; }
-.shell[data-editor] .workspace > * > * { animation: none; }
 .navigation a, .account {
   transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out;
 }
