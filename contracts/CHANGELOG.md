@@ -5,6 +5,11 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-26 구성 항목마다 여러 장의 본문 생성
+
+- 발표 생성 고정 입력의 `promptVersion`을 `presentation-v4`로 바꿨다. 이전 값으로 등록된 작업은 실행할 때 `JOB_INPUT_STALE`로 끝난다
+- 생성한 발표의 본문 슬라이드 수가 구성 항목 수보다 많을 수 있다. 한 항목의 본문이 여러 장이면 같은 항목 번호와 출처를 쓰고, 목차는 구성 항목 수만큼 나온다
+
 ## 2026-11-25 템플릿 미리보기 슬라이드 조회 추가
 
 - `GET /v1/templates/{templateId}/preview` 경로와 `TemplatePreview`, `TemplatePreviewSlide`, `TemplatePreviewElement` 형식을 추가
