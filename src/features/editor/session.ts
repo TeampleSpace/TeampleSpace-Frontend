@@ -338,7 +338,11 @@ export function createEditorSession(options: {
         replaying = true
         const applied = edit(op.id, forward ? op.after : op.before)
         replaying = false
-        if (!applied) return false
+        if (!applied) {
+          // 충돌이나 연결 끊김으로 지금 적용하지 못했다. 해결한 뒤 다시 되돌릴 수 있게 남긴다
+          from.push(op)
+          return false
+        }
         endEdit(op.id)
       } else {
         try {
@@ -847,8 +851,15 @@ export function createEditorSession(options: {
     if (event.type === 'element.updated') {
       const result = elementChangeSchema.safeParse(event.payload)
       if (result.success && !find(result.data.resource.id)) {
-        // 내가 모르는 요소다. 문서 구성이 달라졌으므로 스냅샷으로 다시 맞춘다
-        resync()
+        // 다른 팀원이 추가한 요소다. 슬라이드를 알면 바로 더하고 모르면 스냅샷으로 다시 맞춘다
+        const { resource } = result.data
+        if (doc?.slides.some((slide) => slide.id === resource.slideId)) {
+          addedAt.set(resource.id, (addSeq += 1))
+          insert(resource)
+          bumpVersions(resource.id, result.data)
+        } else {
+          resync()
+        }
       } else if (result.success) {
         const { resource } = result.data
         // 같은 요소의 오래된 버전이나 이미 반영한 내용은 무시한다
