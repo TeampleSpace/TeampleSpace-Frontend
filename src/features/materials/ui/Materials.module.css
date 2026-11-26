@@ -166,3 +166,11 @@
 .pdfPage canvas { display: block; width: 100%; height: auto; }
 .fullView .pdfPage { max-height: none; }
 .returnNote { flex: 1; min-width: 0; color: var(--color-secondary); }
+
+.fileList { display: flex; flex-direction: column; gap: var(--space-8); list-style: none; margin: 0; padding: 0; font: var(--text-meta); }
+.fileList li { display: flex; justify-content: space-between; gap: var(--space-16); color: var(--color-secondary); }
+.fileList li > span:first-child { min-width: 0; overflow-wrap: anywhere; color: var(--color-ink); }
+.fileList li > span:last-child { flex-shrink: 0; max-width: 60%; text-align: right; }
+.fileList li[data-state='added'] > span:last-child { color: var(--color-primary); }
+.fileList li[data-state='failed'] > span:last-child { color: var(--color-danger); }
+.fileList li[data-state='current'] > span:last-child { color: var(--color-primary); font-weight: 600; }

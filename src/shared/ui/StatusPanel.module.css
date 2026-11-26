@@ -50,6 +50,7 @@
 .meta {
   font: var(--text-meta);
   color: var(--color-secondary);
+  overflow-wrap: anywhere;
 }
 
 .meta:not([hidden]) {
@@ -65,7 +66,9 @@
   margin-top: var(--space-8);
 }
 
+/* 내용 너비로 줄이면 일부 브라우저에서 버튼 글자가 단어마다 줄바꿈되어 패널 너비를 쓴다 */
 .error .actions {
+  align-self: stretch;
   justify-content: flex-start;
   gap: var(--space-8);
   margin-top: 0;
