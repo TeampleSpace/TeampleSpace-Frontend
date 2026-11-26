@@ -90,7 +90,7 @@ test('보내지 못한 입력은 남겨 두었다가 다시 보낸다', async ()
   const request = vi.mocked(api.request).getMockImplementation()!
   vi.mocked(api.request).mockRejectedValueOnce(new TypeError('연결 끊김'))
   only.doc.getText('body').insert(0, '끊긴 동안 ')
-  await vi.waitFor(() => expect(vi.mocked(api.request)).toHaveBeenCalledTimes(3))
+  await vi.waitFor(() => expect(vi.mocked(api.request)).toHaveBeenCalledTimes(4))
   expect(log).toHaveLength(1)
   vi.mocked(api.request).mockImplementation(request)
   only.sync.retry()
@@ -101,3 +101,22 @@ test('보내지 못한 입력은 남겨 두었다가 다시 보낸다', async ()
   expect(toBase64(new Uint8Array([1, 2, 3]))).toBe('AQID')
 })
 
+
+test('초기 내용을 넣는 응답을 기다리는 동안 들어온 팀원의 조각도 준비가 끝나면 읽는다', async () => {
+  const request = vi.mocked(api.request).getMockImplementation()!
+  // 초기 조각을 저장한 뒤 응답이 오기 전에 팀원의 조각이 하나 더 쌓이고 그 신호는 준비 전이라 버려진다
+  vi.mocked(api.request).mockImplementation(async (path, schema, options) => {
+    const result = await request(path, schema, options)
+    const body = (options as { body?: { initial?: boolean } } | undefined)?.body
+    if (body?.initial) {
+      const teammate = new Y.Doc()
+      Y.applyUpdate(teammate, Uint8Array.from(atob(log[0].data), (char) => char.charCodeAt(0)))
+      teammate.getText('body').insert(0, '팀원 ')
+      log.push({ seq: 2, data: toBase64(Y.encodeStateAsUpdate(teammate)) })
+    }
+    return result
+  })
+  const only = client('본문')
+  await vi.waitFor(() => expect(only.text()).toBe('팀원 본문'))
+  only.sync.stop()
+})

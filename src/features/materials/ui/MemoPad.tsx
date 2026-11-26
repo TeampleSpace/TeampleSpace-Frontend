@@ -71,17 +71,21 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     return () => doc.off('update', mark)
   }, [doc])
 
+  // 저장할 내 입력이 남았는지. 팀원의 변경만 있으면 그 사람이 저장한다
+  const pending = useRef(false)
+
+  // 보낼 때마다 지금 공유 문서의 본문을 읽어 팀원의 입력까지 함께 저장한다
   async function save() {
     clearTimeout(timer.current)
-    if (busy.current || typed.current === undefined) return
-    const value = typed.current
+    if (busy.current || !pending.current || typed.current === undefined) return
+    pending.current = false
     busy.current = true
     setSaving('saving')
     setSaveError(undefined)
     try {
       for (let tries = 0; ; tries += 1) {
         try {
-          const next = await materialsApi.update(material.id, version.current, { markdown: value })
+          const next = await materialsApi.update(material.id, version.current, { markdown: typed.current })
           version.current = next.version
           onSavedRef.current(next)
           break
@@ -90,9 +94,10 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
           version.current = (await materialsApi.get(material.id)).version
         }
       }
-      if (typed.current !== value) { setSaving('waiting'); timer.current = setTimeout(() => void save(), memoSaveDelayMs) }
-      else { typed.current = undefined; setSaving('idle') }
+      if (pending.current) { setSaving('waiting'); timer.current = setTimeout(() => void save(), memoSaveDelayMs) }
+      else setSaving('idle')
     } catch (reason) {
+      pending.current = true
       // 연결 문제면 입력은 이미 팀원에게 갔으니 잠시 뒤 본문 저장만 다시 한다
       if (!(reason instanceof ApiError) || reason.retryable || reason.status >= 500) {
         setSaving('waiting')
@@ -107,10 +112,12 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     }
   }
 
+  // 편집기의 본문은 팀원의 변경까지 늘 최신으로 받아 두고, 내 입력일 때만 저장을 예약한다
   function change(value: string) {
+    typed.current = value
     if (!edited.current) return
     edited.current = false
-    typed.current = value
+    pending.current = true
     if (busy.current) return
     setSaving('waiting')
     clearTimeout(timer.current)

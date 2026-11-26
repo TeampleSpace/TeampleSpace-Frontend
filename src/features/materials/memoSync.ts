@@ -162,6 +162,8 @@ export function startMemoSync(options: {
       ready = true
       error = undefined
       report()
+      // 준비하는 동안 버린 팀원의 조각이 있을 수 있어 한 번 더 읽는다
+      void load().catch(() => {})
     } catch (reason) {
       error = reason
       report()
