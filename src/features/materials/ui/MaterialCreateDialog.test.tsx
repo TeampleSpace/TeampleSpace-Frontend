@@ -126,6 +126,42 @@ test('업로드 실패는 다시 올리고 분석 실패는 자료에 남아 따
   expect(mock.count()).toBe(2)
 })
 
+test('여러 PDF는 차례로 올리고 실패한 파일만 이유와 함께 남겨 다시 올린다', async () => {
+  mount()
+  await openAdd()
+  const files = [pdf('첫 번째 조사.pdf'), pdf('두 번째 조사.pdf', '%PDF-1.4 두 번째 본문')]
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files } })
+  expect(dialog().getByText('파일 2개')).toBeTruthy()
+  expect(dialog().queryByLabelText(/자료 이름/)).toBeNull()
+  mock.faults.failNext = { match: 'PUT /v1/storage/uploads/', code: 'FILE_URL_EXPIRED' }
+  submit()
+  const list = within(await dialog().findByRole('list', { name: '고른 파일' }))
+  expect(await list.findByText('추가됨')).toBeTruthy()
+  expect(list.getByText(/업로드 주소가 만료됐어요/)).toBeTruthy()
+  expect(await dialog().findByText(/실패한 파일만 올려요/)).toBeTruthy()
+  expect(mock.count()).toBe(2)
+  // 다시 누르면 실패한 첫 파일만 준비부터 다시 올리고 모두 끝나면 닫는다
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(mock.count()).toBe(3)
+  const prepared = calls('POST /v1/projects').filter((call) => call.path.endsWith('/uploads')).map((call) => (call.body as { fileName: string }).fileName)
+  expect(prepared).toEqual(['첫 번째 조사.pdf', '두 번째 조사.pdf', '첫 번째 조사.pdf'])
+  expect(calls('/materials/file')).toHaveLength(2)
+})
+
+test('파일 선택 창에서 여러 파일을 고를 수 있다', async () => {
+  mount()
+  await openAdd()
+  const input = dialog().getByLabelText('PDF 파일') as HTMLInputElement
+  expect(input.multiple).toBe(true)
+  fireEvent.change(input, { target: { files: [pdf('가.pdf'), new File(['text'], '나.txt', { type: 'text/plain' })] } })
+  const list = within(dialog().getByRole('list', { name: '고른 파일' }))
+  expect(list.getByText('PDF 파일만 올릴 수 있어요')).toBeTruthy()
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(calls('/materials/file')).toHaveLength(1)
+})
+
 test('PDF가 아니거나 허용 크기를 넘는 파일은 올리기 전에 막는다', async () => {
   mount()
   await openAdd()
