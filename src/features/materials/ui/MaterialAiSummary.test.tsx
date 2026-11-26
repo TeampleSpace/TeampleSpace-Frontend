@@ -79,16 +79,16 @@ test('분석은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 �
   expect(get).toHaveBeenCalledWith('material', expect.any(AbortSignal))
 })
 
-test('다른 곳에서 이미 요청한 요약은 다시 요청하지 않고 진행 상태를 보여 준다', async () => {
+test('다른 곳에서 이미 요청한 분석은 다시 요청하지 않고 진행 상태를 보여 준다', async () => {
   const summarize = vi.spyOn(materialsApi, 'summarize').mockRejectedValue(new ApiError(409, {
     error: { code: 'REQUEST_IN_PROGRESS', message: '같은 요청을 처리하고 있어요.', retryable: true }, requestId: 'request',
   }))
   vi.spyOn(materialsApi, 'get').mockResolvedValue({ ...material, summaryJob: { ...job, id: 'other', status: 'running' } })
   mount(material, true)
-  fireEvent.click(screen.getByRole('button', { name: 'AI 요약 만들기' }))
-  fireEvent.click(screen.getByRole('button', { name: '요약 요청' }))
-  expect(await screen.findByText('AI 요약 중')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'AI 요약 만들기' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'AI 분석 만들기' }))
+  fireEvent.click(screen.getByRole('button', { name: '분석 요청' }))
+  expect(await screen.findByText('AI가 자료를 분석하는 중')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'AI 분석 만들기' })).toBeNull()
   expect(screen.queryByText('같은 요청을 처리하고 있어요.')).toBeNull()
   expect(summarize).toHaveBeenCalledTimes(1)
 })
