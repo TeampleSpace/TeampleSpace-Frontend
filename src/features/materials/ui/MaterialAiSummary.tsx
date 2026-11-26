@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TransportError } from '../../../shared/api/client.ts'
+import { ApiError, TransportError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { Modal } from '../../../shared/ui/Modal.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
@@ -82,6 +82,16 @@ export function MaterialAiSummary({ material, onChanged, onError, onGone }: {
       key.current = undefined
       setOpen(false)
     } catch (reason) {
+      // 다른 화면이나 팀원이 먼저 요청했으면 자료를 다시 읽어 진행 상태를 보여 준다
+      if (reason instanceof ApiError && reason.code === 'REQUEST_IN_PROGRESS') {
+        const latest = await materialsApi.get(material.id).catch(() => undefined)
+        if (latest?.currentRevision?.id === revisionId && inProgress(latest.summaryJob)) {
+          key.current = undefined
+          onChanged(latest)
+          setOpen(false)
+          return
+        }
+      }
       if (!isUncertain(reason)) key.current = undefined
       onError(reason)
       setError(reason)
