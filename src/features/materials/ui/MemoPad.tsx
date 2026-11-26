@@ -71,8 +71,10 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     return () => doc.off('update', mark)
   }, [doc])
 
-  // 저장할 내 입력이 남았는지. 팀원의 변경만 있으면 그 사람이 저장한다
+  // 저장할 본문이 남았는지
   const pending = useRef(false)
+  // 이 화면에서 마지막으로 저장한 본문. 저장한 뒤 팀원의 변경이 합쳐져 달라지면 다시 저장한다
+  const lastSaved = useRef<string>(undefined)
 
   // 보낼 때마다 지금 공유 문서의 본문을 읽어 팀원의 입력까지 함께 저장한다
   async function save() {
@@ -85,13 +87,19 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     try {
       for (let tries = 0; ; tries += 1) {
         try {
-          const next = await materialsApi.update(material.id, version.current, { markdown: typed.current })
+          const value = typed.current
+          const next = await materialsApi.update(material.id, version.current, { markdown: value })
           version.current = next.version
+          lastSaved.current = value
           onSavedRef.current(next)
           break
         } catch (reason) {
           if (!(reason instanceof ApiError && reason.code === 'VERSION_CONFLICT') || tries >= 2) throw reason
-          version.current = (await materialsApi.get(material.id)).version
+          // 팀원이 같은 본문을 먼저 저장했으면 다시 저장하지 않는다
+          const current = await materialsApi.get(material.id)
+          version.current = current.version
+          const source = await materialsApi.source(material.id, current.currentRevision?.id)
+          if (source.markdown === typed.current) { lastSaved.current = typed.current; onSavedRef.current(current); break }
         }
       }
       if (pending.current) { setSaving('waiting'); timer.current = setTimeout(() => void save(), memoSaveDelayMs) }
@@ -112,11 +120,13 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
     }
   }
 
-  // 편집기의 본문은 팀원의 변경까지 늘 최신으로 받아 두고, 내 입력일 때만 저장을 예약한다
+  // 편집기의 본문은 팀원의 변경까지 늘 최신으로 받아 둔다. 내 입력이거나, 내가 저장한 뒤 팀원의 변경이 합쳐져 본문이 달라졌으면 저장을 예약한다
+  // 서로의 변경을 받기 전에 둘 다 저장을 마쳐도 나중에 합쳐진 본문이 개정으로 남는다
   function change(value: string) {
     typed.current = value
-    if (!edited.current) return
+    const mine = edited.current
     edited.current = false
+    if (!mine && (lastSaved.current === undefined || lastSaved.current === value)) return
     pending.current = true
     if (busy.current) return
     setSaving('waiting')

@@ -79,6 +79,13 @@ export function startMemoSync(options: {
     return loading
   }
 
+  // 놓친 조각을 읽는다. 읽지 못하면 잠시 뒤 다시 읽는다
+  let reloadTimer: ReturnType<typeof setTimeout> | undefined
+  function reload() {
+    clearTimeout(reloadTimer)
+    load().catch(() => { if (!stopped) reloadTimer = setTimeout(reload, retryDelaysMs[1]) })
+  }
+
   async function send() {
     if (sending || stopped || !ready || pending.length === 0) return
     const batch = Y.mergeUpdates(pending)
@@ -92,7 +99,7 @@ export function startMemoSync(options: {
       error = undefined
       // 그 사이 다른 팀원의 조각이 끼었으면 놓친 것을 읽는다
       if (seq === lastSeq + 1) lastSeq = seq
-      else void load().catch(() => {})
+      else reload()
     } catch (reason) {
       // ponytail: 서버가 받았는데 응답만 잃었으면 같은 조각이 한 번 더 쌓인다. 적용 결과는 같아 그대로 둔다
       pending.unshift(batch)
@@ -121,7 +128,7 @@ export function startMemoSync(options: {
     // 다시 연결되면 그 사이 놓친 조각과 보내지 못한 입력을 챙긴다
     onOpen: () => {
       if (!ready) return
-      void load().catch(() => {})
+      reload()
       void send()
     },
     onMessage: (message) => {
@@ -132,7 +139,7 @@ export function startMemoSync(options: {
       const { seq, data } = parsed.data
       if (seq <= lastSeq) return
       if (seq === lastSeq + 1 && !loading) apply(seq, data)
-      else void load().catch(() => {})
+      else reload()
     },
   })
 
@@ -163,7 +170,7 @@ export function startMemoSync(options: {
       error = undefined
       report()
       // 준비하는 동안 버린 팀원의 조각이 있을 수 있어 한 번 더 읽는다
-      void load().catch(() => {})
+      reload()
     } catch (reason) {
       error = reason
       report()
@@ -172,10 +179,11 @@ export function startMemoSync(options: {
 
   return {
     // 보내지 못한 조각을 바로 다시 보낸다
-    retry: () => { clearTimeout(retryTimer); offline = false; void send() },
+    retry: () => { clearTimeout(retryTimer); offline = false; void send(); reload() },
     stop: () => {
       stopped = true
       clearTimeout(retryTimer)
+      clearTimeout(reloadTimer)
       doc.off('update', onUpdate)
       unsubscribe()
     },
