@@ -220,7 +220,7 @@ export function SlideEditor({ projectId, projectName, session, slideId, onCreate
       <div className={styles.editor} data-resizable>
         <nav aria-label="슬라이드 목록" className={styles.slides}>
           <Resizer label="슬라이드 목록 폭" storageKey="teamplespace.slideListWidth" cssVar="--list-width" min={120} max={360} initial={144} side="right" />
-          <h2>슬라이드 {view.slides.length}</h2>
+          <h2>슬라이드 {view.slides.length}장</h2>
           <ol>
             {view.slides.map((candidate, position) => (
               <li key={candidate.id}>
