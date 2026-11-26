@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tiptap/extension-collaboration": "3.33.0",
+    "@tiptap/extension-collaboration-caret": "3.33.0",
     "@tiptap/extensions": "3.33.0",
     "@tiptap/markdown": "3.33.0",
     "@tiptap/pm": "3.33.0",
