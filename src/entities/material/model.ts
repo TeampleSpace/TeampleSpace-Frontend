@@ -35,8 +35,15 @@ export const materialListSchema = z.object({
 })
 export type MaterialList = z.infer<typeof materialListSchema>
 
+export const materialAnalysisSchema = z.object({
+  overview: z.string(),
+  keyPoints: z.array(z.object({ claim: z.string(), evidence: z.string() })),
+  presentationPoints: z.array(z.string()),
+})
+export type MaterialAnalysis = z.infer<typeof materialAnalysisSchema>
+
 export const materialRevisionSchema = z.object({
-  id: z.string(), sourceVersion: version, pageCount, summary: z.string().nullable(),
+  id: z.string(), sourceVersion: version, pageCount, summary: z.string().nullable(), analysis: materialAnalysisSchema.nullable(),
   excerpt: z.object({ text: z.string(), page: z.number().int().min(1).nullable() }).nullable(),
   createdBy: personSchema, createdAt: z.string(),
 })

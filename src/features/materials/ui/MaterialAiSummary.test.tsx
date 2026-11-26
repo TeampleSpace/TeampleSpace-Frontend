@@ -13,7 +13,7 @@ import type { Job, Material } from '../../../entities/material/model.ts'
 const date = '2026-11-20T00:00:00Z'
 const author = { userId: 'user', name: '팀원' }
 const revision = { id: 'revision', sourceVersion: 1, pageCount: null, createdAt: date, createdBy: author,
-  summary: null, excerpt: { text: '원문 미리보기', page: null } }
+  summary: null, analysis: null, excerpt: { text: '원문 미리보기', page: null } }
 const material: Material = { id: 'material', projectId: 'project', kind: 'memo', title: '자료', status: 'ready',
   version: 1, createdBy: author, createdAt: date, updatedAt: date, pageCount: null, description: null,
   source: { url: null, fileName: null, mimeType: null, sizeBytes: null }, currentRevision: revision, job: null, canDelete: true }
@@ -39,21 +39,36 @@ function mount(initial: Material, enabled: boolean) {
   </SessionContext>)
 }
 
-test('새 요약을 만들 수 없어도 저장한 요약을 표시한다', () => {
-  mount({ ...material, currentRevision: { ...revision, summary: '팀 회의 결과를 정리했어요.' } }, false)
+const analysis = { overview: '팀 회의 결과를 정리했어요.', keyPoints: [{ claim: '일정을 줄여야 해요', evidence: '마감까지 2주 남음' },
+  { claim: '역할을 다시 나눠요', evidence: '' }], presentationPoints: ['일정 단축 이유를 먼저 말하기'] }
+
+test('새 분석을 만들 수 없어도 저장한 분석 정리를 항목별로 표시한다', () => {
+  mount({ ...material, currentRevision: { ...revision, summary: analysis.overview, analysis } }, false)
   expect(screen.getByText('팀 회의 결과를 정리했어요.')).toBeTruthy()
+  expect(screen.getByText('일정을 줄여야 해요')).toBeTruthy()
+  expect(screen.getByText('근거 마감까지 2주 남음')).toBeTruthy()
+  expect(screen.getAllByText(/^근거/)).toHaveLength(1)
+  expect(screen.getByRole('heading', { name: '발표 포인트' })).toBeTruthy()
+  expect(screen.getByText('일정 단축 이유를 먼저 말하기')).toBeTruthy()
   expect(screen.queryByText('원문 미리보기')).toBeNull()
-  expect(screen.queryByRole('button', { name: 'AI 요약 만들기' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'AI 분석 만들기' })).toBeNull()
 })
 
-test('요약은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 복구한다', async () => {
+test('분석 정리 없이 이전 요약만 있으면 요약을 보여주고 분석을 다시 요청할 수 있다', () => {
+  mount({ ...material, currentRevision: { ...revision, summary: '이전 요약 문장' } }, true)
+  expect(screen.getByText('이전 요약 문장')).toBeTruthy()
+  expect(screen.queryByText('아직 분석 정리가 없어요.')).toBeNull()
+  expect(screen.getByRole('button', { name: 'AI 분석 만들기' })).toBeTruthy()
+})
+
+test('분석은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 복구한다', async () => {
   const summarize = vi.spyOn(materialsApi, 'summarize').mockRejectedValueOnce(new TransportError('network')).mockResolvedValueOnce(job)
   const get = vi.spyOn(materialsApi, 'get').mockResolvedValue({ ...material, summaryJob: { ...job, status: 'succeeded' },
-    currentRevision: { ...revision, summary: '추출한 본문의 핵심 내용' } })
+    currentRevision: { ...revision, summary: '추출한 본문의 핵심 내용', analysis: { ...analysis, overview: '추출한 본문의 핵심 내용' } } })
   mount(material, true)
-  fireEvent.click(screen.getByRole('button', { name: 'AI 요약 만들기' }))
+  fireEvent.click(screen.getByRole('button', { name: 'AI 분석 만들기' }))
   expect(summarize).not.toHaveBeenCalled()
-  const action = screen.getByRole('button', { name: '요약 요청' })
+  const action = screen.getByRole('button', { name: '분석 요청' })
   fireEvent.click(action)
   await screen.findByText(/서버에 연결할 수 없습니다/)
   fireEvent.click(action)
@@ -64,16 +79,16 @@ test('요약은 확인 뒤에만 요청하고 응답 유실 뒤 같은 키로 �
   expect(get).toHaveBeenCalledWith('material', expect.any(AbortSignal))
 })
 
-test('다른 곳에서 이미 요청한 요약은 다시 요청하지 않고 진행 상태를 보여 준다', async () => {
+test('다른 곳에서 이미 요청한 분석은 다시 요청하지 않고 진행 상태를 보여 준다', async () => {
   const summarize = vi.spyOn(materialsApi, 'summarize').mockRejectedValue(new ApiError(409, {
     error: { code: 'REQUEST_IN_PROGRESS', message: '같은 요청을 처리하고 있어요.', retryable: true }, requestId: 'request',
   }))
   vi.spyOn(materialsApi, 'get').mockResolvedValue({ ...material, summaryJob: { ...job, id: 'other', status: 'running' } })
   mount(material, true)
-  fireEvent.click(screen.getByRole('button', { name: 'AI 요약 만들기' }))
-  fireEvent.click(screen.getByRole('button', { name: '요약 요청' }))
-  expect(await screen.findByText('AI 요약 중')).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'AI 요약 만들기' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'AI 분석 만들기' }))
+  fireEvent.click(screen.getByRole('button', { name: '분석 요청' }))
+  expect(await screen.findByText('AI가 자료를 분석하는 중')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'AI 분석 만들기' })).toBeNull()
   expect(screen.queryByText('같은 요청을 처리하고 있어요.')).toBeNull()
   expect(summarize).toHaveBeenCalledTimes(1)
 })

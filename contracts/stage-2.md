@@ -57,15 +57,16 @@
 - 마크다운 자료는 `markdown`, 링크 자료는 `link`의 주소, 제목, 추출 본문을 돌려준다
 - `revisionId`를 주면 그 자료의 해당 개정을, 없으면 현재 개정을 돌려준다
 
-### AI 요약
+### AI 분석 정리
 
 - `featureFlags.materialSummary`가 true일 때 활성 팀원이 직접 요청할 수 있다. 기본값은 비활성이며 이때 새 요청은 `SERVICE_UNAVAILABLE`이다
 - `Idempotency-Key`와 `expectedRevisionId`가 필요하다. 같은 키와 본문을 재전송하면 먼저 등록한 작업을 돌려준다. 같은 개정의 새 요청이 이미 처리 중이면 `REQUEST_IN_PROGRESS`다
-- 원문 개정이 바뀌었거나 자료가 준비되지 않았거나 현재 개정에 요약이 있으면 `MATERIAL_STATE_CONFLICT`다. 추출한 본문이 비어 있으면 `VALIDATION_FAILED`다
-- `type`과 `targetType`은 `material_summary`, `targetId`는 현재 원문 개정 식별자다. 자료 상세의 `summaryJob`에서 현재 개정의 최신 요약 작업을 확인한다. 작업 상세와 취소에는 기존 작업 API를 사용한다
-- 제공자에게 요청한 자료의 제목과 정리한 본문 최대 20000자를 보내고 저장 옵션을 끈다. 분석 작업과 원문 보기는 요약 제공자를 호출하지 않는다
-- 결과를 반영할 때 요청자의 접근 권한과 현재 개정을 다시 확인한다. 성공하면 그 개정의 `currentRevision.summary`를 채우고, 결과 참조에 `materialId`와 `revisionId`를 돌려준다. 원문, 발췌, 자료 버전은 그대로 유지한다
-- 요약을 실패하거나 취소해도 자료는 ready 상태로 남는다. 메모 본문이 바뀌면 새 개정은 기존 개정의 요약을 사용하지 않는다
+- 원문 개정이 바뀌었거나 자료가 준비되지 않았거나 현재 개정에 분석 정리가 있으면 `MATERIAL_STATE_CONFLICT`다. 이전 요약 문장만 있고 `analysis`가 null인 개정은 다시 요청할 수 있다. 추출한 본문이 비어 있으면 `VALIDATION_FAILED`다
+- `type`과 `targetType`은 `material_summary`, `targetId`는 현재 원문 개정 식별자다. 자료 상세의 `summaryJob`에서 현재 개정의 최신 분석 작업을 확인한다. 경로와 작업 유형 이름은 기존 요약 이름을 유지한다. 작업 상세와 취소에는 기존 작업 API를 사용한다
+- 제공자에게 요청한 자료의 제목과 정리한 본문 최대 20000자를 보내고 저장 옵션을 끈다. 원문 분석 작업과 원문 보기는 이 제공자를 호출하지 않는다
+- 결과를 반영할 때 요청자의 접근 권한과 현재 개정을 다시 확인한다. 성공하면 그 개정의 `currentRevision.analysis`에 개요, 주요 논점과 근거, 발표 포인트를 채우고 `currentRevision.summary`에는 개요를 함께 넣는다. 결과 참조에 `materialId`와 `revisionId`를 돌려준다. 원문, 발췌, 자료 버전은 그대로 유지한다
+- 분석 결과의 `keyPoints`는 `claim`과 `evidence`를 가진다. 원문에서 근거를 찾지 못한 논점의 `evidence`는 빈 문자열이다
+- 분석을 실패하거나 취소해도 자료는 ready 상태로 남는다. 메모 본문이 바뀌면 새 개정은 기존 개정의 분석 결과를 사용하지 않는다
 
 ## PDF 추가
 
