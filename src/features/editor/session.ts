@@ -435,8 +435,15 @@ export function createEditorSession(options: {
     addedAt.set(result.resource.id, (addSeq += 1))
     insert(result.resource)
     bumpVersions(result.resource.id, result)
+    // 추가 요청에는 출처를 담을 수 없어 이어지는 수정으로 원래 출처를 붙인다
+    if (source.sourceRefs.length > 0) {
+      replaying = true
+      edit(result.resource.id, { sourceRefs: source.sourceRefs })
+      replaying = false
+      endEdit(result.resource.id)
+    }
     publish()
-    return result.resource
+    return viewOf(result.resource.id)
   }
 
   async function remove(elementId: string) {
@@ -482,12 +489,22 @@ export function createEditorSession(options: {
     for (const elementId of [...before.keys()]) record(elementId)
   }
 
-  async function createElement(slideId: string, source: Element): Promise<Element> {
-    recordAll()
-    const at = undoStack.length
-    const created = await add(slideId, source)
-    push({ kind: 'create', element: created }, at)
-    return created
+  // 추가, 삭제, 되돌리기는 한 번에 하나씩 처리해 기록 순서를 요청 순서와 같게 한다
+  let queue: Promise<unknown> = Promise.resolve()
+  function serial<T>(work: () => Promise<T>): Promise<T> {
+    const run = queue.then(work)
+    queue = run.catch(() => {})
+    return run
+  }
+
+  function createElement(slideId: string, source: Element): Promise<Element> {
+    return serial(async () => {
+      recordAll()
+      const at = undoStack.length
+      const created = await add(slideId, source)
+      push({ kind: 'create', element: created }, at)
+      return created
+    })
   }
 
   // 같은 요소를 지우는 중이면 새로 보내지 않고 그 결과를 기다린다
@@ -497,12 +514,14 @@ export function createEditorSession(options: {
     const running = deleting.get(elementId)
     if (running) return running
     if (find(elementId)?.element.deletedAt) return Promise.resolve()
-    recordAll()
-    const shown = viewOf(elementId)
-    const at = undoStack.length
-    const work = remove(elementId)
-      .then(() => push({ kind: 'delete', element: shown }, at))
-      .finally(() => deleting.delete(elementId))
+    const work = serial(async () => {
+      if (find(elementId)?.element.deletedAt) return
+      recordAll()
+      const shown = viewOf(elementId)
+      const at = undoStack.length
+      await remove(elementId)
+      push({ kind: 'delete', element: shown }, at)
+    }).finally(() => deleting.delete(elementId))
     deleting.set(elementId, work)
     return work
   }
@@ -1125,8 +1144,8 @@ export function createEditorSession(options: {
     flush,
     createElement,
     deleteElement,
-    undo: () => step(undoStack, redoStack, false),
-    redo: () => step(redoStack, undoStack, true),
+    undo: () => serial(() => step(undoStack, redoStack, false)),
+    redo: () => serial(() => step(redoStack, undoStack, true)),
     retry,
     resolveConflict,
     accept,
