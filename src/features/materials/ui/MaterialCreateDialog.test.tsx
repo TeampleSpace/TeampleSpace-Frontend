@@ -162,6 +162,27 @@ test('서버가 PDF가 아니라고 거절한 파일은 다시 올리지 않는�
   expect(mock.count()).toBe(2)
 })
 
+test('여러 파일 중 Retry-After 응답을 받으면 남은 파일을 멈추고 그 시간 동안 다시 시도를 막는다', async () => {
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await mock.fetchAs(mock.ownerId)(input, init)
+    if (!response.ok) response.headers.set('Retry-After', '1')
+    return response
+  })
+  mount()
+  await openAdd()
+  fireEvent.drop(dialog().getByText('파일을 여기에 끌어다 놓으세요'), { dataTransfer: { files: [pdf('가.pdf'), pdf('나.pdf')] } })
+  mock.faults.failNext = { match: '/materials/file', code: 'RATE_LIMITED' }
+  submit()
+  expect(await dialog().findByText(/실패한 파일만 올려요/)).toBeTruthy()
+  // 첫 파일에서 멈추고 두 번째 파일은 보내지 않는다
+  expect(calls('POST /v1/projects').filter((call) => call.path.endsWith('/uploads'))).toHaveLength(1)
+  expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', true)
+  await waitFor(() => expect(dialog().getByRole('button', { name: '자료 추가' })).toHaveProperty('disabled', false), { timeout: 2000 })
+  submit()
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '자료 추가' })).toBeNull())
+  expect(mock.count()).toBe(3)
+})
+
 test('파일 선택 창에서 여러 파일을 고를 수 있다', async () => {
   mount()
   await openAdd()
