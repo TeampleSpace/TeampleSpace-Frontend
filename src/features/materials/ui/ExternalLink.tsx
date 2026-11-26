@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import styles from './Links.module.css'
 
 // 새 탭으로 여는 링크. 글자만 들어도 새 탭에서 열린다는 것을 알 수 있게 숨은 안내를 붙인다
-export function ExternalLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
-  return <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+export function ExternalLink({ href, title, className, children }: { href: string; title?: string; className?: string; children: ReactNode }) {
+  return <a href={href} title={title} className={className} target="_blank" rel="noopener noreferrer">
     {children}<span className={styles.hidden}> (새 탭에서 열림)</span>
   </a>
 }
