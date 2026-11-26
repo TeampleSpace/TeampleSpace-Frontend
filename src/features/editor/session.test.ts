@@ -811,7 +811,7 @@ test('요소를 지우고 되돌리면 같은 내용의 새 요소가 생기고 
   expect(restored.id).not.toBe(bodyId)
   expect(restored.type === 'text' && restored.content.text).toBe('조사 결과 요약')
   expect(liveIds(a)).toContain(restored.id)
-  // 모르는 요소 추가는 다른 화면에서 스냅샷으로 맞춘다
+  // 다른 팀원 화면에도 추가 이벤트로 바로 나타난다
   expect(liveIds(b)).toContain(restored.id)
 
   expect(await a.redo()).toBe(true)
@@ -1032,4 +1032,45 @@ test('삭제를 확인한 뒤 늦게 온 저장 응답이 요소를 되살리지
 
   const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
   expect(element?.deletedAt).toBeDefined()
+})
+
+test('충돌 때문에 적용하지 못한 되돌리기는 충돌을 해결한 뒤 다시 할 수 있다', async () => {
+  const { open, saveDirectly, serverText } = setup()
+  const a = open('user-a', { saveDelayMs: 60000 })
+  await tick()
+
+  a.edit(bodyId, text('내 입력'))
+  await saveDirectly('user-b', '팀원 입력')
+  await settle()
+  expect(statusOf(a)).toBe('conflict')
+
+  expect(await a.undo()).toBe(false)
+  a.resolveConflict(bodyId, 'mine')
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('조사 결과 요약')
+})
+
+test('스냅샷을 읽는 동안 팀원이 연달아 추가한 요소가 모두 보인다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+
+  let release = () => {}
+  control.snapshotGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const stale = a.refresh()
+  await settle()
+  const first = await b.createElement(slideId, serverElement())
+  const second = await b.createElement(slideId, serverElement())
+  await settle()
+  control.snapshotGate = undefined
+  release()
+  await stale
+  await settle()
+
+  const live = a.getState().view!.slides.flatMap((slide) => slide.elements).filter((element) => !element.deletedAt).map((element) => element.id)
+  expect(live).toEqual(expect.arrayContaining([first.id, second.id]))
 })
