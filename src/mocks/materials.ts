@@ -142,7 +142,7 @@ export function createMaterialsMock(options: {
         sizeBytes: item.sizeBytes, url: item.url,
       },
       currentRevision: current ? {
-        id: current.id, sourceVersion: current.sourceVersion, pageCount: current.pageCount, summary: null,
+        id: current.id, sourceVersion: current.sourceVersion, pageCount: current.pageCount, summary: null, analysis: null,
         excerpt: excerpt ? { text: excerpt.slice(0, 300), page: item.kind === 'file' ? 1 : null } : null,
         createdBy: person(current.createdBy), createdAt: current.createdAt,
       } : null,

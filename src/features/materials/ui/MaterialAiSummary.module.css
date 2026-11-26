@@ -1,0 +1,7 @@
+.analysis { display: flex; flex-direction: column; gap: var(--space-8); }
+.heading { margin: var(--space-8) 0 0; font: var(--text-nav); }
+.list { margin: 0; display: flex; flex-direction: column; gap: var(--space-8); padding-left: var(--space-20); overflow-wrap: anywhere; }
+ol.list { list-style: decimal; }
+ul.list { list-style: disc; }
+.list li > span { display: block; }
+.evidence { margin-top: 2px; font: var(--text-meta); color: var(--color-secondary); }
