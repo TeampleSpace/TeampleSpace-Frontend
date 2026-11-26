@@ -156,6 +156,7 @@ export function createEditorSession(options: {
   const before = new Map<string, Record<string, unknown>>()
   let replaying = false
   let stepping = false
+  let redoCleared = 0
   // 요소를 추가한 순번. 그보다 먼저 읽기 시작한 스냅샷에 없는 요소를 지운 것으로 보지 않는다
   let addSeq = 0
   const addedAt = new Map<string, number>()
@@ -303,6 +304,14 @@ export function createEditorSession(options: {
     undoStack.push(op)
     if (undoStack.length > historyLimit) undoStack.shift()
     redoStack.length = 0
+    redoCleared += 1
+  }
+
+  // 요청을 기다리는 사이 새 편집이 기록돼도 원래 자리에 넣는다
+  // 새 편집으로 다시 실행 기록이 비워졌으면 그 기록에는 넣지 않는다
+  function place(stack: Op[], at: number, op: Op, cleared: number) {
+    if (stack === redoStack && redoCleared !== cleared) return
+    stack.splice(Math.min(at, stack.length), 0, op)
   }
 
   // 편집을 끝낼 때 처음 값과 지금 값을 한 단계로 남긴다
@@ -330,6 +339,9 @@ export function createEditorSession(options: {
     recordAll()
     const op = from.pop()
     if (!op) return false
+    const fromAt = from.length
+    const toAt = to.length
+    const cleared = redoCleared
     stepping = true
     try {
       if (op.kind === 'edit') {
@@ -360,11 +372,11 @@ export function createEditorSession(options: {
           // 요청이 실패하면 기록을 남겨 두고 다시 시도할 수 있게 한다
           // 서버가 거절한 추가는 새 요청으로, 결과를 모르는 추가는 같은 요청으로 다시 보낸다
           if (error instanceof ApiError && error.status < 500) op.retry = undefined
-          from.push(op)
+          place(from, fromAt, op, cleared)
           throw error
         }
       }
-      to.push(op)
+      place(to, toAt, op, cleared)
       return true
     } finally {
       stepping = false
