@@ -77,6 +77,8 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, linked
   const [instructions, setInstructions] = useState('')
   const [modeChoice, setModeChoice] = useState<GenerationMode>('extend')
   const mode: GenerationMode = outlineHasItems ? modeChoice : 'replace'
+  // 완료 안내는 요청한 작업의 방식으로 정한다. 모르는 작업은 일반 문구를 쓴다
+  const [extendedJobId, setExtendedJobId] = useState<string>()
   // 새 자료 반영으로 창을 열면 구성에 아직 연결하지 않은 자료를 골라 둔다
   const preselect = useRef(false)
   const [job, setJob] = useState<Job>()
@@ -330,6 +332,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, linked
         return
       }
       const result = confirmJob(await outlineGenerationApi.create(projectId, command.body, command.key), projectId)
+      setExtendedJobId(command.body.mode === 'extend' ? result.id : undefined)
       setJob(result)
       setJobError(undefined)
       setPending(undefined)
@@ -466,7 +469,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, linked
           {active && <JobProgress job={job} label="발표 구성 생성 진행률" />}
           {job.status === 'succeeded' && (resultWaiting || !jobError) && <p role="status">
             {resultWaiting ? '편집을 마치면 생성한 발표 구성을 불러올 수 있어요'
-              : resultApplied ? (mode === 'extend' ? '새 자료를 발표 구성에 반영했어요' : '발표 구성을 만들었어요') : '생성한 발표 구성을 불러오고 있어요'}
+              : resultApplied ? (extendedJobId === job.id ? '새 자료를 발표 구성에 반영했어요' : '발표 구성을 만들었어요') : '생성한 발표 구성을 불러오고 있어요'}
           </p>}
           {completedResult === 'deferred' && !dirty && !jobError && <Button variant="secondary" loading={write === 'refresh'}
             onClick={() => void refresh()}>생성 결과 다시 불러오기</Button>}
