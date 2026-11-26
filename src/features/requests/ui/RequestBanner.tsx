@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { ApiError } from '../../../shared/api/client.ts'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
@@ -37,8 +37,9 @@ export function RequestBanner({ projectId }: { projectId: string }) {
   const seen = useRef<Map<string, ChangeRequest['state']> | null>(null)
   const section = useRef<HTMLElement>(null)
   // 누른 버튼이 사라지면 결과 알림이나 다음 버튼으로 포커스를 옮긴다
+  // 화면에 그리기 전에 옮겨 문구와 포커스가 함께 바뀌게 한다
   const focusNext = useRef<string | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const target = focusNext.current
     if (target === null) return
     focusNext.current = null
