@@ -297,3 +297,54 @@ test('슬라이드 목록과 요소 편집 패널 폭을 방향키로 조절하�
   for (let i = 0; i < 20; i++) fireEvent.keyDown(panel, { key: 'ArrowLeft' })
   expect(localStorage.getItem('teamplespace.inspectorWidth')).toBe('420')
 })
+
+test('단축키로 요소를 지우고 되돌리고 복제한다', async () => {
+  const { server } = setup()
+  mount(open(server.fetchAs(userA)))
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements
+
+  const target = await body()
+  fireEvent.keyDown(target, { key: ' ' })
+  fireEvent.keyDown(target, { key: 'Delete' })
+  await waitFor(() => expect(live().some((element) => element.id === bodyId)).toBe(false))
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^텍스트 조사 결과 요약/ })).toBeNull())
+
+  fireEvent.keyDown(document.body, { key: 'z', code: 'KeyZ', ctrlKey: true })
+  const restored = await body()
+  expect(screen.getByText('되돌렸어요')).toBeTruthy()
+
+  const count = live().length
+  fireEvent.keyDown(restored, { key: ' ' })
+  fireEvent.keyDown(restored, { key: 'd', code: 'KeyD', metaKey: true })
+  await waitFor(() => expect(live()).toHaveLength(count + 1))
+  const copy = live().at(-1)!
+  expect(copy.geometry.x).toBe(live().find((element) => element.id !== copy.id && element.type === 'text' && element.content.text === '조사 결과 요약')!.geometry.x + 20)
+})
+
+test('글을 고치는 중에는 단축키가 입력을 가로채지 않는다', async () => {
+  const { server } = setup()
+  mount(open(server.fetchAs(userA)))
+
+  fireEvent.doubleClick(await body())
+  const editor = screen.getByRole('textbox', { name: '텍스트 편집' })
+  for (const init of [{ key: 'Backspace' }, { key: 'z', code: 'KeyZ', ctrlKey: true }, { key: 'Process', keyCode: 229 }]) {
+    const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true })
+    editor.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+  }
+  expect(server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.some((element) => element.id === bodyId)).toBe(true)
+})
+
+test('물음표로 단축키 안내를 열고 Page Up으로 이전 슬라이드로 간다', async () => {
+  const { server } = setup()
+  const router = mount(open(server.fetchAs(userA)))
+  await body()
+
+  fireEvent.keyDown(document.body, { key: '?' })
+  expect(await screen.findByRole('heading', { name: '단축키' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+  fireEvent.keyDown(document.body, { key: 'PageUp' })
+  const first = exampleSnapshot.presentation!.slides[0].id
+  await waitFor(() => expect(router.state.location.pathname).toBe(`/projects/${projectId}/slides/${first}`))
+})

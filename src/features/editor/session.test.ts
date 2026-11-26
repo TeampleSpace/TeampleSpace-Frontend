@@ -751,3 +751,70 @@ test('내 커서를 짧은 간격으로 모아 보내고 다른 팀원의 커서
   expect(b.getState().cursors).toEqual([])
   b.stop()
 })
+
+test('요소를 지우고 되돌리면 같은 내용의 새 요소가 생기고 다시 실행하면 다시 지운다', async () => {
+  const { open, server, eventCount } = setup()
+  const a = open('user-a')
+  const b = open('user-b')
+  await tick()
+  const liveIds = (session: EditorSession) =>
+    session.getState().view!.slides.find((slide) => slide.id === slideId)!.elements
+      .filter((element) => !element.deletedAt).map((element) => element.id)
+
+  await a.deleteElement(bodyId)
+  await settle()
+  expect(liveIds(a)).not.toContain(bodyId)
+  // 다른 팀원 화면에서도 지워진다
+  expect(liveIds(b)).not.toContain(bodyId)
+  expect(eventCount('element.deleted')).toBe(1)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  const restored = server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.at(-1)!
+  expect(restored.id).not.toBe(bodyId)
+  expect(restored.type === 'text' && restored.content.text).toBe('조사 결과 요약')
+  expect(liveIds(a)).toContain(restored.id)
+  // 모르는 요소 추가는 다른 화면에서 스냅샷으로 맞춘다
+  expect(liveIds(b)).toContain(restored.id)
+
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(liveIds(a)).not.toContain(restored.id)
+  expect(await a.redo()).toBe(false)
+})
+
+test('편집을 끝낸 단위로 되돌리고 다시 실행한다', async () => {
+  const { open, serverText } = setup()
+  const a = open('user-a')
+  await tick()
+
+  a.edit(bodyId, text('가'))
+  a.edit(bodyId, text('가나'))
+  a.endEdit(bodyId)
+  await settle()
+  expect(serverText()).toBe('가나')
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('조사 결과 요약')
+  expect(await a.undo()).toBe(false)
+
+  expect(await a.redo()).toBe(true)
+  await settle()
+  expect(serverText()).toBe('가나')
+})
+
+test('붙여넣은 요소를 되돌리면 지운다', async () => {
+  const { open, serverElement } = setup()
+  const a = open('user-a')
+  await tick()
+
+  const source = serverElement()
+  const created = await a.createElement(slideId, { ...source, geometry: { ...source.geometry, x: source.geometry.x + 20 } })
+  await settle()
+  expect(serverElement(created.id).geometry.x).toBe(source.geometry.x + 20)
+
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverElement(created.id)).toBeUndefined()
+})
