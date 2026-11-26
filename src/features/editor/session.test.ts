@@ -47,6 +47,8 @@ function setup() {
     dropPosts: number
     dropNextDeleteResponse: boolean
     snapshotGate?: Promise<void>
+    // 저장은 반영하고 응답만 늦춘다
+    patchGate?: Promise<void>
   } = {
     failNextPatch: false,
     failDeletes: 0,
@@ -90,6 +92,10 @@ function setup() {
         // 서버는 반영하고 응답만 잃는다
         control.dropPosts -= 1
         return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
+      }
+      if (method === 'PATCH' && control.patchGate) {
+        const gate = control.patchGate
+        return inner(input, init).then((response) => gate.then(() => response))
       }
       if (path.endsWith('/sync-snapshot') && control.snapshotGate) {
         // 지금 시점의 스냅샷을 만들어 두고 응답만 늦춘다
@@ -1000,4 +1006,30 @@ test('같은 요소를 연달아 지워도 삭제 기록은 하나다', async ()
   await settle()
   expect(await a.undo()).toBe(false)
   expect(sameText()).toHaveLength(1)
+})
+
+test('삭제를 확인한 뒤 늦게 온 저장 응답이 요소를 되살리지 않는다', async () => {
+  const { open, control, serverElement } = setup()
+  const a = open('user-a', { silentEvents: true })
+  const b = open('user-b')
+  await tick()
+
+  let release = () => {}
+  control.patchGate = new Promise((resolve) => {
+    release = resolve
+  })
+  a.edit(bodyId, text('늦게 확인되는 입력'))
+  a.endEdit(bodyId)
+  await settle()
+  expect(serverElement().version).toBe(2)
+  control.patchGate = undefined
+
+  await settle()
+  await b.deleteElement(bodyId)
+  await a.refresh()
+  release()
+  await settle()
+
+  const element = a.getState().view!.slides.flatMap((slide) => slide.elements).find((candidate) => candidate.id === bodyId)
+  expect(element?.deletedAt).toBeDefined()
 })
