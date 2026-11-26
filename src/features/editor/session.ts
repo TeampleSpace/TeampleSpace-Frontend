@@ -283,6 +283,8 @@ export function createEditorSession(options: {
   // 이미 보낸 요청은 화면을 떠나도 서버에 반영되므로 남는 입력으로 세지 않는다
   function flush(): boolean {
     for (const [elementId, entry] of entries) if (entry.draft) endEdit(elementId)
+    // 아직 보내지 못하고 차례를 기다리는 추가나 삭제가 있으면 떠나기 전에 알린다
+    if (waiting > 0) return true
     return [...entries.values()].some(
       (entry) =>
         entry.status === 'conflict' ||
@@ -492,8 +494,20 @@ export function createEditorSession(options: {
 
   // 추가, 삭제, 되돌리기는 한 번에 하나씩 처리해 기록 순서를 요청 순서와 같게 한다
   let queue: Promise<unknown> = Promise.resolve()
+  // 차례를 기다리는 작업과 처리 중인 작업 수. 화면을 떠날 때 미저장으로 본다
+  let waiting = 0
+  let working = 0
   function serial<T>(work: () => Promise<T>): Promise<T> {
-    const run = queue.then(work)
+    waiting += 1
+    publish()
+    const run = queue.then(() => {
+      waiting -= 1
+      working += 1
+      return work()
+    }).finally(() => {
+      working -= 1
+      publish()
+    })
     queue = run.catch(() => {})
     return run
   }
@@ -985,7 +999,7 @@ export function createEditorSession(options: {
   }
 
   const hasPending = () =>
-    [...entries.values()].some((entry) => entry.draft || entry.flight)
+    waiting + working > 0 || [...entries.values()].some((entry) => entry.draft || entry.flight)
 
   async function connect() {
     if (!running) return
