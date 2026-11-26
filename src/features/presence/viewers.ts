@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { api } from '../../entities/session/api.ts'
 import { emptySchema } from '../../entities/session/model.ts'
 import { allMembers } from '../../entities/project/api.ts'
-import { StreamRejectedError, openEventStream } from '../editor/sse.ts'
+import { subscribeProjectEvents } from './projectEvents.ts'
 
 export const tabs = ['overview', 'materials', 'outline', 'design', 'slides', 'settings'] as const
 export type Tab = typeof tabs[number]
@@ -14,7 +14,6 @@ export const tabLabels: Record<Tab, string> = {
 // 서버는 20초 동안 알림이 없으면 떠난 것으로 본다
 export const viewingBeatMs = 8000
 export const nameRetryMs = 5000
-const retryDelaysMs = [1000, 3000, 10000]
 
 const viewersSchema = z.object({
   projectId: z.string(),
@@ -71,40 +70,22 @@ export function useProjectViewers(projectId: string | undefined, tab: Tab | unde
     // 같은 프로젝트로 바로 다시 붙으면 앞서 예약한 떠남을 취소한다. 개발 모드의 두 번 실행에서도 떠남이 새 알림 뒤에 도착하지 않는다
     if (pendingLeave?.projectId === projectId) clearTimeout(pendingLeave.timer)
     pendingLeave = undefined
-    const controller = new AbortController()
     const onHide = () => leave(projectId)
     window.addEventListener('pagehide', onHide)
-    void (async () => {
-      for (let attempt = 0; !controller.signal.aborted; attempt += 1) {
+    const unsubscribe = subscribeProjectEvents(projectId, {
+      onOpen: () => setRaw({ projectId, viewers: [] }),
+      // 연결이 끊긴 동안에는 팀원이 떠나도 알 수 없으니 목록을 비운다
+      onClose: () => setRaw({ projectId, viewers: [] }),
+      onMessage: (message) => {
+        if (message.event !== 'viewers.updated') return
         try {
-          await openEventStream({
-            fetchImpl: (...args) => fetch(...args),
-            url: `/v1/projects/${projectId}/events`,
-            signal: controller.signal,
-            onOpen: () => { attempt = 0; setRaw({ projectId, viewers: [] }) },
-            onMessage: (message) => {
-              if (message.event !== 'viewers.updated') return
-              try {
-                const parsed = viewersSchema.safeParse(JSON.parse(message.data))
-                if (parsed.success) setRaw({ projectId, viewers: parsed.data.viewers })
-              } catch { /* 깨진 신호는 버린다 */ }
-            },
-          })
-        } catch (error) {
-          // 로그인이 끝났거나 팀원이 아니면 다시 연결하지 않는다
-          if (error instanceof StreamRejectedError) {
-            if (!controller.signal.aborted) setRaw({ projectId, viewers: [] })
-            return
-          }
-        }
-        if (controller.signal.aborted) return
-        // 연결이 끊긴 동안에는 팀원이 떠나도 알 수 없으니 목록을 비운다
-        setRaw({ projectId, viewers: [] })
-        await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)]))
-      }
-    })()
+          const parsed = viewersSchema.safeParse(JSON.parse(message.data))
+          if (parsed.success) setRaw({ projectId, viewers: parsed.data.viewers })
+        } catch { /* 깨진 신호는 버린다 */ }
+      },
+    })
     return () => {
-      controller.abort()
+      unsubscribe()
       window.removeEventListener('pagehide', onHide)
       pendingLeave = { projectId, timer: setTimeout(() => leave(projectId), 0) }
     }

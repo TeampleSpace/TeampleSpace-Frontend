@@ -11,10 +11,20 @@ import capabilitiesExample from '../../../../contracts/examples/capabilities.jso
 import { createMaterialsMock } from '../../../mocks/materials.ts'
 import type { MaterialsMock } from '../../../mocks/materials.ts'
 import { sha256Hex } from '../upload.ts'
+import * as Y from 'yjs'
+import { Editor } from '@tiptap/react'
+import { memoExtensions } from '../memoExtensions.ts'
+import { toBase64 } from '../memoSync.ts'
+import type { ProjectListener } from '../../presence/projectEvents.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 파일 처리와 서버 연동 검증이 아니다
 vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
 vi.mock('./MarkdownEditor.tsx', () => import('./MarkdownEditor.double.tsx'))
+// 모킹 서버는 이벤트 구독을 주지 않아 메모 조각 신호는 테스트가 직접 넣는다
+const events: ProjectListener[] = []
+vi.mock('../../presence/projectEvents.ts', () => ({
+  subscribeProjectEvents: (_projectId: string, listener: ProjectListener) => { events.push(listener); return () => { events.splice(events.indexOf(listener), 1) } },
+}))
 
 let mock: MaterialsMock
 const capabilities = capabilitiesExample as AuthCapabilities
@@ -274,7 +284,7 @@ test('메모를 쓰다가 유형을 바꾸면 확인하고 계속 작성하면 �
   expect(mock.count()).toBe(1)
 })
 
-test('메모를 추가하면 상세에서 바로 고쳐 자동 저장하고 다른 사람과 충돌하면 고른 뒤에만 덮어쓴다', async () => {
+test('메모를 추가하면 저장된 본문으로 공유 편집을 시작하고 고친 본문을 자동 저장한다', async () => {
   mount()
   await openAdd('메모')
   fireEvent.change(dialog().getByLabelText('메모 제목'), { target: { value: '회의 정리' } })
@@ -287,43 +297,18 @@ test('메모를 추가하면 상세에서 바로 고쳐 자동 저장하고 다�
   expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
   const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
   await waitFor(() => expect(body.value).toBe('첫 내용'))
+  // 아직 조각이 없는 메모라 저장된 본문으로 처음 조각을 한 번 넣는다
+  expect(calls(`POST /v1/materials/${id}/memo-updates`).map((call) => (call.body as { initial?: boolean }).initial)).toEqual([true])
   fireEvent.change(body, { target: { value: '고친 내용' } })
-  expect(screen.getByText('저장 대기')).toBeTruthy()
+  // 입력 조각을 먼저 팀원에게 보내고 멈추면 본문을 저장한다
+  expect(screen.getByText(/보내는 중|저장 대기/)).toBeTruthy()
   await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('고친 내용'), { timeout: 3000 })
   await screen.findByText('저장됨')
 
-  // 다른 팀원이 본문을 먼저 고쳤으면 덮어쓰지 않는다
-  mock.editAs(id, '팀원이 고친 내용')
-  fireEvent.change(body, { target: { value: '내가 고친 내용' } })
-  expect(await screen.findByText(/다른 팀원이 먼저 메모를 고쳤어요/, undefined, { timeout: 3000 })).toBeTruthy()
-  expect(body.value).toBe('내가 고친 내용')
-  expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('팀원이 고친 내용')
-  fireEvent.click(screen.getByRole('button', { name: '내 내용으로 저장' }))
-  await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('내가 고친 내용'))
-  await screen.findByText('저장됨')
-
-  // 이름만 바뀐 경우는 확인 없이 다시 저장한다
+  // 다른 경로로 자료 버전이 바뀌어도 최신 버전으로 다시 저장한다
   mock.renameAs(id, '팀원이 바꾼 제목')
   fireEvent.change(body, { target: { value: '이름이 바뀐 뒤 고친 내용' } })
   await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('이름이 바뀐 뒤 고친 내용'), { timeout: 3000 })
-  expect(screen.queryByText(/다른 팀원이 먼저 메모를 고쳤어요/)).toBeNull()
-})
-
-test('한글 조합 중에는 메모를 저장하지 않고 조합이 끝난 뒤 저장한다', async () => {
-  mount()
-  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
-  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
-  await waitFor(() => expect(body.disabled).toBe(false))
-  const before = mock.get(id)!.revisions.length
-  fireEvent.compositionStart(body)
-  fireEvent.change(body, { target: { value: '한그' } })
-  await new Promise((resolve) => setTimeout(resolve, 1500))
-  expect(mock.get(id)!.revisions).toHaveLength(before)
-  fireEvent.change(body, { target: { value: '한글' } })
-  fireEvent.compositionEnd(body)
-  await waitFor(() => expect(mock.get(id)!.revisions.at(-1)?.markdown).toBe('한글'), { timeout: 3000 })
-  expect(mock.get(id)!.revisions).toHaveLength(before + 1)
 })
 
 test('메모를 고친 직후 다른 자료로 옮기면 저장을 마친 뒤 그대로 이동한다', async () => {
@@ -362,7 +347,7 @@ test('저장 요청이 끝나기 전에 저장된 내용으로 되돌려도 이�
   mock.faults.delayMs = 2000
   fireEvent.change(body, { target: { value: '잠깐 바꾼 내용' } })
   fireEvent.blur(body)
-  await screen.findByText('저장 중')
+  await screen.findByText(/보내는 중|저장 중/)
   fireEvent.change(body, { target: { value: original } })
   // 다른 화면으로 떠나려 한다
   void router.navigate(`/projects/${mock.projectId}`)
@@ -370,102 +355,44 @@ test('저장 요청이 끝나기 전에 저장된 내용으로 되돌려도 이�
   mock.faults.delayMs = 0
 })
 
-test('고치는 중이 아닐 때 다른 팀원이 저장한 메모 본문으로 바꾸고 고치는 중이면 그대로 둔다', async () => {
+test('본문을 저장한 뒤 팀원의 변경이 합쳐지면 합쳐진 본문을 다시 저장한다', async () => {
+  const id = mock.seed('memo', '함께 쓰는 메모', { markdown: '처음' })
   mount()
-  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  fireEvent.click(await screen.findByRole('link', { name: /함께 쓰는 메모/ }))
   const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  await waitFor(() => expect(body.disabled).toBe(false))
-  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
-  mock.editAs(id, '팀원이 바꾼 본문')
-  fireEvent(window, new Event('focus'))
-  await waitFor(() => expect(body.value).toBe('팀원이 바꾼 본문'))
-  expect(screen.getByText('저장됨')).toBeTruthy()
+  await waitFor(() => expect(body.value).toBe('처음'))
+  fireEvent.change(body, { target: { value: '처음 내 입력' } })
+  await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('처음 내 입력'), { timeout: 3000 })
+  await screen.findByText('저장됨')
 
-  // 고치는 중에는 덮어쓰지 않는다
-  fireEvent.change(body, { target: { value: '내가 고치는 중' } })
-  mock.editAs(id, '팀원이 또 바꾼 본문')
-  fireEvent(window, new Event('focus'))
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  expect(body.value).toBe('내가 고치는 중')
+  // 내 저장이 끝난 뒤에야 팀원의 조각이 도착한다
+  const teammate = new Y.Doc()
+  for (const update of mock.memoLog(id)) Y.applyUpdate(teammate, Uint8Array.from(atob(update.data), (char) => char.charCodeAt(0)))
+  const before = Y.encodeStateVector(teammate)
+  teammate.getXmlFragment('default').insert(0, [new Y.XmlElement('paragraph')])
+  const paragraph = teammate.getXmlFragment('default').get(0) as Y.XmlElement
+  paragraph.insert(0, [new Y.XmlText('팀원 줄')])
+  const data = toBase64(Y.encodeStateAsUpdate(teammate, before))
+  const seq = mock.memoLog(id).length + 1
+  mock.setMemoLog(id, [...mock.memoLog(id), { seq, data }])
+  for (const listener of [...events]) listener.onMessage?.({ event: 'memo.updated', data: JSON.stringify({ materialId: id, seq, data }) })
+  await waitFor(() => expect(body.value).toBe('팀원 줄\n\n처음 내 입력'))
+  await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('팀원 줄\n\n처음 내 입력'), { timeout: 3000 })
 })
 
-test('다른 팀원의 본문을 다시 읽는 동안 시작한 입력은 응답으로 덮어쓰지 않는다', async () => {
+test('다른 팀원이 먼저 시작한 공유 메모는 쌓인 조각으로 열고 초기 내용을 다시 넣지 않는다', async () => {
+  const id = mock.seed('memo', '공유 메모', { markdown: '저장된 본문' })
+  const doc = new Y.Doc()
+  const editor = new Editor({ extensions: memoExtensions(doc) })
+  editor.commands.setContent('팀원이 함께 쓴 본문', { contentType: 'markdown' })
+  editor.destroy()
+  mock.setMemoLog(id, [{ seq: 1, data: toBase64(Y.encodeStateAsUpdate(doc)) }])
   mount()
-  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  fireEvent.click(await screen.findByRole('link', { name: /공유 메모/ }))
   const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  await waitFor(() => expect(body.disabled).toBe(false))
-  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
-  mock.editAs(id, '팀원이 바꾼 본문')
-  fireEvent(window, new Event('focus'))
-  // 자료가 새 개정으로 바뀐 뒤 본문을 다시 읽는 응답을 늦춘다
-  await waitFor(() => expect(mock.calls.some((call) => call.path.endsWith(`/materials/${id}`) && call.method === 'GET')).toBe(true))
-  mock.faults.delayMs = 800
-  await waitFor(() => expect(mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length).toBeGreaterThan(1), { timeout: 3000 })
-  fireEvent.change(body, { target: { value: '다시 읽는 중에 쓴 내용' } })
-  await new Promise((resolve) => setTimeout(resolve, 1200))
-  mock.faults.delayMs = 0
-  expect(body.value).toBe('다시 읽는 중에 쓴 내용')
-})
-
-test('다른 팀원의 본문을 다시 읽지 못하면 이유를 보여 주고 다시 불러오면 최신 본문으로 바꾼다', async () => {
-  mount()
-  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
-  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  await waitFor(() => expect(body.disabled).toBe(false))
-  const before = body.value
-  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
-  mock.editAs(id, '팀원이 바꾼 본문')
-  mock.faults.failNext = { match: `GET /v1/materials/${id}/source`, code: 'SERVICE_UNAVAILABLE' }
-  fireEvent(window, new Event('focus'))
-  const retry = await screen.findByRole('button', { name: '다시 불러오기' })
-  expect(body.value).toBe(before)
-  // 창으로 다시 돌아와도 실패한 개정을 반복해 읽지 않는다
-  const sourceReads = () => mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length
-  const reads = sourceReads()
-  fireEvent(window, new Event('focus'))
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  expect(sourceReads()).toBe(reads)
-  fireEvent.click(retry)
-  await waitFor(() => expect(body.value).toBe('팀원이 바꾼 본문'))
-  expect(screen.queryByRole('button', { name: '다시 불러오기' })).toBeNull()
-  expect(screen.getByText('저장됨')).toBeTruthy()
-})
-
-test('부모가 읽은 뒤 본문을 읽기 전에 개정이 또 바뀌어도 본문 조회를 반복하지 않는다', async () => {
-  mount()
-  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
-  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  await waitFor(() => expect(body.disabled).toBe(false))
-  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
-  const materialReads = () => mock.calls.filter((call) => call.method === 'GET' && call.path.split('?')[0] === `/v1/materials/${id}`).length
-  const sourceReads = () => mock.calls.filter((call) => call.path.includes(`/materials/${id}/source`)).length
-  // 화면이 자료를 읽은 뒤, 메모 본문이 자료를 다시 읽기 전에 한 번 더 바뀐다
-  mock.faults.delayMs = 300
-  mock.editAs(id, '팀원이 처음 바꾼 본문')
-  const before = materialReads()
-  fireEvent(window, new Event('focus'))
-  await waitFor(() => expect(materialReads()).toBeGreaterThanOrEqual(before + 2), { timeout: 3000 })
-  mock.editAs(id, '팀원이 또 바꾼 본문')
-  mock.faults.delayMs = 0
-  await waitFor(() => expect(body.value).toBe('팀원이 또 바꾼 본문'), { timeout: 3000 })
-  const reads = sourceReads()
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  expect(sourceReads()).toBe(reads)
-})
-
-test('처음 본문을 읽는 동안 다른 팀원이 저장하면 그 본문을 다시 읽는다', async () => {
-  mount()
-  const link = await screen.findByRole('link', { name: /기존 메모/ })
-  const id = new URL(link.getAttribute('href')!, 'http://local').searchParams.get('material')!
-  // 처음 원문 응답을 늦추고 그 사이 화면이 새 개정을 받게 한다
-  mock.faults.delayMs = 400
-  fireEvent.click(link)
-  await waitFor(() => expect(mock.calls.some((call) => call.path.includes(`/materials/${id}/source`))).toBe(true), { timeout: 3000 })
-  mock.faults.delayMs = 0
-  mock.editAs(id, '처음 읽는 동안 바뀐 본문')
-  fireEvent(window, new Event('focus'))
-  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
-  await waitFor(() => expect(body.value).toBe('처음 읽는 동안 바뀐 본문'), { timeout: 3000 })
+  await waitFor(() => expect(body.value).toBe('팀원이 함께 쓴 본문'))
+  expect(calls(`POST /v1/materials/${id}/memo-updates`)).toHaveLength(0)
+  expect(calls(`/materials/${id}/source`)).toHaveLength(0)
 })
 
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {

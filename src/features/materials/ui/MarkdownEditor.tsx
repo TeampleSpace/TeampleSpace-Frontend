@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import { Markdown } from '@tiptap/markdown'
-import { Placeholder } from '@tiptap/extensions'
+import { memoExtensions } from '../memoExtensions.ts'
+import type * as Y from 'yjs'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { limits } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
@@ -23,8 +22,9 @@ const tools: Tool[] = [
 ]
 
 // 쓰는 자리에서 서식이 바로 보이는 마크다운 편집기. 바깥에는 마크다운 문자열만 주고받는다
-export function MarkdownEditor({ id, value, disabled, onChange }: {
-  id: string; value: string; disabled?: boolean; onChange: (value: string) => void
+// doc을 주면 여러 명이 함께 고치는 공유 문서를 보여 주고 value는 쓰지 않는다
+export function MarkdownEditor({ id, value, disabled, onChange, doc }: {
+  id: string; value: string; disabled?: boolean; onChange: (value: string) => void; doc?: Y.Doc
 }) {
   // 편집기에서 마지막으로 내보낸 값. 같은 값이 다시 들어오면 내용을 덮어쓰지 않는다
   const emitted = useRef(value)
@@ -32,10 +32,8 @@ export function MarkdownEditor({ id, value, disabled, onChange }: {
   useEffect(() => { onChangeRef.current = onChange })
 
   const editor = useEditor({
-    extensions: [StarterKit.configure({ underline: false, link: { openOnClick: false, autolink: true } }), Markdown,
-      Placeholder.configure({ placeholder: '쓰는 대로 서식이 바로 적용돼요. 샵과 공백을 입력하면 제목이 돼요', emptyNodeClass: 'isEmpty' })],
-    content: value,
-    contentType: 'markdown',
+    extensions: memoExtensions(doc),
+    ...(doc ? {} : { content: value, contentType: 'markdown' as const }),
     editable: !disabled,
     editorProps: {
       attributes: { id, class: styles.editorInput, role: 'textbox', 'aria-multiline': 'true', 'aria-label': '메모 내용' },
@@ -51,10 +49,10 @@ export function MarkdownEditor({ id, value, disabled, onChange }: {
 
   // 충돌 해결이나 다른 팀원의 저장으로 값이 바뀌면 편집기 내용을 맞춘다
   useEffect(() => {
-    if (!editor || value === emitted.current) return
+    if (!editor || doc || value === emitted.current) return
     emitted.current = value
     editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false })
-  }, [editor, value])
+  }, [editor, value, doc])
 
   useEffect(() => { editor?.setEditable(!disabled) }, [editor, disabled])
 

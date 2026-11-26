@@ -381,7 +381,8 @@
         "job.updated",
         "export.ready",
         "presence.updated",
-        "viewers.updated"
+        "viewers.updated",
+        "memo.updated"
       ]
     },
     "PresenceUpdateRequest": {
@@ -431,6 +432,64 @@
             }
           }
         }
+      }
+    },
+    "MemoUpdateRequest": {
+      "description": "메모 편집기가 만든 변경 조각. data는 base64이고 initial이 true면 조각이 하나도 없을 때만 받는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data"],
+      "properties": {
+        "data": { "type": "string", "minLength": 1 },
+        "initial": { "type": "boolean" }
+      }
+    },
+    "MemoUpdateCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seq"],
+      "properties": { "seq": { "type": "integer", "minimum": 1 } }
+    },
+    "MemoUpdateList": {
+      "description": "after 다음 순번의 조각. hasMore가 true면 마지막 seq로 이어 읽는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["updates", "hasMore"],
+      "properties": {
+        "updates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["seq", "data"],
+            "properties": {
+              "seq": { "type": "integer", "minimum": 1 },
+              "data": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "hasMore": { "type": "boolean" }
+      }
+    },
+    "MemoCompactRequest": {
+      "description": "upTo까지의 조각을 모두 담은 한 덩어리. 서버는 upTo 이하 조각을 이 덩어리 하나로 바꾼다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["upTo", "data"],
+      "properties": {
+        "upTo": { "type": "integer", "minimum": 1 },
+        "data": { "type": "string", "minLength": 1 }
+      }
+    },
+    "MemoUpdated": {
+      "description": "memo.updated 신호의 data. 같은 프로젝트의 구독에 SSE id 없이 바로 넘긴다. 받은 seq가 아는 순번보다 2 이상 크면 목록 경로로 놓친 조각을 읽는다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["materialId", "seq", "data"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/Uuid" },
+        "seq": { "type": "integer", "minimum": 1 },
+        "data": { "type": "string", "minLength": 1 }
       }
     },
     "PresenceUpdated": {
