@@ -187,7 +187,7 @@ test('접근 권한이 사라지면 원문과 자료 화면을 함께 가린다'
 })
 
 test('링크 자료는 원문 팝업에서, 메모 자료는 상세에서 바로 본문을 보여 준다', async () => {
-  const link = mock.seed('link', '감축 사례', { text: '여러 대학이 반납함을 늘렸다.' })
+  const link = mock.seed('link', '감축 사례', { text: '여러 대학이 반납함을 늘렸다.', description: '반납함 위치 근거로 인용' })
   mock.seed('memo', '인터뷰 메모', { createdBy: member, markdown: '## 확인한 점\n\n- 반납함이 멀다' })
   mount()
   const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
@@ -195,9 +195,16 @@ test('링크 자료는 원문 팝업에서, 메모 자료는 상세에서 바로
   expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
   cleanup()
   mount(`?material=${link}`)
+  // 링크 글자는 주소 대신 여는 문서와 새 탭 열림을 알려 주고 주소와 추가 이유는 따로 보여 준다
+  const origin = await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기 ?\(새 탭에서 열림\)$/ })
+  expect(origin.getAttribute('href')).toBe('https://example.com/reuse-cup')
+  expect(origin.getAttribute('target')).toBe('_blank')
+  expect(screen.getByText('이 링크를 추가한 이유')).toBeTruthy()
+  expect(screen.getByText('반납함 위치 근거로 인용')).toBeTruthy()
   const next = await openViewer()
   expect(await next.findByText('여러 대학이 반납함을 늘렸다.')).toBeTruthy()
-  expect(next.getByRole('link', { name: 'https://example.com/reuse-cup' })).toBeTruthy()
+  expect(next.getByRole('link', { name: /^example\.com 원본 페이지 열기 ?\(새 탭에서 열림\)$/ }).getAttribute('href')).toBe('https://example.com/reuse-cup')
+  expect(next.getByText('https://example.com/reuse-cup')).toBeTruthy()
 })
 
 test('고정된 개정이 있으면 최신 메모 대신 연결 당시 원문을 조회한다', async () => {

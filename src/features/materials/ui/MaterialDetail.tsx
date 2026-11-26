@@ -4,7 +4,9 @@ import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
 import { formatBytes, jobErrorMessages, kindLine, statusLabels } from '../../../entities/material/model.ts'
 import type { Material } from '../../../entities/material/model.ts'
+import { SourceLink } from './ExternalLink.tsx'
 import styles from './Materials.module.css'
+import linkStyles from './Links.module.css'
 
 export type ManageAction = 'rename' | 'delete'
 
@@ -32,9 +34,12 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
     </header>
 
     {(source.url || source.fileName || material.description) && <div className={styles.origin}>
-      {source.url && <a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a>}
+      {source.url && <>
+        <SourceLink url={source.url} />
+        <p className={linkStyles.address}>{source.url}</p>
+      </>}
       {source.fileName && <p>{source.fileName}{source.sizeBytes ? ` · ${formatBytes(source.sizeBytes)}` : ''}</p>}
-      {material.description && <p>{material.description}</p>}
+      {material.description && <p className={linkStyles.purpose}>{material.kind === 'link' && <span className={linkStyles.label}>이 링크를 추가한 이유</span>}<span>{material.description}</span></p>}
     </div>}
 
     {material.status === 'processing' && (material.job && jobControls

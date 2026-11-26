@@ -71,7 +71,7 @@ test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, AI �
   expect(screen.getByRole('button', { name: '원문 보기' })).toBeTruthy()
   expect(screen.queryByText('반납 장소까지의 거리가 영향을 주었다.')).toBeNull()
   fireEvent.click(await row('감축 사례'))
-  expect(await screen.findByRole('link', { name: 'https://example.com/reuse-cup' })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기/ })).toBeTruthy()
   expect(screen.getByText('함께 볼 사례')).toBeTruthy()
   // 유형 필터는 주소에 남는다
   fireEvent.click(filters.getByRole('link', { name: '메모 1' }))

@@ -1,0 +1,4 @@
+.hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.address { font: var(--text-meta); color: var(--color-secondary); overflow-wrap: anywhere; }
+.purpose { display: flex; flex-wrap: wrap; gap: 4px var(--space-8); color: var(--color-ink); }
+.label { color: var(--color-secondary); }
