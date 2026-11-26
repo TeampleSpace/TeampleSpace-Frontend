@@ -9,7 +9,9 @@ import { kindLabels } from '../../../entities/material/model.ts'
 import type { Material, MaterialSource } from '../../../entities/material/model.ts'
 import { PdfCanvas } from './PdfCanvas.tsx'
 import type { PdfDocument } from './PdfCanvas.tsx'
+import { SourceLink } from './ExternalLink.tsx'
 import styles from './Materials.module.css'
+import linkStyles from './Links.module.css'
 
 const Markdown = lazy(() => import('./Markdown.tsx'))
 const returnNote = '닫으면 이전 화면의 작업을 그대로 이어갑니다.'
@@ -114,7 +116,8 @@ export function SourceViewer({ material, revisionId, onClose, onError }: {
             <div className={styles.documentBody}><Suspense fallback={<p className={styles.plain}>{source.markdown}</p>}><Markdown>{source.markdown}</Markdown></Suspense></div>
           </>}
           {source.link && <>
-            <p className={styles.documentMeta}>{kindLabels.link} · <a href={source.link.url} target="_blank" rel="noopener noreferrer">{source.link.url}</a></p>
+            <p className={styles.documentMeta}>{kindLabels.link} · <SourceLink url={source.link.url} /></p>
+            <p className={linkStyles.address}>{source.link.url}</p>
             <p className={`${styles.documentBody} ${styles.plain}`}>{source.link.text || '추출한 본문이 없어요'}</p>
           </>}
         </>}
