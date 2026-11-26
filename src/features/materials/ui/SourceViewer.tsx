@@ -8,6 +8,7 @@ import { isAccessLoss, isGone } from '../../../entities/material/errors.ts'
 import { kindLabels } from '../../../entities/material/model.ts'
 import type { Material, MaterialSource } from '../../../entities/material/model.ts'
 import { PdfCanvas } from './PdfCanvas.tsx'
+import { LinkedText } from './LinkedText.tsx'
 import type { PdfDocument } from './PdfCanvas.tsx'
 import { SourceLink } from './ExternalLink.tsx'
 import styles from './Materials.module.css'
@@ -118,7 +119,7 @@ export function SourceViewer({ material, revisionId, onClose, onError }: {
           {source.link && <>
             <p className={styles.documentMeta}>{kindLabels.link} · <SourceLink url={source.link.url} /></p>
             <p className={linkStyles.address}>{source.link.url}</p>
-            <p className={`${styles.documentBody} ${styles.plain}`}>{source.link.text || '추출한 본문이 없어요'}</p>
+            <p className={`${styles.documentBody} ${styles.plain} ${linkStyles.text}`}>{source.link.text ? <LinkedText text={source.link.text} /> : '추출한 본문이 없어요'}</p>
           </>}
         </>}
       </div>
