@@ -68,6 +68,20 @@
 - 분석 결과의 `keyPoints`는 `claim`과 `evidence`를 가진다. 원문에서 근거를 찾지 못한 논점의 `evidence`는 빈 문자열이다
 - 분석을 실패하거나 취소해도 자료는 ready 상태로 남는다. 메모 본문이 바뀌면 새 개정은 기존 개정의 분석 결과를 사용하지 않는다
 
+### AI 자료 조사
+
+| 요청 | 본문 | 성공 응답 |
+| --- | --- | --- |
+| POST /v1/projects/{projectId}/research-jobs | MaterialResearchJobRequest | 202 Job |
+
+- `featureFlags.materialResearch`가 true일 때 활성 팀원이 요청할 수 있다. 기본값은 비활성이며 이때 새 요청은 `SERVICE_UNAVAILABLE`이다
+- `Idempotency-Key`가 필요하다. 같은 키와 본문을 재전송하면 먼저 등록한 작업을 돌려준다. 주제는 앞뒤 공백을 뺀 1자 이상 200자 이하이고 그 밖에는 `VALIDATION_FAILED`다
+- 사용자마다 한 시간에 20번까지 요청할 수 있다. 넘으면 `RATE_LIMITED`와 `Retry-After`다
+- `type`은 `material_research`, `targetType`은 `project`, `targetId`는 프로젝트 식별자다. 작업 상세와 취소에는 기존 작업 API를 사용한다
+- 제공자에게 주제만 보내고 웹 검색 도구를 켠다. 저장 옵션은 끈다. 프로젝트 자료는 보내지 않는다
+- 성공하면 `resultRef`에 `MaterialResearchResult`가 담긴다. 출처는 검색 도구가 실제로 연 주소와 인용 주소에 있는 것만 남기고, 하나도 없으면 `JOB_RESEARCH_INVALID_RESULT`로 끝난다
+- 조사 결과는 자료로 저장하지 않는다. 팀원이 확인한 뒤 메모 자료 추가 경로로 저장한다. 실행과 반영 전에 요청자의 접근 권한을 다시 확인한다
+
 ## PDF 추가
 
 | 단계 | 요청 | 본문 | 성공 응답 |
