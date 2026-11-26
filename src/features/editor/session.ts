@@ -425,16 +425,26 @@ export function createEditorSession(options: {
     // 지우는 동안 남은 입력을 보내지 않는다. 실패하면 이어서 보낸다
     clearTimeout(entry?.saveTimer)
     if (entry) entry.saveTimer = undefined
-    try {
-      const result = await client.request(`/slides/${slide.id}/elements/${elementId}`, elementDeletedSchema, {
+    const key = crypto.randomUUID()
+    const body = { generation: current.generation, baseVersion: element.version, clientMutationId: crypto.randomUUID() }
+    const request = () =>
+      client.request(`/slides/${slide.id}/elements/${elementId}`, elementDeletedSchema, {
         method: 'DELETE',
-        body: { generation: current.generation, baseVersion: element.version, clientMutationId: crypto.randomUUID() },
-        idempotencyKey: crypto.randomUUID(),
+        body,
+        idempotencyKey: key,
         timeoutMs: requestTimeoutMs,
+      })
+    try {
+      // 응답을 잃으면 같은 키로 한 번 더 물어 결과를 확인한다
+      const result = await request().catch((error: unknown) => {
+        if (error instanceof TransportError) return request()
+        throw error
       })
       bumpVersions(elementId, result)
       markDeleted(elementId, result.tombstone.version, result.tombstone.deletedAt)
     } catch (error) {
+      // 삭제 이벤트로 이미 지워진 것을 확인했으면 성공으로 본다
+      if (find(elementId)?.element.deletedAt) return
       if (error instanceof ApiError && error.code === 'VERSION_CONFLICT') resync()
       if (entry?.draft) send(elementId)
       throw error
@@ -889,11 +899,11 @@ export function createEditorSession(options: {
             }
             // 스냅샷에는 지운 요소가 없다. 보내는 중인 입력이 없는 요소만 지운 것으로 본다
             // 스냅샷을 읽기 시작한 뒤 내가 추가한 요소도 아직 스냅샷에 없을 수 있다
+            // 보내지 못한 입력이 남은 요소라도 서버에서 지워졌으면 입력과 함께 지운다
             for (const element of local?.elements ?? []) {
               const kept = slide.elements.some((candidate) => candidate.id === element.id)
-              const entry = entries.get(element.id)
               const added = (addedAt.get(element.id) ?? 0) > since
-              if (!kept && !added && !entry?.draft && !entry?.flight) markDeleted(element.id, element.version, new Date().toISOString())
+              if (!kept && !added) markDeleted(element.id, element.version, new Date().toISOString())
             }
           }
         }
