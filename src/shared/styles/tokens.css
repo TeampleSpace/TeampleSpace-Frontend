@@ -13,7 +13,7 @@
   --color-primary-pressed: #000000;
   --color-primary-soft: #f0f0ed;
   --color-on-primary: #ffffff;
-  --color-link: #c2410c;
+  --color-link: var(--color-ink);
   --color-accent: #b23c0a;
   --color-accent-soft: #fff1e8;
   --color-accent-bright: #f26b1d;

@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { Button } from '../../../shared/ui/Button.tsx'
+import page from '../../../shared/ui/PageLayout.module.css'
 import buttons from '../../../shared/ui/Button.module.css'
 import { useSession } from '../../../entities/session/sessionContext.ts'
 import styles from './BillingPage.module.css'
@@ -25,7 +26,7 @@ export function SubscriptionPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <h1>개인 월 구독</h1>
-        <Link className={secondaryLink} to={accountPath}>내 계정</Link>
+        <Link className={page.back} to={accountPath}>내 계정</Link>
       </header>
       <p className={styles.note}>내 계정에 적용되는 구독이에요. 프로젝트의 다른 팀원에게는 결제되지 않습니다.</p>
       <div className={styles.banner}>

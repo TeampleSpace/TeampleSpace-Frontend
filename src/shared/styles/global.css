@@ -43,7 +43,12 @@ h2 {
 
 a {
   color: var(--color-link);
+  text-decoration-color: var(--color-border-control);
   text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-color: currentColor;
 }
 
 h2 {

@@ -11,12 +11,11 @@ export function ProjectCard({ project }: { project: Project }) {
         <h2><Link to={`/projects/${project.id}`}>{project.name}</Link></h2>
         <p className={styles.muted}>팀원 {project.memberCount}명</p>
       </div>
-      <Link className={`${buttons.button} ${buttons.primary}`} to={`/projects/${project.id}`}>프로젝트 열기</Link>
     </div>
     {project.topic && <div className={styles.nextAction}><p>{project.topic}</p></div>}
     <div className={styles.actions}>
-      <Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}?team=1`}>팀원 관리</Link>
-      <Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}/settings`}>프로젝트 설정</Link>
+      <Link className={`${buttons.button} ${buttons.secondary} ${buttons.small}`} to={`/projects/${project.id}?team=1`}>팀원 관리</Link>
+      <Link className={`${buttons.button} ${buttons.secondary} ${buttons.small}`} to={`/projects/${project.id}/settings`}>프로젝트 설정</Link>
     </div>
   </article>
 }

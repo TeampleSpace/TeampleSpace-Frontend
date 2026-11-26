@@ -10,10 +10,10 @@
 .navigation a[aria-current='page']:not(.search), .account[aria-current='page'] { color: var(--color-ink); background: var(--color-subtle); font-weight: 700; }
 /* 선택 메뉴 왼쪽에 주황 막대를 늘려 보인다 */
 .navigation a:not(.search), .account, .managementLinks a, .projectChildren a { position: relative; }
-.navigation a[aria-current='page']:not(.search)::before, .account[aria-current='page']::before, .managementLinks a[aria-current='page']::before, .projectChildren a[aria-current='page']::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--color-accent-bright); animation: nav-mark var(--motion-slow) var(--motion-spring); }
+.navigation a[aria-current='page']:not(.search)::before, .account[aria-current='page']::before, .managementLinks a[aria-current='page']::before, .projectChildren a[aria-current='page']::before { content: ''; position: absolute; left: 4px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--color-accent-bright); animation: nav-mark var(--motion-slow) var(--motion-spring); }
 @keyframes nav-mark { from { scale: 1 0; } to { scale: 1 1; } }
-.navigation .search { margin-bottom: var(--space-12); background: var(--color-subtle); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
-.navigation .search:hover { background: var(--color-muted); }
+.navigation .search { margin-bottom: var(--space-12); background: var(--color-surface); border: 1px solid var(--color-border-strong); min-height: 40px; padding: var(--space-8) var(--space-12); color: var(--color-tertiary); }
+.navigation .search:hover { background: var(--color-surface); border-color: var(--color-border-control); color: var(--color-secondary); }
 .management { margin-top: auto; display: flex; flex-direction: column; gap: 20px; }
 .managementLinks { display: flex; flex-direction: column; gap: 4px; }
 .managementLinks a:hover, .projectChildren a:hover, .projectRow a:hover { background: var(--color-subtle); }
@@ -29,6 +29,7 @@
 .projectRow button[aria-expanded='true'] .chevron { transform: rotate(0); }
 .projectChildren { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; animation: var(--motion-feedback-enter); }
 .projectChildren a, .projectChildren > span { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px; text-decoration: none; color: var(--color-ink); border-radius: 8px; }
+.projectChildren a { padding-left: 14px; }
 .projectChildren a[aria-current='page'] { background: var(--color-subtle); color: var(--color-ink); font-weight: 700; }
 .projectChildren > span, .projectChildren small { color: var(--color-secondary); }
 .projectChildren small { font: var(--text-meta); }

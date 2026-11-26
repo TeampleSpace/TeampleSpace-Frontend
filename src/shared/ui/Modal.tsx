@@ -1,6 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Button } from './Button.tsx'
 import styles from './Modal.module.css'
 
 type Props = {
@@ -82,9 +81,7 @@ export function Modal({
             {/* 입력 모달은 설명을 제목 바로 아래에 둔다 */}
             {(size === 'form' || size === 'viewer' || size === 'invite') && descriptionText}
           </div>
-          <Button variant="text" onClick={onClose}>
-            닫기
-          </Button>
+          <button type="button" className={styles.close} aria-label="닫기" onClick={onClose}><span aria-hidden="true" /></button>
         </header>
         {size !== 'form' && size !== 'viewer' && size !== 'invite' && descriptionText}
         {children && <div className={styles.content}>{children}</div>}

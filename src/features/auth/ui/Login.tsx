@@ -69,7 +69,7 @@ export default function Login() {
         </button>)}
       </div>
       {session.capabilities?.authProviders.some((item) => !item.enabled) && <p className={styles.hint}>준비 중인 로그인 수단은 선택할 수 없어요</p>}
-      <p className={styles.hint}>또는 이메일로 로그인</p>
+      <p className={styles.divider}>또는 이메일로 로그인</p>
     </>}
     <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void (challenge ? login() : sendCode()) }}>
       {challenge ? <>

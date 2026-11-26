@@ -83,8 +83,7 @@ export default function Account() {
         const next = await authApi.update(name.trim(), activeUser.version); setUser(next); setName(next.name); setNotice('이름을 저장했어요')
       }) }}>
         <Field label="이름" value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} autoComplete="name" />
-        <Field label="이메일" value={user.email ?? '제공된 이메일 없음'} readOnly />
-        <p className={account.information}>이메일은 로그인 계정 정보입니다</p>
+        <Field label="이메일" value={user.email ?? '제공된 이메일 없음'} readOnly description="로그인 계정 정보라 여기서 바꿀 수 없어요" />
         <div className={account.actions}><Button type="submit" disabled={!dirty || !name.trim()} loading={busy}>저장</Button>
           <Button variant="secondary" disabled={busy} onClick={() => { setError(undefined); setModal('logout') }}>로그아웃</Button></div>
       </form>

@@ -26,7 +26,7 @@
 }
 .team, .invite { border-radius: var(--radius-xl); }
 .invite { width: min(600px, calc(100vw - 32px)); }
-.team .panel { min-height: min(680px, calc(100dvh - 32px)); }
+.team .panel { min-height: min(520px, calc(100dvh - 32px)); }
 .invite .titles { gap: 4px; }
 
 .dialog::backdrop {
@@ -99,6 +99,10 @@
   flex: none;
   align-self: flex-start;
 }
+
+.close { display: grid; place-items: center; width: 36px; height: 36px; margin: -6px -8px 0 0; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-secondary); cursor: pointer; transition: background-color var(--motion-fast) ease-out, color var(--motion-fast) ease-out; }
+.close:hover { background: var(--color-subtle); color: var(--color-ink); }
+.close span { width: 20px; height: 20px; background: currentColor; mask: url('/assets/navigation/x.svg') center / contain no-repeat; }
 
 .titles {
   display: flex;
