@@ -49,6 +49,7 @@ function setup() {
     snapshotGate?: Promise<void>
     // 저장은 반영하고 응답만 늦춘다
     patchGate?: Promise<void>
+    postGate?: Promise<void>
   } = {
     failNextPatch: false,
     failDeletes: 0,
@@ -92,6 +93,10 @@ function setup() {
         // 서버는 반영하고 응답만 잃는다
         control.dropPosts -= 1
         return inner(input, init).then(() => Promise.reject(new TypeError('응답 유실')))
+      }
+      if (method === 'POST' && path.endsWith('/elements') && control.postGate) {
+        const gate = control.postGate
+        return inner(input, init).then((response) => gate.then(() => response))
       }
       if (method === 'PATCH' && control.patchGate) {
         const gate = control.patchGate
@@ -1073,4 +1078,38 @@ test('스냅샷을 읽는 동안 팀원이 연달아 추가한 요소가 모두 
 
   const live = a.getState().view!.slides.flatMap((slide) => slide.elements).filter((element) => !element.deletedAt).map((element) => element.id)
   expect(live).toEqual(expect.arrayContaining([first.id, second.id]))
+})
+
+test('추가를 다시 실행하는 응답을 기다리는 사이 한 편집을 먼저 되돌린다', async () => {
+  const { open, control, serverText, serverElement, server } = setup()
+  const a = open('user-a')
+  await tick()
+  const live = () => server.getDocument().slides.find((slide) => slide.id === slideId)!.elements.length
+
+  await a.createElement(slideId, serverElement())
+  await settle()
+  const withCopy = live()
+  expect(await a.undo()).toBe(true)
+  await settle()
+
+  let release = () => {}
+  control.postGate = new Promise((resolve) => {
+    release = resolve
+  })
+  const redoing = a.redo()
+  await settle()
+  a.edit(titleId, text('기다리는 사이 고친 제목'))
+  a.endEdit(titleId)
+  await settle()
+  control.postGate = undefined
+  release()
+  expect(await redoing).toBe(true)
+  await settle()
+  expect(live()).toBe(withCopy)
+
+  // 가장 최근 편집인 제목 수정부터 되돌리고 다시 만든 요소는 남는다
+  expect(await a.undo()).toBe(true)
+  await settle()
+  expect(serverText(titleId)).not.toBe('기다리는 사이 고친 제목')
+  expect(live()).toBe(withCopy)
 })
