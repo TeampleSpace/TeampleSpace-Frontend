@@ -175,6 +175,8 @@ export function MaterialCreateDialog({ project, initial, edit, onClose, onDone, 
             if (reason instanceof ApiError && reason.code === 'UPLOAD_REJECTED' && reason.fieldErrors[0]?.code === 'NOT_PDF') {
               update(item.file, { error: uploadErrorMessage(reason, rule) })
             } else update(item.file, { failure: reason })
+            // 서버가 기다리라고 하면 남은 파일도 멈추고 그 시간 동안 다시 시도를 막는다
+            if (reason instanceof ApiError && reason.retryAfterSeconds) throw reason
             onError(reason)
           }
         }
