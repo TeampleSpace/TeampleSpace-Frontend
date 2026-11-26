@@ -98,7 +98,8 @@ select:disabled {
 @media (forced-colors: active) {
   select { appearance: auto; }
   /* 고대비 모드는 그림자를 지우므로 입력창 포커스를 외곽선으로 보인다 */
-  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid Highlight; }
+  /* 컴포넌트의 외곽선 제거보다 앞서도록 important를 쓴다 */
+  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid Highlight !important; outline-offset: 1px !important; }
 }
 
 :focus-visible {

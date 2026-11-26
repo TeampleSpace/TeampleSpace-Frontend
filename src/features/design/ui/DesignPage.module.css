@@ -130,6 +130,12 @@
   background: transparent; font: 500 15px/1.5 ui-monospace, monospace; color: var(--color-ink);
 }
 .colorEntry:has(input[type='text']:focus-visible) { border-color: var(--color-ink); box-shadow: var(--focus-ring); }
+/* 오류가 있는 칸은 포커스 중에도 빨간 테두리와 밑줄을 남긴다 */
+.custom :is(input:not([type]), select, textarea)[aria-invalid='true']:focus-visible,
+.colorEntry:has([aria-invalid='true']):has(input[type='text']:focus-visible) {
+  border-color: var(--color-danger);
+  box-shadow: inset 0 -2px var(--color-danger), var(--focus-ring);
+}
 .colorEntry input[type='text']:focus-visible { outline: 0; }
 .colorEntry > span { font: var(--text-meta); color: var(--color-tertiary); }
 .colorPicker {
