@@ -13,6 +13,7 @@ export const tabLabels: Record<Tab, string> = {
 
 // 서버는 20초 동안 알림이 없으면 떠난 것으로 본다
 export const viewingBeatMs = 8000
+export const nameRetryMs = 5000
 const retryDelaysMs = [1000, 3000, 10000]
 
 const viewersSchema = z.object({
@@ -40,22 +41,26 @@ export function colorOf(userId: string) {
 
 // 페이지마다 다른 값. 새로고침 때 이전 페이지의 떠남이 늦게 도착해도 서버가 새 페이지를 지우지 않는다
 const viewId = crypto.randomUUID()
+// 이 창에서 보낼 때마다 늘린다. 서버는 늦게 도착한 이전 알림을 버린다
+let noticeSeq = 0
 
 let pendingLeave: { projectId: string; timer: ReturnType<typeof setTimeout> } | undefined
 
 function leave(projectId: string) {
-  void api.request(`/projects/${projectId}/viewing`, emptySchema, { method: 'PUT', body: { tab: null, viewId }, keepalive: true }).catch(() => {})
+  void api.request(`/projects/${projectId}/viewing`, emptySchema, { method: 'PUT', body: { tab: null, viewId, seq: ++noticeSeq }, keepalive: true }).catch(() => {})
 }
 
 // 내가 보는 탭을 알리고 다른 팀원이 보는 탭을 받는다
 export function useProjectViewers(projectId: string | undefined, tab: Tab | undefined): Viewer[] {
   const [raw, setRaw] = useState<{ projectId: string; viewers: { userId: string; tab: Tab }[] }>()
   const [names, setNames] = useState<{ projectId: string; map: Map<string, string> }>()
+  // 팀원 이름을 읽지 못하면 잠시 뒤 다시 읽는다
+  const [nameAttempt, setNameAttempt] = useState(0)
 
   // 탭을 옮길 때는 떠남을 보내지 않는다. 떠남이 새 탭 알림보다 늦게 도착하면 잠깐 사라져 보인다
   useEffect(() => {
     if (!projectId || !tab) return
-    const beat = () => { void api.request(`/projects/${projectId}/viewing`, emptySchema, { method: 'PUT', body: { tab, viewId }, timeoutMs: 10000 }).catch(() => {}) }
+    const beat = () => { void api.request(`/projects/${projectId}/viewing`, emptySchema, { method: 'PUT', body: { tab, viewId, seq: ++noticeSeq }, timeoutMs: 10000 }).catch(() => {}) }
     beat()
     const timer = setInterval(beat, viewingBeatMs)
     return () => clearInterval(timer)
@@ -107,11 +112,12 @@ export function useProjectViewers(projectId: string | undefined, tab: Tab | unde
   useEffect(() => {
     if (!projectId || !missing) return
     const controller = new AbortController()
+    let retry: ReturnType<typeof setTimeout> | undefined
     void allMembers(projectId, controller.signal)
       .then((members) => setNames({ projectId, map: new Map(members.map((member) => [member.userId, member.name])) }))
-      .catch(() => {})
-    return () => controller.abort()
-  }, [projectId, missing])
+      .catch(() => { if (!controller.signal.aborted) retry = setTimeout(() => setNameAttempt((value) => value + 1), nameRetryMs) })
+    return () => { controller.abort(); clearTimeout(retry) }
+  }, [projectId, missing, nameAttempt])
 
   return viewers.map((viewer) => ({ ...viewer, name: known?.get(viewer.userId) ?? '팀원' }))
 }
