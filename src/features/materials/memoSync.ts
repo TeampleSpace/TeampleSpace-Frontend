@@ -129,17 +129,21 @@ export function startMemoSync(options: {
   let awarenessTimer: ReturnType<typeof setTimeout> | undefined
   function sendAwareness(keepalive = false) {
     clearTimeout(awarenessTimer)
+    awarenessTimer = undefined
     if (!awareness || changedClients.size === 0) return
     const data = toBase64(encodeAwarenessUpdate(awareness, [...changedClients]))
     changedClients.clear()
     void api.request(`/materials/${materialId}/memo-awareness`, emptyBody, { method: 'POST', body: { data }, keepalive, timeoutMs: 10000 }).catch(() => {})
   }
+  // 이미 예약한 전송은 그대로 두어 계속 움직이는 동안에도 정해진 간격마다 최신 상태를 보낸다
+  function scheduleAwareness() {
+    if (awarenessTimer === undefined) awarenessTimer = setTimeout(() => sendAwareness(), awarenessDelayMs)
+  }
   const onAwareness = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
     if (origin === remote || !awareness) return
     for (const client of [...added, ...updated, ...removed]) if (client === awareness.clientID) changedClients.add(client)
     if (changedClients.size === 0 || !ready) return
-    clearTimeout(awarenessTimer)
-    awarenessTimer = setTimeout(() => sendAwareness(), awarenessDelayMs)
+    scheduleAwareness()
   }
   awareness?.on('update', onAwareness)
   // 창을 닫거나 주소를 옮기면 화면 정리 없이 사라지므로 이때 내 커서를 지운다
@@ -175,8 +179,7 @@ export function startMemoSync(options: {
         applyAwarenessUpdate(awareness, fromBase64(state.data.data), remote)
         if ([...awareness.getStates().keys()].some((client) => !known.has(client))) {
           changedClients.add(awareness.clientID)
-          clearTimeout(awarenessTimer)
-          awarenessTimer = setTimeout(() => sendAwareness(), awarenessDelayMs)
+          scheduleAwareness()
         }
         return
       }

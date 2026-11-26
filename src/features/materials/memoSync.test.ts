@@ -157,3 +157,17 @@ test('커서 상태는 팀원에게 바로 가고 나중에 들어온 사람도 
   await vi.waitFor(() => expect(second.cursors!.getStates().has(first.doc.clientID)).toBe(false))
   second.sync.stop()
 })
+
+test('커서를 쉬지 않고 옮기는 동안에도 정해진 간격마다 상태를 보낸다', async () => {
+  const only = client('본문', (doc) => new Awareness(doc))
+  await vi.waitFor(() => expect(only.ready()).toBe(true))
+  const sent = () => vi.mocked(api.request).mock.calls.filter((call) => String(call[0]).endsWith('/memo-awareness')).length
+  const before = sent()
+  // 50ms마다 600ms 동안 옮긴다
+  for (let step = 0; step < 12; step += 1) {
+    only.cursors!.setLocalStateField('cursor', { at: step })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  expect(sent() - before).toBeGreaterThanOrEqual(3)
+  only.sync.stop()
+})
