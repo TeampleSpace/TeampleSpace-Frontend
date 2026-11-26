@@ -109,6 +109,23 @@
   cursor: not-allowed;
 }
 
+.primary:disabled,
+.primary[aria-disabled='true'] {
+  background: var(--color-border-strong);
+  color: var(--color-surface);
+}
+
+/* 홀로 놓인 글자 버튼은 글자 시작을 본문 왼쪽 줄에 맞춘다 */
+.text:only-child, .dangerText:only-child {
+  margin-left: calc(-1 * var(--space-16));
+}
+
+.small {
+  min-height: 32px;
+  padding: 4px 12px;
+  font: 600 13px/20px var(--font-body);
+}
+
 .text:disabled,
 .text[aria-disabled='true'],
 .dangerText:disabled,

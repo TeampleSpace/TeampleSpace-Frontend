@@ -58,16 +58,16 @@
 .guidance .actions { justify-content: center; }
 
 /* 자료가 없을 때. 피그마의 작업 영역 여백 48px에 맞춘다 */
-.empty { display: flex; flex-direction: column; gap: var(--space-32); padding: var(--space-16); }
+.empty { display: flex; flex-direction: column; gap: var(--space-24); }
 .empty > .project { color: var(--color-secondary); }
 .empty h1 { font: 700 28px/40px var(--font-title); }
 .emptyLead { font: var(--text-lead); color: var(--color-secondary); }
 .types { display: flex; gap: var(--space-24); }
-.type { flex: 1; min-width: 0; min-height: 260px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-16); padding: var(--space-24); border-radius: var(--radius-lg); background: var(--color-subtle); }
-.type h2 { font: 700 20px/30px var(--font-body); }
+.type { flex: 1; min-width: 0; min-height: 260px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-16); padding: var(--space-24); border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); }
+.type h2 { font: 700 20px/30px var(--font-title); }
 .type p { max-width: 280px; color: var(--color-secondary); }
 .type button { margin-top: auto; }
-.hint { padding: var(--space-20); border-radius: var(--radius-lg); background: var(--color-subtle); color: var(--color-secondary); }
+.hint { font: var(--text-meta); color: var(--color-tertiary); }
 
 /* 자료 관리 메뉴 */
 .menu { position: relative; flex: none; }

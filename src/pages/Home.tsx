@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 export default function Home() {
   return (
     <>
-      <h1>TeampleSpace</h1>
+      <h1>TeamPleSpace</h1>
       {import.meta.env.DEV && (
         <nav aria-label="개발용 화면">
           <ul>

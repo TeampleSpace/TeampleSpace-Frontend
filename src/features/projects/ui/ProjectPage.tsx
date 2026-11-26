@@ -108,7 +108,7 @@ export default function ProjectPage() {
     {settings ? <ProjectSettings key={project.id} project={project} onChange={refresh} onOpen={open} onError={onAccessError} leaving={leaving} />
       : <section className={styles.card}>
         <h2>프로젝트 정보</h2><dl className={styles.details}><dt>발표 주제</dt><dd>{project.topic || '아직 정하지 않았어요'}</dd><dt>발표 조건</dt><dd>{project.presentationConstraints || '아직 정하지 않았어요'}</dd><dt>팀원</dt><dd>{project.memberCount}명</dd></dl>
-        <div className={styles.actions}><Button onClick={() => open('members')}>팀원 관리</Button><Button variant="secondary" onClick={() => open('invite')}>팀원 초대</Button><Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}/settings`}>프로젝트 설정</Link><Link className={`${buttons.button} ${buttons.text}`} to={`/projects/${project.id}/outline`}>발표 구성 보기</Link></div>
+        <div className={styles.actions}><Link className={`${buttons.button} ${buttons.primary}`} to={`/projects/${project.id}/outline`}>발표 구성 보기</Link><Button variant="secondary" onClick={() => open('invite')}>팀원 초대</Button><Button variant="secondary" onClick={() => open('members')}>팀원 관리</Button><Link className={`${buttons.button} ${buttons.secondary}`} to={`/projects/${project.id}/settings`}>프로젝트 설정</Link></div>
       </section>}
     <TeamDialog key={`team:${project.id}`} open={!!currentView && currentView !== 'delete'} project={project} initialView={currentView && currentView !== 'delete' ? currentView : 'members'} onClose={close} onChange={changeTeam} onExit={exit} onAccessError={onAccessError} />
     <Modal open={currentView === 'delete'} title="프로젝트를 삭제할까요?" size="confirm" onClose={close}

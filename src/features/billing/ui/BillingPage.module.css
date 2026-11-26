@@ -18,8 +18,9 @@
   display: grid;
   gap: var(--space-8);
   padding: var(--space-24);
-  border-radius: var(--radius-lg);
-  background: var(--color-subtle);
+  border-left: 3px solid var(--color-accent-bright);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
   color: var(--color-secondary);
 }
 
@@ -43,7 +44,9 @@
   border-radius: var(--radius-lg);
 }
 
-.panel { border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-xs); }
+.plan, .panel { border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); }
+.header > a { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 8px 14px 8px 10px; border-radius: var(--radius-md); color: var(--color-secondary); font: var(--text-nav); }
+.header > a:hover { background: var(--color-subtle); color: var(--color-ink); }
 .plan h2, .panel h2, .narrow h2:not(.resultTitle) { font: 700 20px/30px var(--font-body); }
 
 .narrow {

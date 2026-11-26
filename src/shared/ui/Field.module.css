@@ -47,6 +47,12 @@
   box-shadow: var(--focus-ring);
 }
 
+.input[readonly] {
+  border-color: transparent;
+  background: var(--color-subtle);
+  color: var(--color-secondary);
+}
+
 .input:disabled, .textarea:disabled {
   border-color: transparent;
   background: var(--color-subtle);
