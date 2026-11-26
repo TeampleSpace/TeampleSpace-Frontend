@@ -300,8 +300,9 @@ export function createEditorSession(options: {
 
   // 실행 취소 기록
 
-  function push(op: Op) {
-    undoStack.push(op)
+  // at은 요청을 시작할 때의 기록 위치. 기다리는 사이 쌓인 편집보다 앞에 둔다
+  function push(op: Op, at = undoStack.length) {
+    undoStack.splice(Math.min(at, undoStack.length), 0, op)
     if (undoStack.length > historyLimit) undoStack.shift()
     redoStack.length = 0
     redoCleared += 1
@@ -483,8 +484,9 @@ export function createEditorSession(options: {
 
   async function createElement(slideId: string, source: Element): Promise<Element> {
     recordAll()
+    const at = undoStack.length
     const created = await add(slideId, source)
-    push({ kind: 'create', element: created })
+    push({ kind: 'create', element: created }, at)
     return created
   }
 
@@ -497,8 +499,9 @@ export function createEditorSession(options: {
     if (find(elementId)?.element.deletedAt) return Promise.resolve()
     recordAll()
     const shown = viewOf(elementId)
+    const at = undoStack.length
     const work = remove(elementId)
-      .then(() => push({ kind: 'delete', element: shown }))
+      .then(() => push({ kind: 'delete', element: shown }, at))
       .finally(() => deleting.delete(elementId))
     deleting.set(elementId, work)
     return work
