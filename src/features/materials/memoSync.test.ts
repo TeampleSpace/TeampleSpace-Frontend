@@ -120,3 +120,21 @@ test('초기 내용을 넣는 응답을 기다리는 동안 들어온 팀원의 
   await vi.waitFor(() => expect(only.text()).toBe('팀원 본문'))
   only.sync.stop()
 })
+
+test('목록을 다시 읽는 중에 받은 조각은 읽기가 실패해도 잠시 뒤 다시 읽어 반영한다', async () => {
+  const first = client('본문')
+  const second = client('본문')
+  await vi.waitFor(() => expect(first.ready() && second.ready()).toBe(true))
+  const request = vi.mocked(api.request).getMockImplementation()!
+  // 두 번째 사람이 다시 연결해 목록을 읽기 시작하고, 그 읽기는 실패한다
+  let fail = true
+  vi.mocked(api.request).mockImplementation(async (path, schema, options) => {
+    if (!options?.method && fail && listeners.length) { fail = false; await new Promise((resolve) => setTimeout(resolve, 50)); throw new TypeError('연결 끊김') }
+    return request(path, schema, options)
+  })
+  listeners[1].onOpen?.()
+  first.doc.getText('body').insert(0, '읽는 중 ')
+  await vi.waitFor(() => expect(second.text()).toBe('읽는 중 본문'), { timeout: 5000 })
+  first.sync.stop()
+  second.sync.stop()
+})

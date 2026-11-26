@@ -15,10 +15,16 @@ import * as Y from 'yjs'
 import { Editor } from '@tiptap/react'
 import { memoExtensions } from '../memoExtensions.ts'
 import { toBase64 } from '../memoSync.ts'
+import type { ProjectListener } from '../../presence/projectEvents.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 파일 처리와 서버 연동 검증이 아니다
 vi.mock('../../../entities/project/api.ts', () => ({ projectsApi: { get: vi.fn() } }))
 vi.mock('./MarkdownEditor.tsx', () => import('./MarkdownEditor.double.tsx'))
+// 모킹 서버는 이벤트 구독을 주지 않아 메모 조각 신호는 테스트가 직접 넣는다
+const events: ProjectListener[] = []
+vi.mock('../../presence/projectEvents.ts', () => ({
+  subscribeProjectEvents: (_projectId: string, listener: ProjectListener) => { events.push(listener); return () => { events.splice(events.indexOf(listener), 1) } },
+}))
 
 let mock: MaterialsMock
 const capabilities = capabilitiesExample as AuthCapabilities
@@ -347,6 +353,31 @@ test('저장 요청이 끝나기 전에 저장된 내용으로 되돌려도 이�
   void router.navigate(`/projects/${mock.projectId}`)
   expect(await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있어요' })).toBeTruthy()
   mock.faults.delayMs = 0
+})
+
+test('본문을 저장한 뒤 팀원의 변경이 합쳐지면 합쳐진 본문을 다시 저장한다', async () => {
+  const id = mock.seed('memo', '함께 쓰는 메모', { markdown: '처음' })
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /함께 쓰는 메모/ }))
+  const body = await screen.findByRole('textbox', { name: '메모 내용' }) as HTMLTextAreaElement
+  await waitFor(() => expect(body.value).toBe('처음'))
+  fireEvent.change(body, { target: { value: '처음 내 입력' } })
+  await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('처음 내 입력'), { timeout: 3000 })
+  await screen.findByText('저장됨')
+
+  // 내 저장이 끝난 뒤에야 팀원의 조각이 도착한다
+  const teammate = new Y.Doc()
+  for (const update of mock.memoLog(id)) Y.applyUpdate(teammate, Uint8Array.from(atob(update.data), (char) => char.charCodeAt(0)))
+  const before = Y.encodeStateVector(teammate)
+  teammate.getXmlFragment('default').insert(0, [new Y.XmlElement('paragraph')])
+  const paragraph = teammate.getXmlFragment('default').get(0) as Y.XmlElement
+  paragraph.insert(0, [new Y.XmlText('팀원 줄')])
+  const data = toBase64(Y.encodeStateAsUpdate(teammate, before))
+  const seq = mock.memoLog(id).length + 1
+  mock.setMemoLog(id, [...mock.memoLog(id), { seq, data }])
+  for (const listener of [...events]) listener.onMessage?.({ event: 'memo.updated', data: JSON.stringify({ materialId: id, seq, data }) })
+  await waitFor(() => expect(body.value).toBe('팀원 줄\n\n처음 내 입력'))
+  await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('팀원 줄\n\n처음 내 입력'), { timeout: 3000 })
 })
 
 test('다른 팀원이 먼저 시작한 공유 메모는 쌓인 조각으로 열고 초기 내용을 다시 넣지 않는다', async () => {
