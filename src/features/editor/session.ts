@@ -399,15 +399,21 @@ export function createEditorSession(options: {
     const current = requireOnline()
     if (source.type === 'image') throw new Error('이미지는 아직 복사할 수 없어요')
     const { type, geometry, content, style } = source
-    const result = await client.request(`/slides/${slideId}/elements`, elementSaveResultSchema, {
-      method: 'POST',
-      body: {
-        generation: current.generation,
-        clientMutationId: attempt.mutationId,
-        element: { id: attempt.id, type, geometry, content, style },
-      },
-      idempotencyKey: attempt.key,
-      timeoutMs: requestTimeoutMs,
+    const request = () =>
+      client.request(`/slides/${slideId}/elements`, elementSaveResultSchema, {
+        method: 'POST',
+        body: {
+          generation: current.generation,
+          clientMutationId: attempt.mutationId,
+          element: { id: attempt.id, type, geometry, content, style },
+        },
+        idempotencyKey: attempt.key,
+        timeoutMs: requestTimeoutMs,
+      })
+    // 응답을 잃으면 같은 키로 한 번 더 보내 중복 없이 결과를 받는다
+    const result = await request().catch((error: unknown) => {
+      if (error instanceof TransportError) return request()
+      throw error
     })
     addedAt.set(result.resource.id, (addSeq += 1))
     insert(result.resource)
@@ -466,11 +472,20 @@ export function createEditorSession(options: {
     return created
   }
 
-  async function deleteElement(elementId: string) {
+  // 같은 요소를 지우는 중이면 새로 보내지 않고 그 결과를 기다린다
+  const deleting = new Map<string, Promise<void>>()
+
+  function deleteElement(elementId: string): Promise<void> {
+    const running = deleting.get(elementId)
+    if (running) return running
+    if (find(elementId)?.element.deletedAt) return Promise.resolve()
     recordAll()
     const shown = viewOf(elementId)
-    await remove(elementId)
-    push({ kind: 'delete', element: shown })
+    const work = remove(elementId)
+      .then(() => push({ kind: 'delete', element: shown }))
+      .finally(() => deleting.delete(elementId))
+    deleting.set(elementId, work)
+    return work
   }
 
   // 편집 종료와 이동처럼 화면에서만 알 수 있는 종료를 서버에 알린다
