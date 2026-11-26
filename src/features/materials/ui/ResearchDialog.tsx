@@ -31,7 +31,8 @@ export function ResearchDialog({ project, onClose, onDone, onDirtyChange, onErro
   const [pollError, setPollError] = useState<unknown>()
   const [poll, setPoll] = useState(0)
   const [confirmClose, setConfirmClose] = useState(false)
-  const startKey = useRef<string | undefined>(undefined)
+  // 결과를 모르는 조사 요청. 같은 주제로 다시 보낼 때만 키를 다시 쓴다
+  const startRetry = useRef<{ key: string; topic: string } | null>(null)
   const saveRetry = useRef<{ key: string; body: string } | null>(null)
   const lock = useRef(false)
   const topicId = useId()
@@ -52,13 +53,7 @@ export function ResearchDialog({ project, onClose, onDone, onDirtyChange, onErro
         const latest = await materialsApi.job(pollId!, controller.signal)
         if (controller.signal.aborted) return
         setPollError(undefined)
-        if (latest.status === 'succeeded') {
-          const parsed = researchResultSchema.safeParse(latest.resultRef)
-          if (!parsed.success) throw new TransportError('invalid_response')
-          setResult(parsed.data)
-          setTitle(parsed.data.topic.slice(0, limits.title))
-        }
-        setJob(latest)
+        settle(latest)
         if (!running(latest)) return
       } catch (reason) {
         if (controller.signal.aborted) return
@@ -73,6 +68,17 @@ export function ResearchDialog({ project, onClose, onDone, onDirtyChange, onErro
     return () => { controller.abort(); clearTimeout(timer) }
   }, [pollId, poll, onError])
 
+  // 조회와 취소 응답에 같이 쓴다. 취소 전에 끝난 작업이면 결과를 보여 준다
+  function settle(latest: Job) {
+    if (latest.status === 'succeeded') {
+      const parsed = researchResultSchema.safeParse(latest.resultRef)
+      if (!parsed.success) throw new TransportError('invalid_response')
+      setResult(parsed.data)
+      setTitle(parsed.data.topic.slice(0, limits.title))
+    }
+    setJob(latest)
+  }
+
   async function guarded(work: () => Promise<void>) {
     if (lock.current) return
     lock.current = true; setBusy(true); setError(undefined)
@@ -82,20 +88,20 @@ export function ResearchDialog({ project, onClose, onDone, onDirtyChange, onErro
   const start = () => guarded(async () => {
     const value = (topicField()?.value ?? topic).trim()
     if (!value) return
-    startKey.current ??= crypto.randomUUID()
+    if (startRetry.current?.topic !== value) startRetry.current = { key: crypto.randomUUID(), topic: value }
     try {
-      const queued = await researchApi.start(project.id, value, startKey.current)
+      const queued = await researchApi.start(project.id, value, startRetry.current.key)
       if (queued.type !== 'material_research') throw new TransportError('invalid_response')
-      startKey.current = undefined
+      startRetry.current = null
       setResult(undefined); setPollError(undefined); setJob(queued)
     } catch (reason) {
-      if (!isUncertain(reason)) startKey.current = undefined
+      if (!isUncertain(reason)) startRetry.current = null
       throw reason
     }
   })
 
   const cancel = () => guarded(async () => {
-    if (job) setJob(await materialsApi.cancelJob(job.id))
+    if (job) settle(await materialsApi.cancelJob(job.id))
   })
 
   // 같은 본문이면 결과를 모르는 저장 요청의 키를 다시 쓴다
