@@ -102,6 +102,7 @@ export const templatePurposes: Record<string, string> = {
   'tech-pitch': '제안서',
   'open-campus': '수업 발표',
   'field-notes': '세미나',
+  'pop-pitch': '제안서', 'green-natural': '보고서', 'swiss-grid': '보고서', 'bento-pastel': '제안서', corporate: '보고서',
   'clean-report': '보고서', 'blue-focus': '수업 발표', 'orange-pitch': '제안서', 'green-insight': '보고서',
   'mono-editorial': '세미나', 'lilac-studio': '제안서', 'data-briefing': '보고서', 'warm-seminar': '세미나', 'team-story': '수업 발표',
   editorial: '세미나', 'pitch-dark': '제안서', 'warm-story': '수업 발표', 'grid-analysis': '보고서', 'bold-cover': '제안서',
