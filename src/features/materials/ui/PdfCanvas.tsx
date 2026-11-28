@@ -10,7 +10,7 @@ export type PdfDocument = {
     getViewport: (options: { scale: number }) => { width: number; height: number; convertToViewportPoint?: (x: number, y: number) => number[] }
     render: (options: { canvas: HTMLCanvasElement; viewport: { width: number; height: number } }) => { promise: Promise<unknown>; cancel: () => void }
     getAnnotations?: () => Promise<{ subtype?: string; url?: string; dest?: unknown; rect?: number[] }[]>
-    getTextContent?: () => Promise<{ items: { str?: string; transform?: number[]; width?: number }[] }>
+    getTextContent?: () => Promise<{ items: { str?: string; transform?: number[]; width?: number; hasEOL?: boolean }[] }>
   }>
   getDestination?: (name: string) => Promise<unknown[] | null>
   getPageIndex?: (ref: unknown) => Promise<number>
@@ -84,16 +84,31 @@ export function PdfCanvas({ document: pdf, page, title, onError, onRendered, onN
           if (found) items.push({ target: found, ...place(note.rect) })
         }
         // 링크 주석 없이 글자로만 적힌 주소도 누를 수 있게 한다. 주석과 겹치면 주석을 쓴다
-        // ponytail: 줄을 넘겨 이어진 주소는 첫 줄만 잡힌다. 필요해지면 다음 글자 조각과 이어 붙인다
+        // 한 줄에서 잘게 나뉜 글자 조각은 붙여서 찾는다. 글자 사이가 반 글자 넘게 떨어지면 다른 덩어리로 본다
+        // ponytail: 줄을 넘겨 이어진 주소는 첫 줄만 잡힌다. 필요해지면 다음 줄과 이어 붙인다
         const text = await source.getTextContent?.().catch(() => null)
-        const noted = items.slice()
+        type Piece = { str: string; x: number; y: number; size: number; width: number; at: number }
+        const runs: Piece[][] = []
+        let last: Piece | undefined
         for (const item of text?.items ?? []) {
           const [a = 0, b = 0, c = 0, d = 0, x = 0, y = 0] = item.transform ?? []
-          if (!item.str || !item.width || Math.abs(b) > 0.01 || Math.abs(c) > 0.01 || a <= 0 || d <= 0) continue
-          for (const match of item.str.matchAll(writtenAddress)) {
-            const start = x + item.width * share(item.str, match.index)
-            const end = x + item.width * share(item.str, match.index + match[0].length)
-            const spot = place([start, y - d * 0.25, end, y + d * 0.9])
+          if (!item.str || !item.width || Math.abs(b) > 0.01 || Math.abs(c) > 0.01 || a <= 0 || d <= 0) { last = undefined; continue }
+          const prev = last && Math.abs(y - last.y) <= d * 0.2 && x >= last.x && x - (last.x + last.width) <= d * 0.5 ? last : undefined
+          if (!prev) runs.push([])
+          const piece = { str: item.str, x, y, size: d, width: item.width, at: prev ? prev.at + prev.str.length : 0 }
+          runs.at(-1)!.push(piece)
+          last = item.hasEOL ? undefined : piece
+        }
+        const noted = items.slice()
+        // 주소 끝은 마지막 글자가 든 조각에서 잰다
+        const offset = (run: Piece[], index: number, end = false) => {
+          const piece = run.findLast((part) => end ? part.at < index : part.at <= index)!
+          return piece.x + piece.width * share(piece.str, index - piece.at)
+        }
+        for (const run of runs) {
+          for (const match of run.map((part) => part.str).join('').matchAll(writtenAddress)) {
+            const { y, size } = run.findLast((part) => part.at <= match.index)!
+            const spot = place([offset(run, match.index), y - size * 0.25, offset(run, match.index + match[0].length, true), y + size * 0.9])
             const covered = noted.some((link) => spot.left < link.left + link.width && link.left < spot.left + spot.width
               && spot.top < link.top + link.height && link.top < spot.top + spot.height)
             if (!covered) items.push({ url: /^www\./i.test(match[0]) ? `https://${match[0]}` : match[0], ...spot })
