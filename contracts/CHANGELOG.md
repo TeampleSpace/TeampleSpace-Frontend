@@ -5,6 +5,17 @@
 
 지금의 기준 커밋은 `1784978`이다. 스키마, 예제, 오류 목록이 마지막으로 바뀐 커밋이다.
 
+## 2026-11-28 링크 자료의 AI 분석 정리 요청 거절
+
+- 링크 자료의 `POST /v1/materials/{materialId}/summary-jobs`는 `MATERIAL_STATE_CONFLICT`로 거절한다. 대기 중이던 링크 자료의 분석 정리 작업은 제공자를 부르지 않고 `JOB_INPUT_STALE`로 끝난다
+- 기존 링크 자료의 `currentRevision.analysis`와 `summary`는 지우지 않는다
+
+## 2026-11-28 본문을 읽지 못한 링크 구분
+
+- 작업의 `error.code`로만 전달하는 `LINK_NO_CONTENT`를 추가했다. 링크 문서가 로그인 화면이거나 본문이 거의 비어 있으면 링크 수집 작업이 이 코드로 끝나고 자료는 failed가 된다. 내부 재시도는 하지 않고 발표 구성의 근거에서 빠진다
+- 본문이 완전히 빈 HTML도 이전의 `LINK_UNSUPPORTED_CONTENT` 대신 `LINK_NO_CONTENT`로 끝난다. `LINK_UNSUPPORTED_CONTENT`는 글이 아닌 형식에만 쓴다
+- 판별 기준과 한계는 `stage-2.md`의 링크와 마크다운 자료 절에 있다
+
 ## 2026-11-28 스튜디오 템플릿 그래프 장 추가
 
 - 발표 생성의 추천 배치와 슬라이드 `layoutId`에 `chart`를 추가했다. 같은 단위의 수치 2개에서 5개를 스튜디오 템플릿의 그래프 장으로 그리고, 그릴 수 없으면 카드나 목록으로 바꾼다
