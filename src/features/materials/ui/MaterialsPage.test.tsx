@@ -73,8 +73,9 @@ test('목록과 유형별 개수, 선택한 자료의 작성자와 출처, 링�
   fireEvent.click(await row('감축 사례'))
   expect(await screen.findByRole('link', { name: /^example\.com 원본 페이지 열기/ })).toBeTruthy()
   expect(screen.getByText('함께 볼 사례')).toBeTruthy()
-  // 링크 자료에는 AI 분석 정리를 두지 않는다
+  // 링크 자료에는 AI 분석 정리를 두지 않고 상태는 본문 읽기 결과로 부른다
   expect(screen.queryByRole('heading', { name: 'AI 분석 정리' })).toBeNull()
+  expect(screen.getByText('본문 읽음')).toBeTruthy()
   expect(screen.getByRole('button', { name: '원문 보기' })).toBeTruthy()
   // 유형 필터는 주소에 남는다
   fireEvent.click(filters.getByRole('link', { name: '메모 1' }))
@@ -154,6 +155,39 @@ test('분석 실패는 파일을 다시 올리지 않고 같은 키로 다시 �
   expect(retries[0].key).toBe(retries[1].key)
   expect(mock.jobs()).toHaveLength(2)
   expect(mock.calls.some((call) => call.path.includes('/uploads'))).toBe(false)
+})
+
+test('본문이 없는 링크는 읽지 못한 링크로 표시하고 원본과 메모로 붙여 넣기를 안내한다', async () => {
+  mock.faults.failAnalysisCode = 'LINK_NO_CONTENT'
+  mock.seed('link', '인스타그램 게시물', { status: 'processing', url: 'https://www.instagram.com/natgeo/' })
+  mount()
+  expect(await screen.findByText('링크 본문을 읽지 못했어요')).toBeTruthy()
+  expect(screen.getByText('로그인 화면이거나 본문이 거의 없는 페이지예요')).toBeTruthy()
+  expect(screen.getByText(/발표 구성의 근거로 쓰지 않아요/)).toBeTruthy()
+  // 목록에서도 읽지 못한 링크를 구분한다
+  expect(within(await row('인스타그램 게시물')).getByText('본문 읽지 못함')).toBeTruthy()
+  expect(screen.getByRole('link', { name: /^www\.instagram\.com 원본 페이지 열기/ }).getAttribute('target')).toBe('_blank')
+  // 다시 시도해도 같은 결과라 다시 시도와 원문 보기를 두지 않는다
+  expect(screen.queryByRole('button', { name: '다시 시도' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '원문 보기' })).toBeNull()
+  expect(screen.queryByText(/자료를 삭제하고 다른 자료로 추가해 주세요/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '메모로 붙여 넣기' }))
+  expect(await screen.findByRole('dialog', { name: /자료 추가/ })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '메모 추가' })).toBeTruthy()
+})
+
+test('가져오지 못한 링크는 다시 읽기와 메모로 붙여 넣기를 함께 보여 준다', async () => {
+  mock.faults.failAnalysisCode = 'LINK_FETCH_FAILED'
+  mock.seed('link', '상품 페이지', { status: 'processing' })
+  mount()
+  expect(await screen.findByText('링크 본문을 읽지 못했어요')).toBeTruthy()
+  expect(screen.getByText(/사이트에서 문서를 받지 못했어요/)).toBeTruthy()
+  expect(screen.getByRole('button', { name: '메모로 붙여 넣기' })).toBeTruthy()
+  mock.faults.holdAnalysis = true
+  fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+  expect(await screen.findByText('본문 읽기 대기 중')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '읽기 취소' })).toBeTruthy()
+  expect(screen.getAllByText('본문 읽는 중').length).toBeGreaterThan(0)
 })
 
 test('분석 취소 응답을 잃어도 작업을 조회해 취소를 확인하고 원본으로 다시 시도한다', async () => {

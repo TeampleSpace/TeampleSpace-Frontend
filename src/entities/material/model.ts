@@ -102,8 +102,15 @@ export const materialCommentDeletedSchema = z.object({ id: z.string(), materialI
 export const limits = { title: 255, description: 2000, markdown: 100000, note: 20000, comment: 2000, url: 2048 }
 
 export const kindLabels: Record<MaterialKind, string> = { file: 'PDF', link: '링크', memo: '메모' }
-export const statusLabels: Record<MaterialSummary['status'], string> = {
+const statusLabels: Record<MaterialSummary['status'], string> = {
   processing: '처리 중', ready: '분석 완료', failed: '분석 실패',
+}
+// 링크는 AI 분석 없이 본문만 읽으므로 읽기 결과로 부른다
+const linkStatusLabels: Record<MaterialSummary['status'], string> = {
+  processing: '본문 읽는 중', ready: '본문 읽음', failed: '본문 읽지 못함',
+}
+export function statusLabel(item: Pick<MaterialSummary, 'kind' | 'status'>) {
+  return (item.kind === 'link' ? linkStatusLabels : statusLabels)[item.status]
 }
 
 // 목록과 상세의 유형 줄. PDF는 실제 쪽수를 함께 보여 준다
@@ -143,10 +150,11 @@ export function normalizeUrl(value: string): string | null {
 export const jobErrorMessages: Record<string, string> = {
   ANALYSIS_FAILED: '분석 중 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요',
   MATERIAL_UNREADABLE: '파일을 읽을 수 없어요. 손상됐거나 암호가 걸린 PDF인지 확인해 주세요',
-  LINK_FETCH_FAILED: '링크의 문서를 가져오지 못했어요. 주소에 접속되는지 확인해 주세요',
+  LINK_FETCH_FAILED: '사이트에서 문서를 받지 못했어요. 주소가 틀렸거나 사이트가 외부 수집을 막았을 수 있어요',
   LINK_BLOCKED: '이 주소의 문서는 가져올 수 없어요',
   LINK_UNSUPPORTED_CONTENT: '글로 읽을 수 없는 형식의 링크예요',
   LINK_TOO_LARGE: '문서가 너무 커서 가져오지 못했어요',
+  LINK_NO_CONTENT: '로그인 화면이거나 본문이 거의 없는 페이지예요',
   JOB_ATTEMPTS_EXHAUSTED: '분석을 끝내지 못했어요. 다시 시도해 주세요',
   JOB_TARGET_GONE: '자료가 삭제되어 분석을 멈췄어요',
 }
