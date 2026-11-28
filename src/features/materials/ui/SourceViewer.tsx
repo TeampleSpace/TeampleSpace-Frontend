@@ -91,7 +91,7 @@ export function SourceViewer({ material, revisionId, onClose, onError }: {
   const pdfPage = fileError
     ? <RequestError error={fileError} action={<Button onClick={retryFile}>원문 다시 불러오기</Button>} />
     : pdf && pdf.url === fileUrl
-      ? <PdfCanvas document={pdf.document} page={current} title={material.title} onError={onFileError} onRendered={onRendered} />
+      ? <PdfCanvas document={pdf.document} page={current} title={material.title} onError={onFileError} onRendered={onRendered} onNavigate={setPage} />
       : <StatusPanel kind="loading" title="원문을 불러오고 있어요" />
   // 근거로 고정한 개정은 연결 당시 본문을 보여야 해서 지금 문서 미리보기를 쓰지 않는다
   const preview = source?.link && !revisionId ? sharedPreview(source.link.url) : null
