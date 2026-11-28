@@ -397,25 +397,28 @@ test('다른 팀원이 먼저 시작한 공유 메모는 쌓인 조각으로 열
   expect(calls(`/materials/${id}/source`)).toHaveLength(0)
 })
 
-test('공유 문서를 열어 둔 팀원은 창 수와 관계없이 한 번씩 보이고 내 다른 창은 빠진다', async () => {
+test('공유 문서를 열어 둔 팀원은 창 수와 관계없이 사람마다 한 번씩 보이고 내 다른 창은 빠진다', async () => {
   mount()
   fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
   await screen.findByRole('textbox', { name: '메모 내용' })
   const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
   expect(screen.queryByRole('list', { name: '지금 함께 편집 중인 팀원' })).toBeNull()
-  const open = (name: string, color: string) => {
+  const open = (userId: string, name: string, color: string) => {
     const other = new Awareness(new Y.Doc())
-    other.setLocalStateField('user', { name, color })
+    other.setLocalStateField('user', { id: userId, name, color })
     const data = toBase64(encodeAwarenessUpdate(other, [other.clientID]))
     for (const listener of [...events]) listener.onMessage?.({ event: 'memo.awareness', data: JSON.stringify({ materialId: id, data }) })
   }
-  open('팀원 2', '#1971c2')
-  open('팀원 2', '#1971c2')
-  open('팀원 1', colorOf(mock.ownerId))
+  open('member-2', '팀원 2', '#1971c2')
+  open('member-2', '팀원 2', '#1971c2')
+  open(mock.ownerId, '팀원 1', colorOf(mock.ownerId))
+  // 나와 이름과 색이 같아도 다른 사람이면 보인다
+  open('member-3', '팀원 1', colorOf(mock.ownerId))
   const list = await screen.findByRole('list', { name: '지금 함께 편집 중인 팀원' })
-  expect(within(list).getAllByRole('listitem')).toHaveLength(1)
+  await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(2))
   expect(within(list).getByText('팀원 2')).toBeTruthy()
-  expect(screen.getByText('팀원 2 님과 함께 편집 중')).toBeTruthy()
+  expect(within(list).getByText('팀원 1')).toBeTruthy()
+  expect(screen.getByText('2명과 함께 편집 중')).toBeTruthy()
 })
 
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
