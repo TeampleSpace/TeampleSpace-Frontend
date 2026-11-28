@@ -368,7 +368,8 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
           summary={visible.status === 'ready' && visible.currentRevision && <>
             {/* 메모 자료는 본문을 바로 보여 주고 고친다. AI 요약은 그 아래에 둔다 */}
             {visible.kind === 'memo' && <MemoPad key={visible.id} material={visible} onSaved={apply} onDirtyChange={setMemoDirty} onError={onError} />}
-            <MaterialAiSummary key={visible.currentRevision.id} material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />
+            {/* 링크는 본문을 못 읽는 경우가 많아 AI 요약을 두지 않는다 */}
+            {visible.kind !== 'link' && <MaterialAiSummary key={visible.currentRevision.id} material={visible} onChanged={apply} onError={onError} onGone={summaryGone} />}
           </>}>
           <TeamComments key={visible.id} materialId={visible.id} onDirtyChange={setNoteDirty} onError={onError} />
         </MaterialDetail>}
