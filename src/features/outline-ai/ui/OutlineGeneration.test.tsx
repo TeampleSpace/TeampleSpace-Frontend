@@ -219,16 +219,20 @@ test('분석 중인 자료는 고를 수 없게 보여 주고 창을 열어 둔 
   vi.useFakeTimers({ shouldAdvanceTime: true })
   const pdf: MaterialSummary = { ...source, id: 'pdf', title: '설문 결과 PDF', kind: 'file', status: 'processing' }
   const added: MaterialSummary = { ...source, id: 'added', title: '새로 추가한 메모' }
-  const counts = { all: 2, file: 1, link: 0, memo: 1 }
+  const unread: MaterialSummary = { ...source, id: 'unread', title: '로그인 화면 링크', kind: 'link', status: 'failed' }
+  const counts = { all: 3, file: 1, link: 1, memo: 1 }
   vi.mocked(materialsApi.list).mockReset()
-    .mockResolvedValueOnce({ items: [pdf, source], nextCursor: null, counts })
-    .mockResolvedValue({ items: [added, { ...pdf, status: 'ready' }, source], nextCursor: null, counts: { ...counts, all: 3, memo: 2 } })
+    .mockResolvedValueOnce({ items: [pdf, unread, source], nextCursor: null, counts })
+    .mockResolvedValue({ items: [added, { ...pdf, status: 'ready' }, unread, source], nextCursor: null, counts: { ...counts, all: 4, memo: 2 } })
   mount(true)
   fireEvent.click(screen.getByRole('button', { name: 'AI로 구성 만들기' }))
   const form = within(await screen.findByRole('dialog', { name: 'AI로 구성 만들기' }))
   const processing = await form.findByRole('checkbox', { name: /설문 결과 PDF/ })
   expect(processing).toHaveProperty('disabled', true)
   expect(form.getByText('분석 중')).toBeTruthy()
+  // 본문을 읽지 못한 링크는 근거로 고를 수 없고 읽기 결과로 표시한다
+  expect(form.getByRole('checkbox', { name: /로그인 화면 링크/ })).toHaveProperty('disabled', true)
+  expect(form.getByText('본문 읽지 못함')).toBeTruthy()
   fireEvent.click(form.getByRole('checkbox', { name: source.title }))
 
   await vi.advanceTimersByTimeAsync(4000)
