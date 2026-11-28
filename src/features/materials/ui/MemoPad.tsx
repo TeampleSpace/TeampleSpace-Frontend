@@ -146,7 +146,7 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
-  const me = useMemo(() => user ? { name: user.name, color: colorOf(user.id) } : undefined, [user])
+  const me = useMemo(() => user ? { id: user.id, name: user.name, color: colorOf(user.id) } : undefined, [user])
   if (!doc && sync.error) return <section className={memo.pad} aria-label="공유 문서">
     <RequestError error={sync.error} action={<Button variant="text" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</Button>} />
   </section>
@@ -173,14 +173,15 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   </section>
 }
 
-// 커서 상태에서 나를 뺀 팀원을 이름과 색으로 하나씩 고른다. 같은 사람이 창을 여러 개 열어도 한 번만 센다
+// 커서 상태에서 나를 뺀 팀원을 사용자 ID로 하나씩 고른다. 같은 사람이 창을 여러 개 열어도 한 번만 센다
+// ID가 없는 예전 화면의 상태는 세지 않는다. 커서는 그대로 보인다
 function coEditors(states: Map<number, Record<string, unknown>>, self: number, me?: CaretUser) {
   const found = new Map<string, CaretUser>()
   states.forEach((state, client) => {
     const user = state.user as Partial<CaretUser> | undefined
-    if (client === self || typeof user?.name !== 'string' || typeof user.color !== 'string') return
-    if (me && user.name === me.name && user.color === me.color) return
-    found.set(`${user.color} ${user.name}`, { name: user.name, color: user.color })
+    if (client === self || typeof user?.id !== 'string' || typeof user.name !== 'string' || typeof user.color !== 'string') return
+    if (user.id === me?.id) return
+    found.set(user.id, { id: user.id, name: user.name, color: user.color })
   })
   return [...found.values()]
 }
@@ -196,7 +197,7 @@ function CoEditors({ awareness, me }: { awareness: Awareness; me?: CaretUser }) 
   if (!people.length) return null
   return <div className={memo.people}>
     <ul aria-label="지금 함께 편집 중인 팀원">
-      {people.map((person) => <li key={`${person.color} ${person.name}`} title={person.name}>
+      {people.map((person) => <li key={person.id} title={person.name}>
         <span className={memo.avatar} style={{ background: person.color }} aria-hidden="true">{person.name.trim().slice(0, 1) || '?'}</span>
         <span className={styles.visuallyHidden}>{person.name}</span>
       </li>)}
