@@ -11,7 +11,7 @@
 .titleMark svg { position: absolute; z-index: -1; left: -1%; bottom: 1px; width: 102%; height: 16px; overflow: visible; fill: none; stroke: var(--color-accent-bright); stroke-opacity: .35; stroke-width: 12px; stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw-mark 900ms var(--motion-ease-out) 250ms forwards; stroke-linecap: round; }
 @keyframes draw-mark { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .titleMark svg { stroke-dashoffset: 0; } }
-.brandDescription { margin-top: 26px; font: var(--text-serif-lead); color: var(--color-secondary); }
+.brandDescription { margin-top: 26px; font: var(--text-lead); color: var(--color-secondary); }
 .card { width: 100%; min-width: 0; max-width: 100%; display: flex; flex-direction: column; gap: var(--space-20); border: 1px solid var(--color-border); padding: 32px; border-radius: var(--radius-xl); background: var(--color-surface); color: var(--color-ink); }
 .card h2 { font: var(--text-modal-title); }
 .card > p { color: var(--color-secondary); }

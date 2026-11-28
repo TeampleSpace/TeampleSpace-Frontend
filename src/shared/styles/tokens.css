@@ -29,12 +29,11 @@
   --icon-invert: 0;
   --select-chevron: url('/assets/navigation/chevron-down.svg');
 
-  /* 눈누 글꼴. 본문 원티드 산스, 제목 페이퍼로지, 강조 문장 마루 부리 */
+  /* 눈누 글꼴. 본문 원티드 산스, 제목 페이퍼로지 */
   --font-body:
     'Wanted Sans', 'Pretendard', system-ui, -apple-system, 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif;
   --font-title: 'Paperlogy UI', var(--font-body);
-  --font-serif: 'MaruBuri', 'Apple Myungjo', serif;
   /* 슬라이드 글자는 내보내기 결과와 같도록 기존 글꼴을 유지한다 */
   --font-slide: 'Pretendard', system-ui, sans-serif;
 
@@ -55,7 +54,6 @@
   --text-label: 600 14px/20px var(--font-body);
   --text-meta-strong: 600 13px/20px var(--font-body);
   --text-caption: 400 12px/18px var(--font-body);
-  --text-serif-lead: 400 17px/28px var(--font-serif);
 
   /* 간격 */
   --space-8: 8px;
