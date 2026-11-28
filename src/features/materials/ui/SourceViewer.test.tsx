@@ -21,18 +21,27 @@ vi.mock('../pdf.ts', () => ({
     const document = {
       numPages: 3,
       getPage: async (page: number) => ({
-        getViewport: () => ({ width: 100, height: 140, convertToViewportPoint: (x: number, y: number) => [x, 140 - y] }),
+        // PDF.js처럼 this를 쓰는 메서드로 둔다
+        getViewport: () => ({ width: 100, height: 140, convertToViewportPoint(x: number, y: number) { return [x, this.height - y] } }),
         getAnnotations: async () => [
           { subtype: 'Link', url: 'https://example.com/pdf-link', rect: [10, 100, 60, 128] },
           { subtype: 'Link', url: 'javascript:alert(1)', rect: [10, 10, 60, 20] },
           { subtype: 'Widget', rect: [10, 10, 60, 20] },
+          { subtype: 'Link', dest: 'chapter', rect: [10, 30, 60, 40] },
         ],
+        getTextContent: async () => ({ items: [
+          { str: 'https://example.com/pdf-link', transform: [10, 0, 0, 10, 10, 110], width: 50 },
+          { str: '자세한 안내 www.example.com/guide.', transform: [10, 0, 0, 10, 10, 60], width: 80 },
+          { str: 'file:///etc/passwd', transform: [10, 0, 0, 10, 10, 80], width: 40 },
+        ] }),
         render: () => {
           const failed = pdf.failRender > 0 && (pdf.failRender -= 1) >= 0
           if (!failed) pdf.rendered.push(page)
           return { promise: failed ? Promise.reject(new Error('만료된 주소')) : Promise.resolve(), cancel() {} }
         },
       }),
+      getDestination: async (name: string) => name === 'chapter' ? [{ num: 9, gen: 0 }, { name: 'XYZ' }] : null,
+      getPageIndex: async () => 2,
     }
     const failed = pdf.failOpen > 0 && (pdf.failOpen -= 1) >= 0
     return { promise: failed ? Promise.reject(new Error('만료된 주소')) : Promise.resolve(document), destroy() {} }
@@ -145,6 +154,19 @@ test('PDF 쪽 안의 웹 링크를 같은 자리에 새 탭 링크로 두고 위
   const spot = link.parentElement as HTMLElement
   expect([spot.style.left, spot.style.top, spot.style.width, spot.style.height]).toEqual(['10%', '8.57143%', '50%', '20%'])
   expect(popup.queryByRole('link', { name: /javascript/ })).toBeNull()
+})
+
+test('PDF 본문에 글자로만 적힌 주소와 문서 안 링크도 누를 수 있다', async () => {
+  mock.seed('file', '목차가 있는 보고서.pdf')
+  mount()
+  const popup = await openViewer()
+  const written = await popup.findByRole('link', { name: /^1쪽의 링크 https:\/\/www\.example\.com\/guide ?\(새 탭에서 열림\)$/ })
+  expect(written.getAttribute('href')).toBe('https://www.example.com/guide')
+  // 주석이 이미 걸린 주소는 한 번만 두고 웹 주소가 아닌 글자는 링크로 만들지 않는다
+  expect(popup.getAllByRole('link', { name: /example\.com\/pdf-link/ })).toHaveLength(1)
+  expect(popup.queryByRole('link', { name: /file:/ })).toBeNull()
+  fireEvent.click(popup.getByRole('button', { name: '1쪽의 링크 3쪽으로 이동' }))
+  await popup.findByText('PDF · 3쪽 / 3쪽')
 })
 
 test('원문 주소가 만료되면 다시 발급받고 보던 쪽을 유지한다', async () => {
