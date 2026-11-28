@@ -18,8 +18,8 @@ export type PdfDocument = {
 
 type PageLink = { url?: string; target?: number; left: number; top: number; width: number; height: number }
 
-// 본문 글자로만 적힌 웹 주소. 끝의 문장부호와 괄호는 주소에 넣지 않는다
-const writtenAddress = /(?:https?:\/\/|www\.)[^\s<>"'()[\]]*[^\s<>"'()[\].,;:!?]/gi
+// 본문 글자로만 적힌 웹 주소. 짝이 맞는 괄호는 주소에 넣고 끝의 문장부호와 바깥 괄호는 뺀다
+const writtenAddress = /(?:https?:\/\/|www\.)(?:[^\s<>"'()[\]]|\([^\s<>"'()[\]]*\))*(?:[^\s<>"'()[\].,;:!?]|\([^\s<>"'()[\]]*\))/gi
 
 // 글자 일부의 가로 위치 비율. 실제 글꼴 대신 기본 글꼴 너비로 어림한다
 let ruler: CanvasRenderingContext2D | null | undefined
