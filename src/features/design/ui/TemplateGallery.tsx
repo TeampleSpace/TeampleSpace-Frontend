@@ -5,6 +5,7 @@ import { Button } from '../../../shared/ui/Button.tsx'
 import { DesignPreview } from './DesignPreview.tsx'
 import { TemplateCover } from './TemplateCover.tsx'
 import { StudioPreview } from './StudioPreview.tsx'
+import { layoutCover } from './layoutCovers.ts'
 import { studioPreview } from './studioPreviews.ts'
 import { templateCovers, templatePurposes as purposes } from './templateCovers.ts'
 import styles from './TemplateGallery.module.css'
@@ -49,7 +50,7 @@ export function TemplateGallery({ items, selected, disabled, projectName, modes,
     <div className={styles.grid}>
       {visible.map((item) => {
         const active = selected?.id === item.id && selected.version === item.version
-        const studioCover = studioPreview(item.key)?.[0]
+        const studioCover = studioPreview(item.key)?.[0] ?? layoutCover(item.key)
         return <div key={`${item.id}:${item.version}`} className={styles.item}>
           {/* 저장하는 동안에도 포커스가 남도록 disabled 대신 aria-disabled로 막는다 */}
           <button type="button" className={styles.card} aria-pressed={active}

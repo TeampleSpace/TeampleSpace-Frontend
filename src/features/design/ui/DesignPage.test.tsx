@@ -127,6 +127,23 @@ test('아는 템플릿은 정해 둔 순서로, 모르는 템플릿은 그 뒤�
   expect(cards.map((button) => button.getAttribute('aria-label'))).toEqual(['클린 리포트 선택', '에디토리얼 선택', '새 템플릿 선택'])
 })
 
+test('Slide Layouts 계열 템플릿은 피그마 표지로 보이고 용도 분류로 찾는다', async () => {
+  const swiss = { ...template, id: 'swiss', key: 'swiss-grid', name: '스위스 그리드' }
+  const studio = { ...template, id: 'studio', key: 'open-campus', name: '오픈 캠퍼스' }
+  vi.mocked(designApi.catalog).mockResolvedValue({ items: [template, swiss, studio], allowedFonts: ['Pretendard'] })
+  mount()
+
+  const card = await screen.findByRole('button', { name: '스위스 그리드 선택' })
+  expect(within(card).getByText('교내 일회용품 사용 실태 조사')).toBeTruthy()
+  expect(within(card).getByText('보고서 / 16:9')).toBeTruthy()
+  const cards = screen.getAllByRole('button', { name: /선택$/ }).filter((button) => button.hasAttribute('aria-label'))
+  expect(cards.map((button) => button.getAttribute('aria-label'))).toEqual(['오픈 캠퍼스 선택', '스위스 그리드 선택', '클린 리포트 선택'])
+  fireEvent.click(screen.getByRole('button', { name: '제안서' }))
+  expect(screen.queryByRole('button', { name: '스위스 그리드 선택' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '보고서' }))
+  expect(screen.getByRole('button', { name: '스위스 그리드 선택' })).toBeTruthy()
+})
+
 test('새 템플릿 검색, 여섯 장 미리보기, 버전 저장을 연결한다', async () => {
   const studio = { ...template, id: 'studio', key: 'open-campus', name: '오픈 캠퍼스', version: 2 }
   vi.mocked(designApi.catalog).mockResolvedValue({ items: [studio, template], allowedFonts: ['Pretendard'] })

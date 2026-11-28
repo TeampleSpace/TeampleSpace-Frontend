@@ -101,7 +101,7 @@
       "properties": {
         "snapshot": { "$ref": "#/$defs/PresentationGenerationSnapshot" },
         "model": { "type": "string", "minLength": 1 },
-        "promptVersion": { "const": "presentation-v5" }
+        "promptVersion": { "const": "presentation-v6" }
       }
     },
     "PresentationJobResult": {
