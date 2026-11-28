@@ -36,6 +36,7 @@ vi.mock('../pdf.ts', () => ({
           // 한 줄의 주소가 두 조각으로 나뉘어 와도 하나로 잡는다
           { str: '근거 https://example.', transform: [10, 0, 0, 10, 10, 20], width: 40 },
           { str: 'com/report 참고', transform: [10, 0, 0, 10, 50, 20], width: 30, hasEOL: true },
+          { str: '(https://en.wikipedia.org/wiki/Function_(mathematics)).', transform: [10, 0, 0, 10, 10, 5], width: 80 },
         ] }),
         render: () => {
           const failed = pdf.failRender > 0 && (pdf.failRender -= 1) >= 0
@@ -173,6 +174,8 @@ test('PDF 본문에 글자로만 적힌 주소와 문서 안 링크도 누를 �
   const spot = (split.parentElement as HTMLElement).style
   const [left, width] = [parseFloat(spot.left), parseFloat(spot.width)]
   expect(left > 10 && left < 50 && left + width > 50 && left + width < 80).toBe(true)
+  // 주소 안의 괄호는 남기고 주소를 감싼 괄호와 마침표는 뺀다
+  expect(popup.getByRole('link', { name: /^1쪽의 링크 https:\/\/en\.wikipedia/ }).getAttribute('href')).toBe('https://en.wikipedia.org/wiki/Function_(mathematics)')
   fireEvent.click(popup.getByRole('button', { name: '1쪽의 링크 3쪽으로 이동' }))
   await popup.findByText('PDF · 3쪽 / 3쪽')
 })
