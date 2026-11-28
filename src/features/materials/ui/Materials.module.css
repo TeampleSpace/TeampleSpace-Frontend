@@ -86,8 +86,6 @@
 .commentForm { display: flex; flex-direction: column; gap: var(--space-8); }
 .commentForm .actions { justify-content: flex-end; }
 .noteAuthor { font: var(--text-meta); color: var(--color-tertiary); }
-.memoPad { display: flex; flex-direction: column; gap: var(--space-12); }
-.memoPad .editorInput { min-height: 320px; }
 .editorInput[contenteditable='false'] { color: var(--color-secondary); }
 .conflict { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-lg); background: var(--color-accent-soft); animation: var(--motion-page-enter); }
 .conflict > p:first-child { color: var(--color-accent); }

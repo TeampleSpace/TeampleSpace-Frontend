@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import * as Y from 'yjs'
 import { Awareness } from 'y-protocols/awareness'
 import { Editor } from '@tiptap/react'
@@ -13,7 +13,9 @@ import { remote, startMemoSync } from '../memoSync.ts'
 import type { SyncState } from '../memoSync.ts'
 import { MarkdownEditor } from './MarkdownEditor.tsx'
 import { memoExtensions } from '../memoExtensions.ts'
+import type { CaretUser } from '../memoExtensions.ts'
 import styles from './Materials.module.css'
+import memo from './Memo.module.css'
 
 // 입력을 멈추고 이만큼 지나면 본문을 자료 개정으로 저장한다
 export const memoSaveDelayMs = 1200
@@ -144,27 +146,62 @@ export function MemoPad({ material, onSaved, onDirtyChange, onError }: {
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
-  if (!doc && sync.error) return <section className={styles.memoPad} aria-label="메모 본문">
+  const me = useMemo(() => user ? { id: user.id, name: user.name, color: colorOf(user.id) } : undefined, [user])
+  if (!doc && sync.error) return <section className={memo.pad} aria-label="공유 문서">
     <RequestError error={sync.error} action={<Button variant="text" onClick={() => setAttempt((value) => value + 1)}>다시 불러오기</Button>} />
   </section>
-  if (!doc) return <section className={styles.memoPad} aria-label="메모 본문">
-    <p className={styles.noteAuthor} role="status">메모를 불러오고 있어요</p>
+  if (!doc) return <section className={memo.pad} aria-label="공유 문서">
+    <p className={styles.noteAuthor} role="status">문서를 불러오고 있어요</p>
   </section>
 
-  const status = sync.offline ? '연결을 기다리는 중' : sync.unsent ? '보내는 중'
-    : saving === 'failed' ? '저장하지 못했어요' : saving === 'idle' ? '저장됨' : saving === 'saving' ? '저장 중' : '저장 대기'
-  return <section className={styles.memoPad} aria-label="메모 본문">
-    <div className={styles.sectionHeader}>
-      <h3 className={styles.sectionTitle}>메모</h3>
-      <span role="status">{status}</span>
-    </div>
-    <p className={styles.noteAuthor}>팀원과 함께 고치는 메모예요. 입력하면 바로 함께 보여요</p>
-    <div onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && saving === 'waiting') void save() }}>
-      <MarkdownEditor id={fieldId} value="" doc={doc} onChange={change}
-        cursors={awareness && user ? { awareness, user: { name: user.name, color: colorOf(user.id) } } : undefined} />
+  const [status, tone] = sync.offline ? ['연결을 기다리는 중', 'error'] : sync.unsent ? ['보내는 중', 'busy']
+    : saving === 'failed' ? ['저장하지 못했어요', 'error'] : saving === 'idle' ? ['자동 저장됨', 'idle']
+      : saving === 'saving' ? ['저장 중', 'busy'] : ['저장 대기', 'busy']
+  return <section className={memo.pad} aria-label="공유 문서">
+    <div className={memo.doc}>
+      <div className={memo.bar}>
+        <p className={memo.barTitle}><strong>공유 문서</strong><span className={memo.save} data-state={tone} role="status">{status}</span></p>
+        {awareness && <CoEditors awareness={awareness} me={me} />}
+      </div>
+      <div onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && saving === 'waiting') void save() }}>
+        <MarkdownEditor id={fieldId} value="" doc={doc} onChange={change} page cursors={awareness && me ? { awareness, user: me } : undefined} />
+      </div>
     </div>
     {sync.offline && <RequestError error={sync.error} action={<Button variant="secondary" onClick={() => retry.current?.()}>다시 보내기</Button>} />}
     <RequestError error={saveError} action={saving === 'failed'
       ? <Button variant="secondary" onClick={() => void save()}>다시 저장</Button> : undefined} />
   </section>
+}
+
+// 커서 상태에서 나를 뺀 팀원을 사용자 ID로 하나씩 고른다. 같은 사람이 창을 여러 개 열어도 한 번만 센다
+// ID가 없는 예전 화면의 상태는 세지 않는다. 커서는 그대로 보인다
+function coEditors(states: Map<number, Record<string, unknown>>, self: number, me?: CaretUser) {
+  const found = new Map<string, CaretUser>()
+  states.forEach((state, client) => {
+    const user = state.user as Partial<CaretUser> | undefined
+    if (client === self || typeof user?.id !== 'string' || typeof user.name !== 'string' || typeof user.color !== 'string') return
+    if (user.id === me?.id) return
+    found.set(user.id, { id: user.id, name: user.name, color: user.color })
+  })
+  return [...found.values()]
+}
+
+// 지금 이 문서를 열어 둔 팀원. 커서가 움직일 때마다 다시 그리지 않도록 목록이 바뀔 때만 다시 그린다
+function CoEditors({ awareness, me }: { awareness: Awareness; me?: CaretUser }) {
+  const subscribe = useCallback((notify: () => void) => {
+    awareness.on('change', notify)
+    return () => awareness.off('change', notify)
+  }, [awareness])
+  const key = useSyncExternalStore(subscribe, () => JSON.stringify(coEditors(awareness.getStates(), awareness.clientID, me)))
+  const people = useMemo(() => JSON.parse(key) as CaretUser[], [key])
+  if (!people.length) return null
+  return <div className={memo.people}>
+    <ul aria-label="지금 함께 편집 중인 팀원">
+      {people.map((person) => <li key={person.id} title={person.name}>
+        <span className={memo.avatar} style={{ background: person.color }} aria-hidden="true">{person.name.trim().slice(0, 1) || '?'}</span>
+        <span className={styles.visuallyHidden}>{person.name}</span>
+      </li>)}
+    </ul>
+    <span aria-hidden="true">{people.length === 1 ? `${people[0].name} 님과 함께 편집 중` : `${people.length}명과 함께 편집 중`}</span>
+  </div>
 }

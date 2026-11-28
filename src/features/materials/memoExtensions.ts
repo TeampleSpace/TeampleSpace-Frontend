@@ -6,7 +6,8 @@ import CollaborationCaret from '@tiptap/extension-collaboration-caret'
 import type * as Y from 'yjs'
 import type { Awareness } from 'y-protocols/awareness'
 
-export type CaretUser = { name: string; color: string }
+// id는 함께 편집 중인 팀원을 사람 단위로 구분할 때 쓴다
+export type CaretUser = { id?: string; name: string; color: string }
 
 // 다른 팀원의 커서. 이름표를 커서 위에 붙인다
 function caret(user: Record<string, string>) {
