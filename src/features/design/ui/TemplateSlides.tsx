@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '../../../shared/ui/Button.tsx'
 import type { DesignTemplate } from '../api.ts'
@@ -12,8 +12,8 @@ export function TemplateSlides({ template, fallback }: { template: DesignTemplat
   const [retried, setRetried] = useState(false)
   const slides = useRef<HTMLDivElement>(null)
 
-  // 다시 시도 버튼이 사라지므로 불러온 슬라이드로 포커스를 옮긴다
-  useEffect(() => {
+  // 다시 시도 버튼이 사라지므로 슬라이드를 그리는 같은 갱신에서 포커스를 옮긴다
+  useLayoutEffect(() => {
     if (state.status === 'ready' && retried) slides.current?.focus()
   }, [state.status, retried])
 
