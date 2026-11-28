@@ -33,6 +33,9 @@ vi.mock('../pdf.ts', () => ({
           { str: 'https://example.com/pdf-link', transform: [10, 0, 0, 10, 10, 110], width: 50 },
           { str: '자세한 안내 www.example.com/guide.', transform: [10, 0, 0, 10, 10, 60], width: 80 },
           { str: 'file:///etc/passwd', transform: [10, 0, 0, 10, 10, 80], width: 40 },
+          // 한 줄의 주소가 두 조각으로 나뉘어 와도 하나로 잡는다
+          { str: '근거 https://example.', transform: [10, 0, 0, 10, 10, 20], width: 40 },
+          { str: 'com/report 참고', transform: [10, 0, 0, 10, 50, 20], width: 30, hasEOL: true },
         ] }),
         render: () => {
           const failed = pdf.failRender > 0 && (pdf.failRender -= 1) >= 0
@@ -165,6 +168,11 @@ test('PDF 본문에 글자로만 적힌 주소와 문서 안 링크도 누를 �
   // 주석이 이미 걸린 주소는 한 번만 두고 웹 주소가 아닌 글자는 링크로 만들지 않는다
   expect(popup.getAllByRole('link', { name: /example\.com\/pdf-link/ })).toHaveLength(1)
   expect(popup.queryByRole('link', { name: /file:/ })).toBeNull()
+  const split = popup.getByRole('link', { name: /^1쪽의 링크 https:\/\/example\.com\/report ?\(새 탭에서 열림\)$/ })
+  // 앞 조각 안에서 시작해 뒤 조각 안에서 끝난다. 앞 조각은 10에서 50, 뒤 조각은 50에서 80이다
+  const spot = (split.parentElement as HTMLElement).style
+  const [left, width] = [parseFloat(spot.left), parseFloat(spot.width)]
+  expect(left > 10 && left < 50 && left + width > 50 && left + width < 80).toBe(true)
   fireEvent.click(popup.getByRole('button', { name: '1쪽의 링크 3쪽으로 이동' }))
   await popup.findByText('PDF · 3쪽 / 3쪽')
 })
