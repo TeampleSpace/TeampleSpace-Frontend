@@ -23,7 +23,7 @@ import { TeamComments } from './TeamComments.tsx'
 import { MemoPad } from './MemoPad.tsx'
 import { MaterialJob } from './MaterialJob.tsx'
 import { MaterialAiSummary } from './MaterialAiSummary.tsx'
-import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabels } from '../../../entities/material/model.ts'
+import { formatWhen, kindLabels, kindLine, materialKindSchema, statusLabel } from '../../../entities/material/model.ts'
 import type { Material, MaterialKind, MaterialList, MaterialSummary } from '../../../entities/material/model.ts'
 import styles from './Materials.module.css'
 
@@ -352,7 +352,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
           ? <p className={styles.listNote} role="status">{!visibleList ? '자료를 불러오고 있어요' : q ? '검색 결과 0개' : '이 유형의 자료가 없어요'}</p>
           : <ul className={styles.rows} aria-busy={!visibleList || undefined}>{shown.items.map((item) => <li key={item.id}>
             <Link className={styles.row} aria-current={item.id === selectedId ? 'true' : undefined} to={searchWith((next) => next.set('material', item.id))}>
-              <span className={styles.rowMeta}>{kindLine(item)}{item.status !== 'ready' && <> · <span className={item.status === 'failed' ? styles.failed : undefined}>{statusLabels[item.status]}</span></>}</span>
+              <span className={styles.rowMeta}>{kindLine(item)}{item.status !== 'ready' && <> · <span className={item.status === 'failed' ? styles.failed : undefined}>{statusLabel(item)}</span></>}</span>
               <span className={styles.rowTitle}>{item.title}</span>
               <span className={styles.rowMeta}>{item.createdBy.name} · {formatWhen(item.createdAt)}</span>
             </Link>
@@ -362,7 +362,7 @@ function Materials({ project, onError }: { project: Project; onError: (reason: u
 
       <div className={styles.detail}>
         {visible && <MaterialDetail material={visible} retrying={retry.busy} retryError={retry.error}
-          onRetry={() => void reprocess()} onManage={setView}
+          onRetry={() => void reprocess()} onManage={setView} onPasteMemo={() => add('memo')}
           actions={visible.kind !== 'memo' && visible.status === 'ready' && visible.currentRevision ? <Button variant="secondary" onClick={() => setViewingId(visible.id)}>원문 보기</Button> : undefined}
           jobControls={<MaterialJob key={visible.job?.id ?? visible.id} material={visible} onChanged={apply} onError={onError} />}
           summary={visible.status === 'ready' && visible.currentRevision && <>

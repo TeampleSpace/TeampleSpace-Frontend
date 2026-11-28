@@ -8,6 +8,7 @@ import { StatusPanel } from '../../../shared/ui/StatusPanel.tsx'
 import { useSession } from '../../../entities/session/sessionContext.ts'
 import { materialsApi } from '../../../entities/material/api.ts'
 import { isAccessLoss, isGone, isUncertain } from '../../../entities/material/errors.ts'
+import { statusLabel } from '../../../entities/material/model.ts'
 import type { Job, MaterialSummary } from '../../../entities/material/model.ts'
 import { JobProgress } from '../../../entities/material/JobProgress.tsx'
 import { outlineGenerationApi, outlineResultSchema } from '../api.ts'
@@ -449,7 +450,7 @@ function GenerationControls({ projectId, version, dirty, outlineHasItems, linked
                 disabled={item.status !== 'ready' || (!selected.includes(item.id) && selected.length >= maxSources)}
                 onChange={(event) => setSelected((ids) => event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))} />
               {item.title}
-              {item.status !== 'ready' && <span className={styles.status}>{statusLabels[item.status]}</span>}
+              {item.status !== 'ready' && <span className={styles.status}>{item.kind === 'link' ? statusLabel(item) : statusLabels[item.status]}</span>}
             </label>)}
             {choices && !choices.items.length && !choices.nextCursor && <p>아직 추가한 자료가 없어요</p>}
             {choices?.items.some((item) => item.status === 'processing') && <p className={styles.note}>분석 중인 자료는 분석이 끝나면 고를 수 있어요</p>}

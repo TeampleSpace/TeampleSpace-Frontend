@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from '../../../shared/ui/Button.tsx'
 import { RequestError } from '../../../shared/ui/RequestError.tsx'
-import { formatBytes, jobErrorMessages, kindLine, statusLabels } from '../../../entities/material/model.ts'
+import { formatBytes, jobErrorMessages, kindLine, statusLabel } from '../../../entities/material/model.ts'
 import type { Material } from '../../../entities/material/model.ts'
 import { SourceLink } from './ExternalLink.tsx'
 import styles from './Materials.module.css'
@@ -11,15 +11,18 @@ import linkStyles from './Links.module.css'
 export type ManageAction = 'rename' | 'delete'
 
 // 선택한 자료의 상세. 처리 상태에 따라 본문 자리를 바꾼다
-export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, actions, extraMenu, jobControls, summary, children }: {
+export function MaterialDetail({ material, retrying, retryError, onRetry, onManage, onPasteMemo, actions, extraMenu, jobControls, summary, children }: {
   material: Material; retrying: boolean; retryError: unknown
-  onRetry: () => void; onManage: (action: ManageAction) => void
+  onRetry: () => void; onManage: (action: ManageAction) => void; onPasteMemo?: () => void
   // 제목 옆에 두는 동작과 관리 메뉴에 더하는 항목
   actions?: ReactNode; extraMenu?: (close: () => void) => ReactNode; jobControls?: ReactNode; summary?: ReactNode; children?: ReactNode
 }) {
   const revision = material.currentRevision
   const source = material.source
   const error = material.job?.error
+  const link = material.kind === 'link'
+  const canceled = material.job?.status === 'canceled'
+  const retryable = error?.retryable !== false || canceled
   return <>
     <header className={styles.detailHeader}>
       <div className={styles.titleRow}>
@@ -29,7 +32,7 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
       </div>
       <p className={styles.meta}>
         <span>{kindLine(material)} · {material.createdBy.name} 님이 추가{revision && revision.sourceVersion > 1 ? ` · 개정 ${revision.sourceVersion}` : ''}</span>
-        <span className={material.status === 'failed' ? styles.failed : styles.status}>{statusLabels[material.status]}</span>
+        <span className={material.status === 'failed' ? styles.failed : styles.status}>{statusLabel(material)}</span>
       </p>
     </header>
 
@@ -44,17 +47,21 @@ export function MaterialDetail({ material, retrying, retryError, onRetry, onMana
 
     {material.status === 'processing' && (material.job && jobControls
       ? jobControls
-      : <p className={styles.jobFallback} role="status">분석 상태를 확인하고 있어요.</p>)}
+      : <p className={styles.jobFallback} role="status">{link ? '본문 읽기 상태를 확인하고 있어요.' : '분석 상태를 확인하고 있어요.'}</p>)}
 
     {material.status === 'failed' && <div className={styles.state}>
-      <p>자료를 분석하지 못했어요</p>
-      <p className={styles.stateMessage} role="alert">{material.job?.status === 'canceled' ? '분석을 취소했어요' : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
-      <p className={styles.stateMessage}>{material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 분석할 수 있어요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
+      <p>{link ? '링크 본문을 읽지 못했어요' : '자료를 분석하지 못했어요'}</p>
+      <p className={styles.stateMessage} role="alert">{canceled ? (link ? '본문 읽기를 취소했어요' : '분석을 취소했어요') : jobErrorMessages[error?.code ?? ''] ?? error?.message ?? '분석 중 문제가 생겼어요'}</p>
+      {/* 읽지 못한 링크는 준비된 자료가 아니라서 발표 구성에서 고를 수 없다 */}
+      <p className={styles.stateMessage}>{link
+        ? '이 링크는 발표 구성의 근거로 쓰지 않아요. 원본 페이지를 새 탭에서 열어 보고 필요한 내용은 메모로 붙여 넣어 주세요.'
+        : material.kind === 'file' ? '올린 파일은 그대로 있어요. 다시 분석할 수 있어요.' : '입력한 주소와 설명은 그대로 있어요.'}</p>
       <RequestError error={retryError} />
       <div className={styles.actions}>
-        {error?.retryable === false && material.job?.status !== 'canceled'
-          ? <p>다시 시도해도 같은 결과가 나와요. 자료를 삭제하고 다른 자료로 추가해 주세요</p>
-          : <Button loading={retrying} onClick={onRetry}>다시 시도</Button>}
+        {link && onPasteMemo && <Button variant={retryable ? 'secondary' : 'primary'} onClick={onPasteMemo}>메모로 붙여 넣기</Button>}
+        {retryable
+          ? <Button loading={retrying} onClick={onRetry}>다시 시도</Button>
+          : !link && <p>다시 시도해도 같은 결과가 나와요. 자료를 삭제하고 다른 자료로 추가해 주세요</p>}
       </div>
     </div>}
 

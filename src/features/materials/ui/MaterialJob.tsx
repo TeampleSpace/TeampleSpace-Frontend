@@ -16,8 +16,9 @@ export function MaterialJob({ material, onChanged, onError }: {
   if (!job || material.status !== 'processing') return null
   const canceling = requested || Boolean(job.cancelRequestedAt)
   const queued = job.status === 'queued'
-  const activity = material.kind === 'file' ? 'PDF 본문을 추출하고 있어요.' : '웹페이지 본문을 가져오고 있어요.'
-  const status = canceling ? '취소 요청을 확인하고 있어요' : queued ? '분석 대기 중' : activity
+  const link = material.kind === 'link'
+  const activity = link ? '웹페이지 본문을 가져오고 있어요.' : 'PDF 본문을 추출하고 있어요.'
+  const status = canceling ? '취소 요청을 확인하고 있어요' : queued ? (link ? '본문 읽기 대기 중' : '분석 대기 중') : activity
 
   async function check() {
     onChanged(await materialsApi.get(material.id))
@@ -46,7 +47,7 @@ export function MaterialJob({ material, onChanged, onError }: {
         <p>{status}</p>
         {!queued && !canceling && job.progress > 0 && <span>{job.progress}%</span>}
       </div>
-      <Button variant="secondary" loading={busy} disabled={canceling} onClick={() => void cancel()}>분석 취소</Button>
+      <Button variant="secondary" loading={busy} disabled={canceling} onClick={() => void cancel()}>{link ? '읽기 취소' : '분석 취소'}</Button>
     </div>
     <RequestError error={error} />
   </div>
