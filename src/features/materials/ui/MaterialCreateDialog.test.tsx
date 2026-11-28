@@ -15,6 +15,8 @@ import * as Y from 'yjs'
 import { Editor } from '@tiptap/react'
 import { memoExtensions } from '../memoExtensions.ts'
 import { toBase64 } from '../memoSync.ts'
+import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness'
+import { colorOf } from '../../presence/viewers.ts'
 import type { ProjectListener } from '../../presence/projectEvents.ts'
 
 // 화면은 실제 요청 클라이언트를 쓰고 전송만 자료 모킹 서버로 바꾼다. 실제 파일 처리와 서버 연동 검증이 아니다
@@ -303,7 +305,7 @@ test('메모를 추가하면 저장된 본문으로 공유 편집을 시작하�
   // 입력 조각을 먼저 팀원에게 보내고 멈추면 본문을 저장한다
   expect(screen.getByText(/보내는 중|저장 대기/)).toBeTruthy()
   await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('고친 내용'), { timeout: 3000 })
-  await screen.findByText('저장됨')
+  await screen.findByText('자동 저장됨')
 
   // 다른 경로로 자료 버전이 바뀌어도 최신 버전으로 다시 저장한다
   mock.renameAs(id, '팀원이 바꾼 제목')
@@ -363,7 +365,7 @@ test('본문을 저장한 뒤 팀원의 변경이 합쳐지면 합쳐진 본문�
   await waitFor(() => expect(body.value).toBe('처음'))
   fireEvent.change(body, { target: { value: '처음 내 입력' } })
   await waitFor(() => expect(mock.get(id)?.revisions.at(-1)?.markdown).toBe('처음 내 입력'), { timeout: 3000 })
-  await screen.findByText('저장됨')
+  await screen.findByText('자동 저장됨')
 
   // 내 저장이 끝난 뒤에야 팀원의 조각이 도착한다
   const teammate = new Y.Doc()
@@ -393,6 +395,27 @@ test('다른 팀원이 먼저 시작한 공유 메모는 쌓인 조각으로 열
   await waitFor(() => expect(body.value).toBe('팀원이 함께 쓴 본문'))
   expect(calls(`POST /v1/materials/${id}/memo-updates`)).toHaveLength(0)
   expect(calls(`/materials/${id}/source`)).toHaveLength(0)
+})
+
+test('공유 문서를 열어 둔 팀원은 창 수와 관계없이 한 번씩 보이고 내 다른 창은 빠진다', async () => {
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: /기존 메모/ }))
+  await screen.findByRole('textbox', { name: '메모 내용' })
+  const id = [...mock.calls].reverse().find((call) => call.path.startsWith('/v1/materials/'))!.path.split('/')[3].split('?')[0]
+  expect(screen.queryByRole('list', { name: '지금 함께 편집 중인 팀원' })).toBeNull()
+  const open = (name: string, color: string) => {
+    const other = new Awareness(new Y.Doc())
+    other.setLocalStateField('user', { name, color })
+    const data = toBase64(encodeAwarenessUpdate(other, [other.clientID]))
+    for (const listener of [...events]) listener.onMessage?.({ event: 'memo.awareness', data: JSON.stringify({ materialId: id, data }) })
+  }
+  open('팀원 2', '#1971c2')
+  open('팀원 2', '#1971c2')
+  open('팀원 1', colorOf(mock.ownerId))
+  const list = await screen.findByRole('list', { name: '지금 함께 편집 중인 팀원' })
+  expect(within(list).getAllByRole('listitem')).toHaveLength(1)
+  expect(within(list).getByText('팀원 2')).toBeTruthy()
+  expect(screen.getByText('팀원 2 님과 함께 편집 중')).toBeTruthy()
 })
 
 test('추가한 자료로 뒤로가기할 때 다른 자료의 미저장 메모를 확인한다', async () => {
